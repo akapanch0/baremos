@@ -1,0 +1,232 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "User Profile",
+      "description": "Profile and operational settings of the authenticated contractor",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the contractor"
+        },
+        "nombre": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Full name of the user"
+        },
+        "legajo": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Employee or contractor ID"
+        },
+        "zona": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Assigned operational zone"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Email address of the contractor"
+        },
+        "creado": {
+          "type": "string",
+          "description": "ISO timestamp of profile creation"
+        }
+      },
+      "required": [
+        "userId",
+        "nombre",
+        "legajo"
+      ]
+    },
+    "jornada": {
+      "title": "Jornada",
+      "description": "Daily work log record with baremo items and financial summary",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique identifier for the workday"
+        },
+        "fecha": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Date in YYYY-MM-DD format"
+        },
+        "legajo": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Contractor employee ID"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the owner"
+        },
+        "cerrada": {
+          "type": "boolean",
+          "description": "Whether the workday is closed"
+        },
+        "total": {
+          "type": "number",
+          "description": "Calculated total earnings amount"
+        },
+        "creado": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": [
+        "fecha",
+        "legajo",
+        "userId",
+        "cerrada",
+        "total"
+      ]
+    },
+    "combustible": {
+      "title": "Combustible",
+      "description": "Fuel ticket expense record",
+      "type": "object",
+      "properties": {
+        "patente": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Vehicle license plate"
+        },
+        "monto": {
+          "type": "number",
+          "description": "Fuel expense amount"
+        },
+        "descontar": {
+          "type": "boolean",
+          "description": "Whether expense is deducted from earnings"
+        },
+        "fecha": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Date in YYYY-MM-DD format"
+        },
+        "mes": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Month in YYYY-MM format"
+        },
+        "legajo": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Contractor employee ID"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the owner"
+        },
+        "creado": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": [
+        "monto",
+        "fecha",
+        "legajo",
+        "userId"
+      ]
+    },
+    "quincena": {
+      "title": "Quincena",
+      "description": "Fortnight financial summary record",
+      "type": "object",
+      "properties": {
+        "mes": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Month string"
+        },
+        "tipo": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Type 1q or 2q"
+        },
+        "total": {
+          "type": "number",
+          "description": "Total earnings recorded for the period"
+        },
+        "fechaRegistro": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Date of registration"
+        },
+        "bloqueada": {
+          "type": "boolean",
+          "description": "Whether the fortnight is closed and locked"
+        },
+        "legajo": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Contractor employee ID"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the owner"
+        },
+        "creado": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": [
+        "mes",
+        "tipo",
+        "total",
+        "legajo",
+        "userId"
+      ]
+    },
+    "admin": {
+      "title": "Admin",
+      "description": "System administrator identity",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Email address of the administrator"
+        },
+        "creado": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": [
+        "email"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "userProfile",
+      "description": "Collection of contractor user profiles and settings"
+    },
+    "/users/{userId}/jornadas/{jornadaId}": {
+      "schema": "jornada",
+      "description": "Workday logs owned by the contractor"
+    },
+    "/users/{userId}/combustible/{combustibleId}": {
+      "schema": "combustible",
+      "description": "Fuel expense records owned by the contractor"
+    },
+    "/users/{userId}/quincenas/{quincenaId}": {
+      "schema": "quincena",
+      "description": "Fortnight financial periods owned by the contractor"
+    },
+    "/admins/{adminId}": {
+      "schema": "admin",
+      "description": "Registry of system administrators"
+    }
+  }
+}

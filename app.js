@@ -973,6 +973,13 @@ async function init() {
   // Recordatorio de backup (no bloquea nada, solo avisa).
   setTimeout(() => { revisarRecordatorioDeBackup(); }, 6000);
 
+  // Inicialización de la integración con Firebase Cloud
+  try {
+    initFirebaseUI();
+  } catch (errFirebase) {
+    console.warn('[Firebase Init Error]', errFirebase);
+  }
+
   try {
     await registerSW();
     // v5.9.41 - si al leer las versiones ya se vio que los archivos son mas
@@ -1104,10 +1111,164 @@ async function loadUser() {
   if (c?.value) State.user = await dbGet('usuarios', c.value);
 }
 
+/* ============================================================
+   INTEGRACIÓN FIREBASE CLOUD & SINCRONIZACIÓN
+   ============================================================ */
+function actualizarEstadoFirebase() {
+  const btnChip = $('#btnCloudSync');
+  const txtChip = $('#cloudSyncText');
+  const statusTxt = $('#firebaseStatusText');
+  const userEmail = $('#firebaseUserEmail');
+  const toggleBtn = $('#btnFirebaseToggleAuth');
+  const ajDesc = $('#ajFirebaseDesc');
+
+  if (!window.FirebaseSync) return;
+  const user = window.FirebaseSync.auth?.currentUser;
+  if (user) {
+    if (txtChip) txtChip.textContent = 'Conectado';
+    if (btnChip) {
+      btnChip.classList.add('synced');
+      btnChip.title = `Conectado a Firebase: ${user.email}`;
+    }
+    if (statusTxt) statusTxt.innerHTML = `<span style="color:#22c55e;font-weight:bold;">● Conectado a la nube</span>`;
+    if (userEmail) userEmail.textContent = `Cuenta: ${user.email} (${user.displayName || 'Usuario'})`;
+    if (toggleBtn) toggleBtn.textContent = 'Cerrar sesión de Google';
+    if (ajDesc) ajDesc.textContent = `Conectado como ${user.email}`;
+  } else {
+    if (txtChip) txtChip.textContent = 'Nube';
+    if (btnChip) {
+      btnChip.classList.remove('synced');
+      btnChip.title = 'Sincronización en la Nube (Firebase)';
+    }
+    if (statusTxt) statusTxt.innerHTML = `<span style="color:#eab308;font-weight:bold;">○ Modo local (sin sesión de Google)</span>`;
+    if (userEmail) userEmail.textContent = 'Iniciá sesión para respaldar tus jornadas en Firestore.';
+    if (toggleBtn) toggleBtn.textContent = 'Iniciar sesión con Google';
+    if (ajDesc) ajDesc.textContent = 'No conectado · tocá para activar';
+  }
+}
+
+function abrirModalFirebase() {
+  actualizarEstadoFirebase();
+  const m = $('#modalFirebase');
+  if (m) m.classList.add('show');
+}
+
+function cerrarModalFirebase() {
+  const m = $('#modalFirebase');
+  if (m) m.classList.remove('show');
+}
+
+function initFirebaseUI() {
+  const btnChip = $('#btnCloudSync');
+  if (btnChip) btnChip.onclick = abrirModalFirebase;
+
+  const btnClose = $('#btnFirebaseClose');
+  if (btnClose) btnClose.onclick = cerrarModalFirebase;
+
+  const btnSyncNow = $('#btnFirebaseSyncNow');
+  if (btnSyncNow) {
+    btnSyncNow.onclick = async () => {
+      if (!window.FirebaseSync || !window.FirebaseSync.auth?.currentUser) {
+        toast('Iniciá sesión con Google para sincronizar', 'warn');
+        return;
+      }
+      btnSyncNow.disabled = true;
+      btnSyncNow.textContent = 'Sincronizando...';
+      const btnChip = $('#btnCloudSync');
+      if (btnChip) btnChip.classList.add('syncing');
+      try {
+        const res = await window.FirebaseSync.syncFullCloudDatabase();
+        if (res.synced) {
+          toast(`Sincronización completa (${res.count} registros)`, 'success');
+        } else {
+          toast('Error en sincronización', 'error');
+        }
+      } catch (e) {
+        toast('Error al sincronizar: ' + e.message, 'error');
+      } finally {
+        btnSyncNow.disabled = false;
+        btnSyncNow.textContent = '☁️ Sincronizar con la nube ahora';
+        if (btnChip) btnChip.classList.remove('syncing');
+      }
+    };
+  }
+
+  const btnToggle = $('#btnFirebaseToggleAuth');
+  if (btnToggle) {
+    btnToggle.onclick = async () => {
+      if (!window.FirebaseSync) return;
+      if (window.FirebaseSync.auth?.currentUser) {
+        await window.FirebaseSync.logoutUser();
+        toast('Sesión de Google cerrada', 'info');
+        actualizarEstadoFirebase();
+      } else {
+        try {
+          const u = await window.FirebaseSync.loginWithGoogle();
+          if (u) {
+            toast(`Conectado como ${u.email}`, 'success');
+            if (State.user) {
+              await window.FirebaseSync.saveCloudUserProfile(State.user);
+              window.FirebaseSync.syncFullCloudDatabase().catch(() => {});
+            }
+            actualizarEstadoFirebase();
+          }
+        } catch (e) {
+          toast('Error al conectar Google', 'error');
+        }
+      }
+    };
+  }
+
+  if (window.FirebaseSync?.onAuthStateChanged) {
+    window.FirebaseSync.onAuthStateChanged((u) => {
+      actualizarEstadoFirebase();
+    });
+  }
+}
+
 function showLogin() {
   $$('.view').forEach(v => v.classList.remove('active'));
   $$('.tab-btn').forEach(b => b.classList.remove('active'));
   $('#viewLogin')?.classList.add('active');
+
+  const btnG = $('#btnGoogleLogin');
+  if (btnG) {
+    btnG.onclick = async () => {
+      if (!window.FirebaseSync) {
+        toast('Firebase no está disponible', 'warn');
+        return;
+      }
+      try {
+        btnG.disabled = true;
+        btnG.style.opacity = '0.6';
+        const user = await window.FirebaseSync.loginWithGoogle();
+        if (user) {
+          toast(`Sesión iniciada: ${user.displayName || user.email}`, 'success');
+          const cloudProf = await window.FirebaseSync.getCloudUserProfile();
+          if (cloudProf && cloudProf.legajo) {
+            await dbPut('usuarios', { nombre: cloudProf.nombre, legajo: cloudProf.legajo, zona: cloudProf.zona, email: cloudProf.email, creado: cloudProf.creado });
+            await dbPut('config', { key: 'activeUser', value: cloudProf.legajo });
+            State.user = cloudProf;
+            $('#viewLogin')?.classList.remove('active');
+            await loadOrCreateJornada();
+            showApp();
+            actualizarEstadoFirebase();
+            window.FirebaseSync.syncFullCloudDatabase().catch(() => {});
+          } else {
+            if ($('#loginNombre')) $('#loginNombre').value = user.displayName || '';
+            toast('Ingresá tu legajo y zona para completar tu perfil', 'info');
+          }
+        }
+      } catch (err) {
+        console.error('Google login error:', err);
+        toast('No se pudo iniciar sesión con Google', 'error');
+      } finally {
+        btnG.disabled = false;
+        btnG.style.opacity = '1';
+      }
+    };
+  }
+
   const f = $('#loginForm');
   if (f) {
     f.onsubmit = async e => {
@@ -1120,9 +1281,16 @@ function showLogin() {
       await dbPut('usuarios', { nombre: n, legajo: l, zona: z, creado: ahora() });
       await dbPut('config', { key: 'activeUser', value: l });
       State.user = { nombre: n, legajo: l, zona: z };
+      try {
+        if (window.FirebaseSync?.auth?.currentUser) {
+          await window.FirebaseSync.saveCloudUserProfile(State.user);
+          window.FirebaseSync.syncFullCloudDatabase().catch(() => {});
+        }
+      } catch (x) {}
       $('#viewLogin').classList.remove('active');
       await loadOrCreateJornada();
       showApp();
+      actualizarEstadoFirebase();
       toast(`¡Bienvenido ${n}!`, 'success');
     };
   }
@@ -1333,6 +1501,11 @@ async function crearJornadaNueva() {
   const j = { fecha: hoy(), horaInicio: ahora(), ultimaMod: ahora(), legajo: State.user.legajo, usuario: State.user.nombre, zona: State.user.zona, items: [], tareas: [], cerrada: false, total: 0 };
   j.id = await dbAdd('jornadas', j);
   State.jornada = j; State.items = []; State.tareas = [];
+  try {
+    if (window.FirebaseSync?.auth?.currentUser) {
+      window.FirebaseSync.syncJornadaToCloud(j).catch(() => {});
+    }
+  } catch (x) {}
 }
 
 /* ============================================================
@@ -1564,6 +1737,11 @@ async function saveJornada() {
   State.jornada.totalEnCurso = t.totalEnCurso;
   State.jornada.baremosEnCurso = t.baremosEnCurso;
   await dbPut('jornadas', State.jornada);
+  try {
+    if (window.FirebaseSync?.auth?.currentUser) {
+      window.FirebaseSync.syncJornadaToCloud(State.jornada).catch(() => {});
+    }
+  } catch (x) {}
 }
 
 async function cerrarJornada() {
@@ -2941,7 +3119,13 @@ function setupCombustible() {
     if (p.length < 5 || p.length > 10) { toast('Patente inválida', 'warn'); return; }
     if (m <= 0) { toast('Ingresá el monto', 'warn'); return; }
 
-    await dbAdd('combustible', { patente: p, monto: m, descontar: desc, fecha: hoy(), mes: mesActual(), legajo: State.user.legajo, creado: ahora() });
+    const ticketComb = { patente: p, monto: m, descontar: desc, fecha: hoy(), mes: mesActual(), legajo: State.user.legajo, creado: ahora() };
+    ticketComb.id = await dbAdd('combustible', ticketComb);
+    try {
+      if (window.FirebaseSync?.auth?.currentUser) {
+        window.FirebaseSync.syncCombustibleToCloud(ticketComb).catch(() => {});
+      }
+    } catch(x) {}
     if (p !== anterior) await guardarPatente(p);
     // Solo se limpia el monto: la patente queda preregistrada.
     if ($('#combMonto')) $('#combMonto').value = '';
@@ -3222,7 +3406,13 @@ async function registrarQuincena(tipo) {
   const per = tipo === 1 ? '01 al 15' : `16 al ${diasDelMes(mesReg)}`;
   if (!await confirmDialog(`🔒 CONFIRMAR\n\n${tipo === 1 ? '1ra' : '2da'} Quincena de ${nombreMes(mesReg)}\nPeríodo: ${per}\n\nO1: ${fmt(o1)}\nO2: ${fmt(o2)}\nTotal: ${fmt(tot)}\n\n⚠️ Quedará BLOQUEADA. No editable.\n\n¿Confirmar?`)) return;
   try {
-    await dbAdd('quincenas', { mes: mesReg, tipo, oficial1: o1, oficial2: o2, total: tot, fechaRegistro: hoy(), bloqueada: true, legajo: leg, creado: ahora() });
+    const qData = { mes: mesReg, tipo, oficial1: o1, oficial2: o2, total: tot, fechaRegistro: hoy(), bloqueada: true, legajo: leg, creado: ahora() };
+    qData.id = await dbAdd('quincenas', qData);
+    try {
+      if (window.FirebaseSync?.auth?.currentUser) {
+        window.FirebaseSync.syncQuincenaToCloud(qData).catch(() => {});
+      }
+    } catch(x) {}
     toast(`${tipo === 1 ? '1ra' : '2da'} Q registrada y bloqueada`, 'success');
     renderQuincenas();
   } catch(e) { toast(e.name === 'ConstraintError' ? 'Ya registrada' : 'Error', 'error'); }
@@ -3395,6 +3585,7 @@ function renderAjustes() {
   if (!lst) return;
   lst.innerHTML = `
     <div class="ajuste-item" data-act="update"><div class="aj-ico">🔄</div><div class="aj-text"><div class="aj-title">Actualizaciones</div><div class="aj-desc">Tenés la v${State.currentVersion || '?'} · tocá para buscar una nueva</div><button type="button" class="aj-sub" data-sub="forzar">🧹 ¿Quedó trabada? Forzar actualización</button></div><div class="aj-arrow">›</div></div>
+    <div class="ajuste-item" data-act="firebase"><div class="aj-ico">🔥</div><div class="aj-text"><div class="aj-title">Nube Firebase</div><div class="aj-desc" id="ajFirebaseDesc">Sincronización y respaldo en la nube</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="validar"><div class="aj-ico">🧮</div><div class="aj-text"><div class="aj-title">Validar totales del historial</div><div class="aj-desc">Recalcula jornadas que quedaron en $0</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="baremo"><div class="aj-ico">📥</div><div class="aj-text"><div class="aj-title">Cargar Baremos actualizados</div><div class="aj-desc">Archivo JSON, Excel o CSV</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="backup"><div class="aj-ico">💾</div><div class="aj-text"><div class="aj-title">Backup</div><div class="aj-desc">Guardá tus datos · te lo recordamos todos los lunes</div></div><div class="aj-arrow">›</div></div>
@@ -3421,6 +3612,7 @@ function renderAjustes() {
     item.onclick = () => {
       const a = item.dataset.act;
       if (a === 'update') checkForUpdate();
+      else if (a === 'firebase') abrirModalFirebase();
       else if (a === 'validar') {
         repararTotalesDeJornadas({ verboso: true }).then(() => { renderAll(); });
       }

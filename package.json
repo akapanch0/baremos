@@ -7,10 +7,12 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "node -e 'console.log(\"Static build ready\")'"
+    "build:firebase": "bun build firebase-bridge.js --outfile firebase-bundle.js --target browser",
+    "build": "bun build firebase-bridge.js --outfile firebase-bundle.js --target browser && node -e 'console.log(\"Static build ready\")'"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "firebase": "^12.19.0"
   },
   "devDependencies": {
     "jsdom": "^30.0.1"

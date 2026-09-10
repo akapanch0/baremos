@@ -2784,3 +2784,41 @@ html[data-theme="dark"] {
   .cierre-ok.ver .cok-circ,
   .cierre-ok.ver .cok-tilde { animation: none; }
 }
+
+/* ===================== Firebase Cloud Sync UI ===================== */
+.app-header .cloud-chip {
+  background: rgba(255,255,255,.18);
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: all .2s ease;
+  white-space: nowrap;
+}
+.app-header .cloud-chip:hover {
+  background: rgba(255,255,255,.28);
+}
+.app-header .cloud-chip.synced {
+  border: 1px solid rgba(72, 199, 142, 0.6);
+  background: rgba(72, 199, 142, 0.2);
+}
+.app-header .cloud-chip.syncing {
+  opacity: .7;
+}
+
+#btnGoogleLogin:hover {
+  background: rgba(0,0,0,.04);
+}
+[data-theme="dark"] #btnGoogleLogin {
+  border-color: rgba(255,255,255,.2);
+  color: #fff;
+}
+[data-theme="dark"] #btnGoogleLogin:hover {
+  background: rgba(255,255,255,.08);
+}
+
