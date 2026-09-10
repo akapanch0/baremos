@@ -21,6 +21,8 @@ app.use(express.static(__dirname, {
   setHeaders: (res, filePath) => {
     if (
       filePath.endsWith('.html') ||
+      filePath.endsWith('.css') ||
+      filePath.endsWith('.js') ||
       filePath.endsWith('baremo.json') ||
       filePath.endsWith('version.json') ||
       filePath.endsWith('VERSION')
@@ -30,8 +32,13 @@ app.use(express.static(__dirname, {
   }
 }));
 
-// Fallback a index.html
+// Fallback a index.html solo para solicitudes de navegación HTML (sin extensión de archivo)
 app.use((req, res) => {
+  const ext = path.extname(req.path);
+  if (ext && ext !== '.html') {
+    return res.status(404).end();
+  }
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 

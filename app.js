@@ -4958,8 +4958,6 @@ function geoCacheGuardar(lat, lon, datos) {
   } catch (e) {}
 }
 
-function esperar(ms) { return new Promise(r => setTimeout(r, ms)); }
-
 async function geocodificarInverso(lat, lon) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
   if (lat == null || lon == null) return null;
