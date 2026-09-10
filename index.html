@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="es-AR" data-piel="aurora">
+<head><script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3326087178271029"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#4338ca">
+<style>/* El primer pixel que pinta el navegador ya sale en Aurora:
+   este estilo va antes que la hoja de estilos, asi no se ve
+   ni un destello del color anterior mientras carga. */
+html { background: #4338ca; }
+html.piel-esmeralda { background: #0f766e; }
+html.piel-grafito { background: #1f2937; }</style>
+<script>/* v5.9.39: aplica la piel elegida antes de pintar, para que el arranque no parpadee */
+(function(){try{var v=["aurora","esmeralda","grafito"];var p=localStorage.getItem("baremo_piel");if(v.indexOf(p)<0)p="aurora";var h=document.documentElement;h.setAttribute("data-piel",p);h.className=(h.className||"").replace(/\bpiel-\w+\b/g,"").trim()+" piel-"+p;var m={aurora:"#4338ca",esmeralda:"#0f766e",grafito:"#1f2937"};var t=document.querySelector('meta[name="theme-color"]');if(t)t.setAttribute("content",m[p]);}catch(e){}})();</script>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BAREMO">
+<meta name="application-name" content="BAREMO">
+<title>BAREMO</title>
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.43">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.43">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.43">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.43">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.43">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.43">
+<link rel="manifest" href="manifest.json?v=5.9.43">
+<link rel="stylesheet" href="styles.css?v=5.9.43">
+<!-- GATE PWA: la app completa se abre en modo standalone; desde el navegador
+     se redirige a landing.html. El contenido se oculta SOLO mientras dura la
+     redireccion; si esta no ocurre, main.js quita el atributo y la app se ve.
+     Nunca se detiene la carga de la pagina: no puede quedar en gris. -->
+<style>html[data-gate="redirecting"] body { visibility: hidden; }</style>
+<script src="main.js?v=5.9.43"></script>
+<script src="brand.js?v=5.9.43"></script>
+<!-- Librerias externas (v5.9.29): primero la copia local de ./vendor y, solo si
+     falta o falla, el CDN. Asi la app instalada nunca se queda sin graficos,
+     sin PDF ni sin Excel. Ver vendor/README.txt -->
+<script src="vendor/chart.umd.min.js?v=5.9.43" onerror="this.dataset.fallo='1'"></script>
+<script>window.Chart||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/scr'+'ipt>');</script>
+
+<script src="vendor/jspdf.umd.min.js?v=5.9.43" onerror="this.dataset.fallo='1'"></script>
+<script>window.jspdf||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/scr'+'ipt>');</script>
+
+<script src="vendor/jspdf.plugin.autotable.min.js?v=5.9.43" onerror="this.dataset.fallo='1'"></script>
+<script>(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API&&window.jspdf.jsPDF.API.autoTable)||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.6.0/dist/jspdf.plugin.autotable.min.js"><\/scr'+'ipt>');</script>
+
+<script src="vendor/xlsx.full.min.js?v=5.9.43" onerror="this.dataset.fallo='1'"></script>
+<script>window.XLSX||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/scr'+'ipt>');</script>
+</head>
+<body>
+
+<div class="splash">
+  <div class="splash-flash" aria-hidden="true"></div>
+  <div class="logo electric-wrapper">
+    <div class="bolt-halo" aria-hidden="true"></div>
+    <div class="bolt-spark bs1"></div>
+    <div class="bolt-spark bs2"></div>
+    <div class="bolt-spark bs3"></div>
+    <div class="bolt-spark bs4"></div>
+    <div class="bolt-spark bs5"></div>
+    <svg class="electric-bolt" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="boltGrad" x1="6" y1="1" x2="18" y2="23" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="45%" stop-color="#eaf3ff"/>
+          <stop offset="100%" stop-color="#ffd54a"/>
+        </linearGradient>
+      </defs>
+      <path class="bolt-arc a1" d="M6.6 3.1C4.3 5 3 7.6 2.9 10.4"/>
+      <path class="bolt-arc a2" d="M20.9 8.3c1.4 2.7 1.3 5.8-.3 8.3"/>
+      <path class="bolt-arc a3" d="M8.7 21.5c-2.1-.9-3.8-2.6-4.7-4.7"/>
+      <path class="bolt-body" d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/>
+      <path class="bolt-trazo" pathLength="100" d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/>
+    </svg>
+  </div>
+  <h1 class="splash-brand"><span class="splash-logo brand-logo-img" data-brand-logo data-brand-text="BAREMO" role="img" aria-label="BAREMO"></span><span class="sr-only">BAREMO</span></h1>
+  <p>Cargando...</p>
+  <p id="splashVersion" style="font-size:11px;opacity:.7;margin-top:8px"></p>
+</div>
+
+<div class="toast-wrap"></div>
+
+<header class="app-header">
+  <div class="row-top">
+    <h1>
+      <!-- Marca: SOLO el logo. La silueta de icons/logo.png se usa como mascara
+           y el relleno es el degradado del propio encabezado, por eso nunca se ve
+           un recuadro ni un fondo pegado. El nombre queda accesible en .sr-only. -->
+      <span class="brand-logo-img" id="headerLogo" data-brand-logo data-brand-align="left" data-brand-text="BAREMO" role="img" aria-label="BAREMO"></span>
+      <span class="sr-only">BAREMO</span>
+    </h1>
+    <div class="header-actions">
+      <button class="btn-install-pwa" id="btnInstallApp" type="button" title="Instalar BAREMO en tu dispositivo" aria-label="Instalar app" hidden><span class="bip-ico" aria-hidden="true">📲</span><span class="bip-txt">Instalar</span></button>
+      <button class="btn-ayuda" id="btnHelp" title="Menú de Ayuda">AYUDA</button>
+      <button class="icon-btn" id="btnTheme" type="button" title="Apariencia: modo claro u oscuro y piel de color" aria-label="Apariencia">🌓</button>
+    </div>
+  </div>
+  <div class="row-top">
+    <div style="display:flex; align-items:center;">
+      <div class="user-chip" id="btnSwitchUser">👤 <span id="headerUser">Ingresar</span></div>
+      <div class="zona-chip" id="btnChangeZona" style="display:none; cursor:pointer;" title="Cambiar Zona">📍 <span id="headerUserZona"></span></div>
+    </div>
+    <div class="date-line">
+      <button class="mini-calendar" id="miniCalendar" type="button" title="Fecha de hoy" aria-label="Fecha de hoy"></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="view" id="viewLogin">
+    <div class="card" style="margin-top:40px">
+      <div class="card-title">👤 Ingreso de usuario</div>
+      <form id="loginForm">
+        <div class="field"><label>Nombre</label><input class="input" id="loginNombre" placeholder="Ej: Juan Pérez" required></div>
+        <div class="field"><label>Legajo</label><input class="input" id="loginLegajo" placeholder="Ej: 1234" required></div>
+        <div class="field">
+          <label>Zona de trabajo</label>
+          <select class="input" id="loginZona" required>
+            <option value="">Seleccioná una zona</option>
+            <option value="Trujui">Trujui</option>
+            <option value="Cuartel V">Cuartel V</option>
+            <option value="Moreno">Moreno</option>
+            <option value="Gral. Rodríguez">Gral. Rodríguez</option>
+            <option value="Tigre">Tigre</option>
+            <option value="San Martín">San Martín</option>
+            <option value="Olivos">Olivos</option>
+            <option value="Pilar-Escobar">Pilar-Escobar</option>
+          </select>
+        </div>
+        <div class="zona-mapa-container" id="zonaMapaContainer">
+          <div class="zona-mapa-header">
+            <span>📍</span>
+            <span id="zonaMapaTitulo">Zona seleccionada</span>
+          </div>
+          <div class="zona-mapa-img-wrap">
+            <img class="zona-mapa-img" id="zonaMapaImg" alt="Mapa" style="display:none">
+            <div class="zona-mapa-placeholder" id="zonaMapaPlaceholder">
+              <div><span class="zmp-ico">🗺️</span><span>Seleccioná una zona</span></div>
+            </div>
+          </div>
+          <div class="zona-mapa-footer">
+            <span><span class="zmf-dot"></span>Mapa precargado</span>
+            <span id="zonaMapaNombre">—</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" type="submit" style="margin-top:14px">Ingresar</button>
+      </form>
+    </div>
+  </section>
+  
+  <section class="view" id="viewAyuda">
+    <div class="card" style="margin-top:20px; padding: 20px;">
+      <button class="btn btn-ghost" id="btnVolverAyuda" style="margin-bottom: 16px;">⬅ Volver</button>
+      
+      <h1 style="font-size:22px; font-weight:800; color:var(--primary); margin-bottom:16px;">Centro de Ayuda BAREMO</h1>
+      
+      <p class="ayuda-hint">Toca un tema para leerlo. Se abre en una ventana propia, sin mover la página.</p>
+
+      <div class="ayuda-cards">
+        <button type="button" class="ayuda-card" data-help="ayuda-1"><span class="ac-ico">❓</span><span class="ac-txt"><span class="ac-tit">¿Qué es BAREMO?</span><span class="ac-sub">Que es y para que sirve</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-2"><span class="ac-ico">⚙️</span><span class="ac-txt"><span class="ac-tit">Cómo funciona la app</span><span class="ac-sub">Modulos y funciones</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-3"><span class="ac-ico">🦺</span><span class="ac-txt"><span class="ac-tit">Guía para contratistas</span><span class="ac-sub">Antes, durante y al cerrar</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-4"><span class="ac-ico">💬</span><span class="ac-txt"><span class="ac-tit">Preguntas frecuentes (FAQ)</span><span class="ac-sub">Dudas mas comunes</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-5"><span class="ac-ico">📋</span><span class="ac-txt"><span class="ac-tit">Ejemplos de baremos</span><span class="ac-sub">Codigos y precios</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-6"><span class="ac-ico">📖</span><span class="ac-txt"><span class="ac-tit">Normativas y referencias</span><span class="ac-sub">Marco normativo</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-7"><span class="ac-ico">🔒</span><span class="ac-txt"><span class="ac-tit">Política de privacidad</span><span class="ac-sub">Tratamiento de datos</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-8"><span class="ac-ico">📜</span><span class="ac-txt"><span class="ac-tit">Términos y condiciones</span><span class="ac-sub">Condiciones de uso</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-9"><span class="ac-ico">⚖️</span><span class="ac-txt"><span class="ac-tit">Aviso legal</span><span class="ac-sub">Alcance y limites</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-10"><span class="ac-ico">✉️</span><span class="ac-txt"><span class="ac-tit">Contacto</span><span class="ac-sub">Soporte y consultas</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-11"><span class="ac-ico">👥</span><span class="ac-txt"><span class="ac-tit">Sobre nosotros</span><span class="ac-sub">El proyecto</span></span><span class="ac-arrow">›</span></button>
+        <button type="button" class="ayuda-card" data-help="ayuda-12"><span class="ac-ico">📥</span><span class="ac-txt"><span class="ac-tit">Guía para cargar Baremos</span><span class="ac-sub">Paso a paso con capturas</span></span><span class="ac-arrow">›</span></button>
+      </div>
+
+      <!-- Fuente de contenido de cada tema. Sigue en el HTML para SEO y es lo que
+           clona el modal al abrirse; no se muestra directamente en la vista. -->
+      <article class="help-article help-source" itemscope itemtype="http://schema.org/FAQPage">
+        <section class="help-sec" id="ayuda-1">
+<h2 id="ayuda-1-titulo">¿Qué es BAREMO?</h2>
+        <p>BAREMO es una aplicación diseñada para contratistas y cuadrillas que trabajan en tareas operativas, eléctricas y de mantenimiento.</p>
+        <p>Permite registrar trabajos realizados, calcular totales, organizar jornadas y llevar un control claro de las actividades diarias.</p>
+        
+        <h3>Objetivos principales</h3>
+        <ul>
+          <li>Registrar trabajos de forma rápida y precisa.</li>
+          <li>Calcular subtotales y totales automáticamente.</li>
+          <li>Mantener un historial completo de jornadas.</li>
+          <li>Organizar información de manera clara y accesible.</li>
+          <li>Facilitar la administración de quincenas y combustibles.</li>
+        </ul>
+        </section>
+        <section class="help-sec" id="ayuda-2">
+<h2 id="ayuda-2-titulo">Cómo funciona la app</h2>
+        <p>BAREMO está estructurada en módulos simples y directos:</p>
+        
+        <h3>Registro</h3>
+        <p>Permite cargar trabajos realizados durante la jornada.<br>Incluye:</p>
+        <ul>
+          <li>Código del trabajo</li>
+          <li>Descripción</li>
+          <li>Precio</li>
+          <li>Cantidad</li>
+          <li>Subtotal automático</li>
+        </ul>
+
+        <h3>Historial</h3>
+        <p>Muestra todas las jornadas anteriores, con detalles de:</p>
+        <ul>
+          <li>Fecha</li>
+          <li>Trabajos realizados</li>
+          <li>Totales</li>
+          <li>Observaciones</li>
+        </ul>
+
+        <h3>Dashboard</h3>
+        <p>Panel visual con:</p>
+        <ul>
+          <li>Totales del día</li>
+          <li>Cantidad de ítems</li>
+          <li>Registros cargados</li>
+          <li>Indicadores de productividad</li>
+        </ul>
+
+        <h3>Combustibles</h3>
+        <p>Sección para registrar:</p>
+        <ul>
+          <li>Cargas de combustible</li>
+          <li>Fechas</li>
+          <li>Montos</li>
+          <li>Observaciones</li>
+        </ul>
+
+        <h3>Quincenas</h3>
+        <p>Organiza:</p>
+        <ul>
+          <li>Totales quincenales</li>
+          <li>Jornadas incluidas</li>
+          <li>Resúmenes para liquidación</li>
+        </ul>
+
+        <h3>Ajustes</h3>
+        <p>Incluye:</p>
+        <ul>
+          <li>Datos del usuario</li>
+          <li>Preferencias</li>
+          <li>Información de contacto</li>
+        </ul>
+        </section>
+        <section class="help-sec" id="ayuda-3">
+<h2 id="ayuda-3-titulo">Guía para contratistas</h2>
+        <h3>Antes de comenzar la jornada</h3>
+        <ul>
+          <li>Verificá tu ubicación.</li>
+          <li>Revisá si tenés trabajos pendientes.</li>
+          <li>Prepará los códigos de los trabajos más frecuentes.</li>
+        </ul>
+        
+        <h3>Durante la jornada</h3>
+        <ul>
+          <li>Cargá cada trabajo apenas lo completes.</li>
+          <li>Usá la búsqueda por código para agilizar.</li>
+          <li>Verificá subtotales y totales.</li>
+        </ul>
+
+        <h3>Al finalizar</h3>
+        <ul>
+          <li>Cerrá la jornada desde el botón correspondiente.</li>
+          <li>Revisá el total del día.</li>
+          <li>Confirmá que todos los trabajos estén cargados.</li>
+        </ul>
+
+        <h3>Buenas prácticas</h3>
+        <ul>
+          <li>No dejes trabajos sin registrar.</li>
+          <li>Revisá los precios actualizados.</li>
+          <li>Usá el historial para evitar duplicados.</li>
+          <li>Mantené tus datos personales actualizados.</li>
+        </ul>
+        </section>
+        <section class="help-sec" id="ayuda-4">
+<h2 id="ayuda-4-titulo">Preguntas frecuentes (FAQ)</h2>
+        <h3>¿Necesito conexión a internet?</h3>
+        <p>La app funciona online. Algunas funciones pueden requerir conexión para sincronizar datos.</p>
+        
+        <h3>¿Puedo editar un trabajo cargado?</h3>
+        <p>Sí, podés eliminarlo y volver a cargarlo con los valores correctos.</p>
+
+        <h3>¿Cómo se calculan los totales?</h3>
+        <p>Cada ítem se multiplica por su cantidad y se suma automáticamente al total del día.</p>
+
+        <h3>¿Qué pasa si cierro la jornada por error?</h3>
+        <p>Podés revisar el historial y verificar los datos. Si necesitás reabrirla, contactá al soporte.</p>
+
+        <h3>¿Puedo usar la app en varios dispositivos?</h3>
+        <p>Sí, siempre que uses tu mismo usuario.</p>
+
+        <h3>¿La app guarda mis datos?</h3>
+        <p>Sí, tus datos se almacenan de forma segura según las políticas de privacidad.</p>
+        </section>
+        <section class="help-sec" id="ayuda-5">
+<h2 id="ayuda-5-titulo">Ejemplos de baremos</h2>
+        <h3>Tendido LAPE ≤ 3 x 95/50 mm²</h3>
+        <p><strong>Código:</strong> M120802<br>
+        <strong>Precio:</strong> $494<br>
+        <strong>Descripción:</strong> Instalación de línea aérea preensamblada.</p>
+
+        <h3>Verificación de medidor autoadministrado</h3>
+        <p><strong>Código:</strong> O111812<br>
+        <strong>Precio:</strong> $9.750<br>
+        <strong>Descripción:</strong> Control y revisión del funcionamiento del medidor.</p>
+
+        <h3>Desconexión, reconexión o retiro de puentes</h3>
+        <p><strong>Código:</strong> N120802<br>
+        <strong>Precio:</strong> $3.617<br>
+        <strong>Descripción:</strong> Intervención técnica en la acometida del usuario.</p>
+        </section>
+        <section class="help-sec" id="ayuda-6">
+<h2 id="ayuda-6-titulo">Normativas y referencias</h2>
+        <p>Todos los trabajos, registros y precios estipulados deben ajustarse a la normativa eléctrica vigente y a los lineamientos estipulados por la entidad contratante. BAREMO opera como una herramienta administrativa de referencia y no sustituye los protocolos de seguridad industrial ni las tablas de liquidación oficiales emitidas por las autoridades correspondientes.</p>
+        </section>
+        <section class="help-sec" id="ayuda-7">
+<h2 id="ayuda-7-titulo">Política de privacidad</h2>
+        <h3>1. Introducción</h3><p>La presente Política de Privacidad describe cómo se gestiona la información dentro del sitio web BAREMO y su aplicación asociada. Este proyecto es un desarrollo 100% freelance, sin asociaciones comerciales ni vínculos con terceros.</p><h3>2. No recopilación de datos personales</h3><p>BAREMO no recopila, almacena ni procesa datos personales de los usuarios.</p><p>El sitio y la aplicación no solicitan información identificatoria, no registran actividad del usuario y no acceden a datos del dispositivo.</p><h3>3. Información local</h3><p>Toda la información que el usuario ingresa en la aplicación se mantiene localmente en su dispositivo, sin ser enviada ni almacenada en servidores externos.</p><h3>4. Cookies y tecnologías de seguimiento</h3><p>Este sitio no utiliza cookies, herramientas de análisis, publicidad, ni tecnologías de rastreo.</p><h3>5. Compartición de información</h3><p>Dado que no se recopilan datos, no existe ningún tipo de cesión, venta o transferencia de información a terceros.</p><h3>6. Seguridad</h3><p>Aunque no se manejan datos personales, se aplican medidas básicas de seguridad para garantizar el funcionamiento correcto del sitio y la aplicación.</p><h3>7. Actualizaciones</h3><p>BAREMO puede modificar esta política en cualquier momento. Las actualizaciones se publicarán en este sitio web.</p>
+        </section>
+        <section class="help-sec" id="ayuda-8">
+<h2 id="ayuda-8-titulo">Términos y condiciones</h2>
+        <h3>1. Aceptación</h3><p>Al utilizar el sitio o la aplicación BAREMO, el usuario acepta estos Términos y Condiciones. Si no está de acuerdo, debe abstenerse de utilizar el servicio.</p><h3>2. Descripción del servicio</h3><p>BAREMO es una herramienta destinada al control y registro de ganancias diarias para contratistas del rubro eléctrico.</p><p>El servicio se ofrece “tal cual”, sin garantías de disponibilidad continua o ausencia de errores.</p><h3>3. Uso permitido</h3><p>El usuario se compromete a utilizar el sitio y la aplicación de manera legal y responsable. Queda prohibido:</p><ul><li>Manipular o intentar acceder a funciones no autorizadas.</li><li>Utilizar el servicio para actividades ilícitas.</li><li>Realizar ingeniería inversa, descompilación o extracción del código fuente.</li></ul><h3>4. Responsabilidad</h3><p>BAREMO no se responsabiliza por:</p><ul><li>Errores derivados del uso incorrecto del servicio.</li><li>Pérdida de información almacenada localmente en el dispositivo del usuario.</li><li>Fallas técnicas, interrupciones o indisponibilidad del servicio.</li></ul><h3>5. Modificaciones</h3><p>Los presentes términos pueden actualizarse sin previo aviso. Las modificaciones se publicarán en este sitio.</p>
+        </section>
+        <section class="help-sec" id="ayuda-9">
+<h2 id="ayuda-9-titulo">Aviso legal</h2>
+        <p>BAREMO es un proyecto independiente y freelance, sin asociaciones con empresas, entidades o marcas del sector eléctrico.</p><p>La información presentada en el sitio y la aplicación tiene fines operativos y organizativos para contratistas.</p><p>No se garantiza la exactitud de los cálculos o registros generados por el usuario, ya que cada contratista maneja sus propios Baremos y estos pueden variar.</p><p>El desarrollador no asume responsabilidad por decisiones comerciales tomadas a partir del uso de la aplicación.</p>
+        </section>
+        <section class="help-sec" id="ayuda-10">
+<h2 id="ayuda-10-titulo">Contacto</h2>
+        <p>Para consultas, sugerencias o reportes relacionados con la aplicación BAREMO, podés comunicarte a:</p><p>📧 Email: <a href="mailto:contacto@baremo.app">contacto@baremo.app</a><br>🌐 Desarrollador: Proyecto freelance AKAPANCH0<br>📍 Ubicación: Buenos Aires, Argentina</p>
+        </section>
+        <section class="help-sec" id="ayuda-11">
+<h2 id="ayuda-11-titulo">Sobre nosotros</h2>
+        <p>BAREMO es un proyecto desarrollado de manera 100% freelance, sin asociaciones comerciales ni vínculos con terceros.</p><p>Nuestro objetivo es ofrecer una herramienta simple, clara y eficiente para contratistas del rubro eléctrico, permitiendo registrar y controlar sus ganancias diarias, tareas realizadas y organización operativa.</p><p>Creemos en soluciones prácticas, livianas y sin complicaciones. Por eso, nuestra aplicación funciona de manera local, sin recopilar datos personales y sin depender de servidores externos.</p><p>BAREMO es independiente, transparente y diseñado para profesionales que necesitan una herramienta confiable para su trabajo diario.</p>
+        </section>
+        <section class="help-sec" id="ayuda-12">
+<h2 id="ayuda-12-titulo">Guía para cargar Baremos</h2>
+        <p>Cuando la empresa actualiza los precios, no hace falta esperar una versión nueva de la app: podés cargar el listado vos mismo desde <b>Ajustes</b>. La carga <b>reemplaza</b> el baremo anterior y <b>no toca</b> tus jornadas, tu historial, el combustible ni las quincenas.</p>
+
+        <ol class="help-pasos">
+          <li>
+            <h4>Abrí el menú Ajustes</h4>
+            <p>Último botón de la barra inferior.</p>
+            <span class="help-shot" role="img" aria-label="Barra inferior con el botón Ajustes resaltado" data-shot="help/baremos-1.png?v=5.9.43" style="aspect-ratio: 780 / 126"></span>
+            <span class="help-shot-cap">Barra inferior → Ajustes</span>
+          </li>
+          <li>
+            <h4>Tocá “Cargar Baremos actualizados”</h4>
+            <p>Es la cuarta opción de la lista.</p>
+            <span class="help-shot" role="img" aria-label="Menú Ajustes con la opción Cargar Baremos actualizados resaltada" data-shot="help/baremos-2.png?v=5.9.43" style="aspect-ratio: 732 / 1418"></span>
+            <span class="help-shot-cap">Ajustes → Cargar Baremos actualizados</span>
+            <span class="help-shot" role="img" aria-label="Detalle de la tarjeta Cargar Baremos actualizados" data-shot="help/baremos-3.png?v=5.9.43" style="aspect-ratio: 732 / 156"></span>
+            <span class="help-shot-cap">Acepta archivos JSON, Excel o CSV</span>
+          </li>
+          <li>
+            <h4>Elegí el archivo</h4>
+            <p>Se abre el explorador del teléfono. Buscá el archivo (por ejemplo en <i>Descargas</i> o en lo que te mandaron por WhatsApp o mail) y seleccionálo.</p>
+          </li>
+          <li>
+            <h4>Confirmá el aviso</h4>
+            <p>Si el archivo está bien, aparece un cartel verde con la cantidad de ítems cargados. Ese número tiene que parecerse a la cantidad de filas del archivo.</p>
+            <span class="help-shot" role="img" aria-label="Aviso de confirmación con la cantidad de ítems cargados" data-shot="help/baremos-4.png?v=5.9.43" style="aspect-ratio: 780 / 1688"></span>
+            <span class="help-shot-cap">Aviso de carga correcta</span>
+            <div class="help-nota">Si en cambio ves <b>“Sin datos válidos”</b>, <b>“Formato no soportado”</b> o <b>“Error”</b>, el baremo anterior ya fue reemplazado: volvé a cargar un archivo correcto antes de seguir trabajando.</div>
+          </li>
+          <li>
+            <h4>Verificá en Registro</h4>
+            <p>Andá a <b>Registro</b> y escribí un código o una palabra de la descripción. Tienen que aparecer los códigos nuevos con su precio.</p>
+            <span class="help-shot" role="img" aria-label="Buscador de Registro mostrando los baremos cargados" data-shot="help/baremos-5.png?v=5.9.43" style="aspect-ratio: 732 / 372"></span>
+            <span class="help-shot-cap">Buscador de Registro con los baremos nuevos</span>
+            <div class="help-ok">Las jornadas ya cerradas <b>conservan el precio con el que fueron cargadas</b>. El baremo nuevo se aplica a los trabajos que registres desde ahora.</div>
+          </li>
+        </ol>
+
+        <h3>Estructura que debe tener el archivo</h3>
+        <p>El archivo necesita <b>una fila de títulos</b> y tres columnas: código, descripción y precio. Los títulos van en la <b>primera fila</b> y la primera hoja es la que se lee.</p>
+        <table class="help-tabla-demo">
+          <thead><tr><th>BAREMO</th><th>DESCRIPCION</th><th>PRECIO</th></tr></thead>
+          <tbody>
+            <tr><td>T-101</td><td>Cambio de medidor monofásico</td><td>18500,50</td></tr>
+            <tr><td>T-102</td><td>Normalización de acometida aérea</td><td>24300</td></tr>
+            <tr><td>T-205</td><td>Colocación de pilar reglamentario</td><td>41250,75</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Nombres de columna aceptados</h3>
+        <ul>
+          <li><b>Código:</b> BAREMO, baremo, Codigo, codigo, Código o CÓDIGO.</li>
+          <li><b>Descripción:</b> DESCRIPCION, descripcion, Descripción, Descripcion o DETALLE.</li>
+          <li><b>Precio:</b> PRECIO, precio, Precio o VALOR.</li>
+        </ul>
+
+        <h3>Formatos que acepta</h3>
+        <ul>
+          <li><b>Excel</b> (.xlsx o .xls): lo más cómodo. Se lee la primera hoja.</li>
+          <li><b>CSV</b> (.csv): separado por punto y coma (;) o por coma (,).</li>
+          <li><b>JSON</b> (.json): una lista de objetos con esas tres claves.</li>
+        </ul>
+
+        <h3>Reglas del precio</h3>
+        <ul>
+          <li>Se aceptan <b>coma o punto</b> como decimal: <code>18500,50</code> y <code>18500.50</code> valen igual.</li>
+          <li>Se puede escribir con o sin símbolo <code>$</code> y con separador de miles.</li>
+          <li>Si el precio queda vacío o no es un número, ese ítem entra en <b>0</b>.</li>
+        </ul>
+
+        <h3>Errores más comunes</h3>
+        <ul>
+          <li><b>Títulos en la segunda fila</b> (por un logo o un título arriba): la primera fila tiene que ser la de los nombres de columna.</li>
+          <li><b>Columna de código vacía:</b> las filas sin código se descartan; si todas están vacías aparece “Sin datos válidos”.</li>
+          <li><b>Nombres inventados</b> (“Item”, “Trabajo”, “Importe”): usá alguno de los nombres de la lista de arriba.</li>
+          <li><b>Archivos .pdf o imágenes:</b> no se pueden leer, solo Excel, CSV o JSON.</li>
+          <li><b>Celdas combinadas</b> en Excel: convienen filas simples, una por baremo.</li>
+        </ul>
+
+        <div class="help-nota">Consejo: antes de cargar un baremo nuevo, hacé un <b>Backup</b> desde Ajustes. Si algo sale mal, con <b>Restaurar</b> volvés exactamente al estado anterior.</div>
+        </section>
+      </article>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" id="modalAyuda">
+    <div class="modal help-modal">
+      <div class="help-modal-head">
+        <h2 id="mayTitulo"></h2>
+        <button type="button" class="help-modal-close" id="mayClose" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="help-article help-modal-body" id="mayBody"></div>
+    </div>
+  </div>
+
+  <section class="view" id="viewInicio">
+    <div class="search-wrap">
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <span class="search-ico">🔍</span>
+          <input class="input" id="baremoInput" placeholder="Buscar código o descripción..." autocomplete="off" inputmode="text">
+        </div>
+        <div class="qty-field">
+          <label>Cant.</label>
+          <input class="input" id="qtyInput" type="number" min="1" value="1" inputmode="numeric">
+        </div>
+      </div>
+      <div class="search-list" id="searchList"></div>
+    </div>
+    <div class="tipo-trabajo-row" id="tipoTrabajoRow" role="radiogroup" aria-label="Tipo de trabajo">
+      <span class="tipo-trabajo-lbl">Tipo de trabajo</span>
+      <div class="tipo-checks" id="tipoChecks">
+        <label class="tipo-check"><input type="checkbox" class="tipo-check-input" name="tipoTrabajo" value="Mide" checked><span class="tipo-check-box"></span><span class="tipo-check-txt">Mide</span><span class="tipo-check-short">Mide</span></label>
+        <label class="tipo-check"><input type="checkbox" class="tipo-check-input" name="tipoTrabajo" value="Dime"><span class="tipo-check-box"></span><span class="tipo-check-txt">Dime</span><span class="tipo-check-short">Dime</span></label>
+        <label class="tipo-check"><input type="checkbox" class="tipo-check-input" name="tipoTrabajo" value="Morosidad"><span class="tipo-check-box"></span><span class="tipo-check-txt">Morosidad</span><span class="tipo-check-short">Moros.</span></label>
+        <label class="tipo-check"><input type="checkbox" class="tipo-check-input" name="tipoTrabajo" value="Reclamos"><span class="tipo-check-box"></span><span class="tipo-check-txt">Reclamos</span><span class="tipo-check-short">Recl.</span></label>
+        <label class="tipo-check"><input type="checkbox" class="tipo-check-input" name="tipoTrabajo" value="NNSS Denuncias"><span class="tipo-check-box"></span><span class="tipo-check-txt">NNSS Denuncias</span><span class="tipo-check-short">NNSS</span></label>
+      </div>
+    </div>
+    <!-- Botonera de 3 lugares fijos. El tercer lugar es compartido: ahi vive
+         Iniciar jornada o Cerrar jornada, nunca los dos. Uno reemplaza al
+         otro exactamente en el mismo punto, sin mover el resto. -->
+    <div class="btn-row btn-row-3" id="btnRowJornada" style="margin-bottom:10px">
+      <button class="btn btn-primary" id="btnAgregar">➕ Agregar</button>
+      <button class="btn btn-finalizar-tarea" id="btnFinalizarTarea" type="button">✅ FINALIZAR TAREA</button>
+      <div class="btn-slot-jornada" id="btnSlotJornada">
+        <button class="btn btn-iniciar-jornada" id="btnIniciarJornada" type="button"><span class="bij-ico" aria-hidden="true">▶</span><span class="bij-txt">Iniciar jornada</span></button>
+        <button class="btn btn-cerrar-jornada" id="btnCerrarJornada" type="button"><span class="bcj-ico" aria-hidden="true">🔒</span><span class="bcj-txt">Cerrar jornada</span></button>
+      </div>
+    </div>
+    <div class="total-general bg-red" id="totalGeneralCard">
+      <div class="lbl">Total del día</div>
+      <div class="val" id="totalGeneralBig">$0</div>
+      <div class="tg-medal" id="tgMedal">🥇</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th class="hide-mob">#</th><th>Cód</th><th>Descripción</th><th class="hide-mob">Precio</th><th>Cant</th><th>Sub</th><th></th></tr></thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+    </div>
+    <div class="tareas-dia" id="tareasDiaWrap" style="display:none">
+      <div class="tareas-dia-head">
+        <div class="tareas-dia-title">📋 TAREAS DEL DÍA (FINALIZADAS)</div>
+        <div class="tareas-dia-count" id="tareasDiaCount">0</div>
+      </div>
+      <div class="tareas-dia-tipos" id="tareasDiaTipos"></div>
+      <div id="tareasDiaList"></div>
+    </div>
+    <div id="fraseContainer"></div>
+  </section>
+
+  <section class="view" id="viewHistorial">
+    <div class="card">
+      <div class="card-title">🔍 Buscar</div>
+      <input class="input" id="histSearch" placeholder="Fecha, usuario, código...">
+    </div>
+    <div class="hist-filtros">
+      <button class="hist-filtro-btn active" data-filter="hoy">📅 Hoy</button>
+      <button class="hist-filtro-btn" data-filter="mes">📆 Este mes</button>
+      <button class="hist-filtro-btn" data-filter="mesAnterior">⏪ Mes anterior</button>
+      <button class="hist-filtro-btn" data-filter="todas">📚 Todas</button>
+    </div>
+    <div class="hist-mes-panel" id="histMesPanel"></div>
+    <div class="hist-actions-bar" id="histActionsBar">
+      <div class="hab-info"><span id="habCount">0</span> seleccionada(s)</div>
+      <div class="hab-actions">
+        <button class="hab-btn" id="habClear">✕</button>
+        <button class="hab-btn primary" id="habExportSelected">📄 PDF</button>
+        <button class="hab-btn" id="habExportMonth">📅 Mes</button>
+        <button class="hab-btn" id="habExportExcel">📊 Excel</button>
+      </div>
+    </div>
+    <div id="historialList"></div>
+  </section>
+
+  <section class="view" id="viewDashboard">
+    <div class="card-title" style="padding:0 4px 8px">📊 Dashboard</div>
+    
+    <div class="total-acumulado-card tac-red" id="tacCard">
+      <div class="tac-title">TOTAL ACUMULADO</div>
+      <div class="tac-amount" id="tacAmount">$0</div>
+      <div class="tac-progress-container">
+          <div class="tac-progress-bar" id="tacProgressBar"></div>
+      </div>
+      <div class="tac-details">
+          <span>Meta: $3.000.000</span>
+          <span id="tacProgressText">Progreso: 0%</span>
+          <span id="tacFaltanText">Faltan: $3.000.000</span>
+      </div>
+      <div class="tac-overlay-msg" id="tacOverlayMsg"></div>
+      <div class="tac-medal" id="tacMedal">🥇</div>
+    </div>
+
+    <div class="stats-grid">
+      <!-- 1) VOLUMEN DE TRABAJO: de lo mas general a lo mas fino.
+           Dias trabajados = dias calendario distintos.
+           Jornadas cerradas = partes de trabajo cerrados (puede haber
+           mas de uno en el mismo dia).
+           Tareas cerradas = tareas finalizadas dentro de esas jornadas.
+           Total baremos = lineas de baremo de esas tareas. -->
+      <div class="stat-card"><div class="ico">📅</div><div class="lbl">Días trabajados</div><div class="val" id="statDias">0</div><div class="sub">días calendario</div></div>
+      <div class="stat-card"><div class="ico">✅</div><div class="lbl">Jornadas cerradas</div><div class="val" id="statJornadas">0</div><div class="sub">partes cerrados</div></div>
+      <div class="stat-card"><div class="ico">🛠️</div><div class="lbl">Tareas cerradas</div><div class="val" id="statTareas">0</div><div class="sub">finalizadas</div></div>
+      <div class="stat-card"><div class="ico">📋</div><div class="lbl">Total baremos</div><div class="val" id="statBaremos">0</div><div class="sub" id="statBaremosSub"></div></div>
+
+      <!-- 2) PLATA -->
+      <div class="stat-card"><div class="ico">📈</div><div class="lbl">Promedio por día</div><div class="val" id="statProm">$0</div><div class="sub" id="statPromSub"></div></div>
+
+      <div class="stat-card dac-interactive" id="cardDiaAnterior">
+        <div class="ico">⏮️</div>
+        <div class="lbl">Día Anterior <span id="lblFechaAyer" style="font-size:9px;opacity:0.8"></span></div>
+        <div class="val" id="statDiaAnterior">$0</div>
+        <div class="dac-medal">🥇</div>
+      </div>
+
+      <!-- 3) RECORDS DEL MES -->
+      <div class="stat-card"><div class="ico">⭐</div><div class="lbl">Baremo más usado</div><div class="val" id="statTopUso" style="font-size:11px">-</div></div>
+      <div class="stat-card"><div class="ico">💎</div><div class="lbl">Mayor facturación</div><div class="val" id="statTopFact" style="font-size:11px">-</div></div>
+      <div class="stat-card"><div class="ico">🏆</div><div class="lbl">Día más productivo</div><div class="val" id="statMaxDia" style="font-size:10.5px">-</div></div>
+
+      <div class="stat-card dac-interactive" id="cardMinDia">
+        <div class="ico">📉</div>
+        <div class="lbl">Día menos productivo</div>
+        <div class="val" id="statMinDia" style="font-size:10.5px">-</div>
+        <div class="dac-medal">🥇</div>
+      </div>
+
+      <!-- 4) CIERRE -->
+      <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#f97316);border:none;color:#fff">
+        <div class="ico">⏪</div>
+        <div class="lbl" style="color:rgba(255,255,255,.9)">Producción mes anterior</div>
+        <div class="val" id="statMesAnterior" style="color:#fff;font-size:15px">$0</div>
+      </div>
+      <div class="stat-card produccion-cobrar" id="cardProduccionCobrar">
+        <div class="pc-header">
+          <div class="pc-title">🎯 Detalle Final Producción</div>
+          <button type="button" class="pc-toggle" id="pcToggle" aria-expanded="false" aria-controls="statCobrarDetail">EXPANDIR</button>
+        </div>
+        <div class="pc-resumen">
+          <div class="pc-amount" id="statCobrar">$0</div>
+          <div class="pc-status ok" id="pcStatus">✅ CALCULADO</div>
+        </div>
+        <div class="pc-desglose" id="statCobrarDetail"></div>
+      </div>
+    </div>
+    
+    <div class="chart-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0;">📈 Producción últimos 7 días</h3>
+        <div id="total7Dias" style="font-size:11px; font-weight:700; background:var(--surface-2); padding:4px 8px; border-radius:6px; color:var(--primary);"></div>
+      </div>
+      <canvas id="chartDiario"></canvas>
+    </div>
+    <div class="chart-box"><h3>📊 Producción mensual</h3><canvas id="chartMensual"></canvas></div>
+    <div class="chart-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+        <h3 style="margin:0;">🍩 Top baremos del mes</h3>
+        <div id="pieResumen" style="font-size:10.5px; font-weight:700; color:var(--text-soft); text-align:right;"></div>
+      </div>
+      <canvas id="chartPie"></canvas>
+      <div id="pieVacio" class="chart-vacio" style="display:none">Todavía no hay tareas finalizadas este mes.</div>
+    </div>
+  </section>
+
+  <section class="view" id="viewCombustible">
+    <div class="card">
+      <div class="card-title">⛽ Cargar combustible</div>
+      <form id="formComb">
+        <!-- Patente ya registrada: se muestra precargada y no se vuelve a pedir. -->
+        <div class="comb-pat-box" id="combPatenteBox" hidden>
+          <div class="cpb-info">
+            <span class="cpb-lbl">Patente registrada</span>
+            <span class="cpb-val" id="combPatenteActual">&mdash;</span>
+          </div>
+          <button class="cpb-btn" type="button" id="btnCambiarPatente">Cambiar</button>
+        </div>
+        <!-- Primera carga (o cambio confirmado): se pide la patente. Sin required
+             porque el campo puede estar oculto y bloquearia el envio del form. -->
+        <div class="field" id="combPatenteField">
+          <label for="combPatente">Patente</label>
+          <input class="input" id="combPatente" placeholder="ABC123" maxlength="10" autocomplete="off" style="text-transform:uppercase">
+          <div class="cpf-hint" id="combPatenteHint" hidden>Las cargas ya registradas con la patente anterior se conservan.</div>
+          <button class="cpf-cancel" type="button" id="btnCancelarPatente" hidden>Cancelar cambio</button>
+        </div>
+        <div class="field"><label>Monto</label><input class="input" id="combMonto" type="number" min="1" step="0.01" placeholder="0.00" required></div>
+        <div class="field" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;background:var(--surface-2);padding:10px;border-radius:var(--radius-sm)">
+          <input type="checkbox" id="combDescontar" checked style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer">
+          <label for="combDescontar" style="margin:0;font-size:13px;text-transform:none;cursor:pointer">Descontar de la producción</label>
+        </div>
+        <button class="btn btn-primary" type="submit">Registrar carga</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="card-title">💵 Total mes actual</div>
+      <div style="font-size:24px;font-weight:800;color:var(--primary)" id="combTotalMes">$0</div>
+      <div class="comb-sub" id="combTotalMesSub"></div>
+    </div>
+    <div class="card-title" style="padding:0 4px 8px">📋 Cargas de este mes</div>
+    <div id="combList"></div>
+    <!-- El combustible cierra con el mes: el 1ro el contador arranca en cero,
+         pero lo gastado queda guardado aca abajo, mes por mes. -->
+    <div class="card-title" style="padding:16px 4px 8px">🗃️ Cierres de meses anteriores</div>
+    <div id="combCierres"></div>
+  </section>
+
+  <section class="view" id="viewQuincenas">
+    <div class="card">
+      <div class="card-title">💰 Quincenas del mes</div>
+      <p style="font-size:11px;color:var(--text-soft);margin-bottom:10px">Las quincenas se registran en dos etapas. Una vez registrada, no podrá editarse.</p>
+    </div>
+    <div class="quincena-bloque" id="bloqueQ1">
+      <div class="qb-header">
+        <div class="qb-title">📅 1ra Quincena</div>
+        <div class="qb-badge pendiente" id="badgeQ1">PENDIENTE</div>
+      </div>
+      <div class="qb-fechas" id="fechasQ1">Período: 01 al 15 · Pago día 20</div>
+      <div class="qb-alerta" id="alertaQ1">
+        <span>⚠️</span>
+        <span>Una vez registrada quedará <strong>bloqueada permanentemente</strong>.</span>
+      </div>
+      <form id="formQ1">
+        <div class="field"><label>Oficial 1</label><input class="input" id="q1o1" type="number" min="0" step="0.01" placeholder="0.00" required></div>
+        <div class="field"><label>Oficial 2</label><input class="input" id="q1o2" type="number" min="0" step="0.01" placeholder="0.00" required></div>
+        <button class="btn btn-primary" type="submit" id="btnQ1">🔒 Registrar 1ra Quincena</button>
+      </form>
+      <div class="qb-total" id="totalQ1" style="display:none">
+        <span>Total Q1:</span>
+        <span class="qb-total-value" id="totalQ1Value">$0</span>
+      </div>
+    </div>
+    <div class="quincena-bloque deshabilitada" id="bloqueQ2">
+      <div class="qb-header">
+        <div class="qb-title">📅 2da Quincena</div>
+        <div class="qb-badge deshabilitada" id="badgeQ2">BLOQUEADA</div>
+      </div>
+      <div class="qb-fechas" id="fechasQ2">Período: 16 al 30/31 · Pago: primeros 4 días hábiles del mes siguiente</div>
+      <div class="qb-alerta" id="alertaQ2">
+        <span>⏳</span>
+        <span>Se habilita al registrar la 1ra quincena.</span>
+      </div>
+      <form id="formQ2">
+        <div class="field"><label>Oficial 1</label><input class="input" id="q2o1" type="number" min="0" step="0.01" placeholder="0.00" required></div>
+        <div class="field"><label>Oficial 2</label><input class="input" id="q2o2" type="number" min="0" step="0.01" placeholder="0.00" required></div>
+        <button class="btn btn-primary" type="submit" id="btnQ2">🔒 Registrar 2da Quincena</button>
+      </form>
+      <div class="qb-total" id="totalQ2" style="display:none">
+        <span>Total Q2:</span>
+        <span class="qb-total-value" id="totalQ2Value">$0</span>
+      </div>
+    </div>
+    <div class="card-title" style="padding:8px 4px">📋 Historial de quincenas</div>
+    <div id="quiList"></div>
+  </section>
+
+  <section class="view" id="viewAjustes">
+    <div class="card-title" style="padding:0 4px 8px">⚙️ Ajustes</div>
+    <div class="ajustes-list" id="ajustesList"></div>
+  </section>
+
+  <section class="view" id="viewAdmin">
+    <div class="card-title" style="padding:0 4px 8px">🔐 Panel de Administración</div>
+    <div class="admin-login" id="adminLogin">
+      <div style="font-size:40px;margin-bottom:10px">🔒</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:14px">Acceso Restringido</div>
+      <input class="input" id="adminPassword" type="password" placeholder="Ingrese contraseña" maxlength="20" style="margin-bottom:10px">
+      <button class="btn btn-danger" id="btnAdminLogin">Ingresar</button>
+    </div>
+    <div id="adminPanel" style="display:none">
+      <div class="admin-panel">
+        <div class="admin-header">
+          <div class="admin-badge">🔓 ADMIN</div>
+          <div class="admin-title">Panel de Control</div>
+          <button class="admin-logout-btn" id="btnAdminLogout">Salir</button>
+        </div>
+        <button class="btn btn-ghost" style="margin-bottom:14px;border:1px dashed var(--primary);color:var(--primary)" id="btnChangePassword">🔑 Cambiar contraseña del Administrador</button>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-title">📦 Consolidación de Datos</div>
+          <p style="font-size:11px;color:var(--text-soft);margin-bottom:10px">Para ver datos de todos los usuarios, cada usuario debe exportar sus datos y el admin importarlos aquí.</p>
+          <div class="admin-actions">
+            <button class="btn btn-ghost btn-sm" id="btnExportAllData">📤 Exportar mis datos</button>
+            <button class="btn btn-primary btn-sm" id="btnImportData">📥 Importar datos</button>
+          </div>
+        </div>
+        <div class="card-title" style="padding:0 0 8px">📋 Tipo de reporte</div>
+        <div class="admin-report-type" id="adminReportType">
+          <button class="active" data-type="diario">📅 Diario</button>
+          <button data-type="semanal">📆 Semanal</button>
+          <button data-type="mensual">🗓️ Mensual</button>
+        </div>
+        <div class="admin-filters">
+          <div class="field">
+            <label>Usuario</label>
+            <select class="select" id="adminUsuario">
+              <option value="todos">👥 Todos los usuarios</option>
+            </select>
+          </div>
+          <div class="field">
+            <label id="adminFechaLabel">Fecha</label>
+            <input class="input" id="adminFecha" type="date">
+          </div>
+        </div>
+        <div class="admin-summary" id="adminSummary" style="display:none">
+          <div class="as-title">📊 Resumen del reporte</div>
+          <div id="adminSummaryContent"></div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn btn-primary btn-sm" id="btnAdminPreview">👁️ Vista previa</button>
+          <button class="btn btn-success btn-sm" id="btnAdminPDF">📄 Descargar PDF</button>
+        </div>
+        <div class="admin-actions" style="margin-top:8px">
+          <button class="btn btn-ghost btn-sm" id="btnAdminExcel">📊 Descargar Excel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" data-view="Inicio"><span class="ico">📝</span>Registro</button>
+  <button class="tab-btn" data-view="Historial"><span class="ico">📚</span>Historial</button>
+  <button class="tab-btn" data-view="Dashboard"><span class="ico">📊</span>Dashboard</button>
+  <button class="tab-btn" data-view="Combustible"><span class="ico">⛽</span>Combust.</button>
+  <button class="tab-btn" data-view="Quincenas"><span class="ico">💰</span>Quincenas</button>
+  <button class="tab-btn" data-view="Ajustes"><span class="ico">⚙️</span>Ajustes</button>
+</nav>
+
+<div class="modal-backdrop" id="modalConfirm">
+  <div class="modal">
+    <h2 style="font-size:18px;margin-bottom:14px">⚠️ Confirmar</h2>
+    <p id="modalConfirmMsg" style="margin-bottom:16px;color:var(--text-soft);white-space:pre-line"></p>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="confirmCancel">Cancelar</button>
+      <button class="btn btn-primary" id="confirmOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalChangePassword">
+  <div class="modal">
+    <h2 style="font-size:18px;margin-bottom:14px">🔑 Cambiar Contraseña Admin</h2>
+    <form id="formChangePassword">
+      <div class="field"><label>Contraseña actual</label><input class="input" id="currentPass" type="password" required></div>
+      <div class="field"><label>Nueva contraseña (mín. 4 caracteres)</label><input class="input" id="newPass" type="password" minlength="4" required></div>
+      <div class="field"><label>Confirmar nueva contraseña</label><input class="input" id="confirmPass" type="password" required></div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" id="cancelChangePass">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalSwitchUser">
+  <div class="modal">
+    <h2 style="font-size:18px;margin-bottom:14px">👥 Gestionar usuarios</h2>
+    <div id="userList"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalChangeZona">
+  <div class="modal">
+    <h2 style="font-size:18px;margin-bottom:14px">📍 Cambiar Zona de Trabajo</h2>
+    <form id="formChangeZona">
+      <div class="field">
+        <label>Nueva zona</label>
+        <select class="input" id="newZonaSelect" required>
+          <option value="">Seleccioná una zona</option>
+          <option value="Trujui">Trujui</option>
+          <option value="Cuartel V">Cuartel V</option>
+          <option value="Moreno">Moreno</option>
+          <option value="Gral. Rodríguez">Gral. Rodríguez</option>
+          <option value="Tigre">Tigre</option>
+          <option value="San Martín">San Martín</option>
+          <option value="Olivos">Olivos</option>
+          <option value="Pilar-Escobar">Pilar-Escobar</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" id="cancelChangeZona">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalJornada">
+  <div class="modal">
+    <h2 style="font-size:18px;margin-bottom:14px">📋 Detalle de jornada</h2>
+    <div style="margin-bottom:10px">
+      <div style="font-size:16px;font-weight:700" id="mjFecha"></div>
+      <div style="font-size:12px;color:var(--text-soft)" id="mjMeta"></div>
+      <div style="font-size:12px;color:var(--primary);margin-top:3px" id="mjZonas"></div>
+      <div style="font-size:22px;font-weight:800;color:var(--primary);margin-top:8px" id="mjTotal"></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th class="hide-mob">#</th><th>Cód</th><th>Descripción</th><th>Cant</th><th>Sub</th></tr></thead>
+        <tbody id="mjBody"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-ghost" id="mjClose" style="margin-top:12px">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal de Términos y Condiciones (Bloqueante / Versión Controlada) -->
+<div class="modal-backdrop" id="modalTerms" style="z-index: 9999;">
+  <div class="modal terms-modal">
+    <div class="terms-icon">🛡️</div>
+    <h2 style="font-size:18px; margin-bottom:14px; text-align:center;">Términos y Condiciones</h2>
+    <!-- Este contenedor inyecta el contenido dinámicamente desde app.js (INFO_CONTENT.terminos.html) -->
+    <div id="termsModalContent" class="terms-content-scroll"></div>
+    <button class="btn btn-primary" id="btnAcceptTerms" style="width: 100%; font-size: 16px; padding: 14px; border-radius: 12px; box-shadow: 0 4px 12px rgba(11,61,145,.3); margin-top: 10px;">ACEPTO LOS TÉRMINOS Y CONDICIONES</button>
+  </div>
+</div>
+
+<!-- Modal de Información Legal / Contacto -->
+<div class="modal-backdrop" id="modalInfo" style="z-index: 9999;">
+  <div class="modal info-modal">
+    <h2 id="modalInfoTitle" style="font-size:18px; margin-bottom:14px; text-align:center;"></h2>
+    <div id="modalInfoContent" class="info-content"></div>
+    <button class="btn btn-ghost" id="btnInfoClose" style="width: 100%; margin-top: 10px;">Cerrar</button>
+  </div>
+</div>
+
+<!-- Apariencia: modo claro/oscuro y piel de color, todo en el mismo lugar (v5.9.39) -->
+<div class="modal-backdrop" id="modalApariencia" style="z-index: 9997;">
+  <div class="modal apar-modal">
+    <h2 class="apar-h">🌓 Apariencia</h2>
+    <p class="apar-intro">Elegí cómo se ve la app: primero el modo, después la piel de color.</p>
+    <div class="apar-sec">
+      <div class="apar-lbl">Modo</div>
+      <div class="apar-modos" id="aparModos"></div>
+    </div>
+    <div class="apar-sec">
+      <div class="apar-lbl">Piel de color</div>
+      <div id="aparPieles"></div>
+    </div>
+    <button class="btn btn-ghost" id="btnAparClose" type="button" style="width: 100%; margin-top: 12px;">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal de respaldo manual de ubicación (GPS no disponible) -->
+<div class="modal-backdrop" id="modalUbicacion" style="z-index: 9998;">
+  <div class="modal">
+    <h2 style="font-size:18px;margin-bottom:14px">📍 Ubicación no disponible</h2>
+    <p style="margin-bottom:12px;color:var(--text-soft);font-size:13px;line-height:1.5">No pudimos obtener automáticamente la ubicación de esta tarea. Ingresá manualmente la dirección o una referencia del lugar de trabajo para continuar.</p>
+    <div class="ubic-motivo" id="ubicMotivo"></div>
+    <div class="ubic-resumen" id="ubicResumen"></div>
+    <form id="formUbicacionManual">
+      <div class="field">
+        <label>Dirección o referencia del lugar de trabajo</label>
+        <input class="input" id="ubicManualInput" type="text" placeholder="Ej: Av. Mitre 1234, esquina plaza" autocomplete="off" required>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" type="button" id="ubicCancelar">CANCELAR</button>
+        <button class="btn btn-primary" type="submit" id="ubicGuardar">GUARDAR UBICACIÓN MANUAL</button>
+      </div>
+      <button class="btn btn-ghost" type="button" id="ubicReintentar" style="width:100%;margin-top:8px">🔄 Reintentar GPS</button>
+    </form>
+  </div>
+</div>
+
+<script src="db.js?v=5.9.43"></script>
+<script src="app.js?v=5.9.43"></script>
+</body>
+</html>

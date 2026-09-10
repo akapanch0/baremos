@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4338ca">
+<title>BAREMO — Registro de producción diaria</title>
+<meta name="description" content="BAREMO: registro de producción diaria por baremo, con tareas geolocalizadas, combustible, quincenas, dashboard y reportes en PDF y Excel. Funciona sin conexión.">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.43">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.43">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.43">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.43">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.43">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.43">
+<link rel="manifest" href="manifest.json?v=5.9.43">
+<link rel="stylesheet" href="landing.css?v=5.9.43">
+<script src="brand.js?v=5.9.43" defer></script>
+</head>
+<body>
+
+<main class="landing">
+  <div class="glow glow-a" aria-hidden="true"></div>
+  <div class="glow glow-b" aria-hidden="true"></div>
+
+  <section class="card">
+
+    <!-- MARCA (v5.9.43): el logo va SIEMPRE adentro de .brand-stage.
+         Ahi el CSS lo apoya sobre el escenario de la animacion (inset 0) y
+         queda encima del rayo. Si se lo saca del escenario pierde su medida,
+         se descuelga y deja el hueco que rompia la presentacion. El nombre
+         queda accesible en .sr-only para lectores de pantalla. -->
+    <div class="hero">
+      <h1 class="brand">
+      <!-- MISMA ENTRADA QUE EL ARRANQUE DE LA APP
+           El rayo se dibuja, se carga de energia, chispea, descarga en un
+           destello y recien ahi aparece el logo con la B, que late, recibe un
+           barrido de luz y queda flotando. Todo es SVG + CSS recortado dentro
+           del circulo: no hay imagenes nuevas y no se toca ni un tiempo. -->
+      <span class="brand-stage animar" id="brandStage">
+        <span class="brand-flash" aria-hidden="true"></span>
+        <span class="brand-bolt electric-wrapper" aria-hidden="true">
+          <span class="bolt-halo"></span>
+          <span class="bolt-spark bs1"></span>
+          <span class="bolt-spark bs2"></span>
+          <span class="bolt-spark bs3"></span>
+          <span class="bolt-spark bs4"></span>
+          <span class="bolt-spark bs5"></span>
+          <svg class="electric-bolt" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="boltGradLanding" x1="6" y1="1" x2="18" y2="23" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="45%" stop-color="#eae7ff"/>
+                <stop offset="100%" stop-color="#ffd54a"/>
+              </linearGradient>
+            </defs>
+            <path class="bolt-arc a1" d="M6.6 3.1C4.3 5 3 7.6 2.9 10.4"/>
+            <path class="bolt-arc a2" d="M20.9 8.3c1.4 2.7 1.3 5.8-.3 8.3"/>
+            <path class="bolt-arc a3" d="M8.7 21.5c-2.1-.9-3.8-2.6-4.7-4.7"/>
+            <path class="bolt-body" d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/>
+            <path class="bolt-trazo" pathLength="100" d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/>
+          </svg>
+        </span>
+        <span class="brand-logo brand-logo-img" data-brand-logo data-brand-text="BAREMO" role="img" aria-label="BAREMO"></span>
+      </span>
+      <span class="sr-only">BAREMO</span>
+    </h1>
+
+      <p class="tagline">Tu producción diaria, clara y bajo control</p>
+      <p class="desc">Cargás lo que hiciste en la calle y la app calcula, ordena y respalda todo en tu propio dispositivo.</p>
+    </div>
+
+    <ul class="features">
+      <li><span class="f-ico">⚡</span><span class="f-txt"><b>Producción por baremo</b>Tareas del día con cálculo automático de totales.</span></li>
+      <li><span class="f-ico">📍</span><span class="f-txt"><b>Tareas con ubicación</b>Cada cierre guarda su dirección por GPS.</span></li>
+      <li><span class="f-ico">📊</span><span class="f-txt"><b>Dashboard y metas</b>Promedios, récords y avance del mes.</span></li>
+      <li><span class="f-ico">⛽</span><span class="f-txt"><b>Combustible y quincenas</b>Descuentos y saldo final al día.</span></li>
+      <li><span class="f-ico">📄</span><span class="f-txt"><b>Reportes PDF y Excel</b>Exportá una jornada o el mes completo.</span></li>
+      <li><span class="f-ico">📶</span><span class="f-txt"><b>Funciona sin conexión</b>Tus datos quedan siempre en el dispositivo.</span></li>
+    </ul>
+
+    <button class="btn-install" id="btnInstall" type="button">
+      <span class="bi-label" id="biLabel">Instalar aplicación</span>
+      <span class="bi-sheen" aria-hidden="true"></span>
+    </button>
+    <p class="nota">Se instala en tu teléfono · Funciona sin conexión · Tus datos no salen del dispositivo</p>
+
+    <!-- Creditos animados, igual criterio que el menu Ajustes de la app -->
+    <div class="credits">
+      <span class="credits-emoji" aria-hidden="true">🚀</span>
+      <span class="credits-label">Desarrollado por</span>
+      <span class="credits-author">Akapanch0</span>
+      <span class="credits-divider" aria-hidden="true"></span>
+      <span class="app-version" id="appVersion">v5.9.43</span>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var btn = document.getElementById('btnInstall');
+  var label = document.getElementById('biLabel');
+  var deferredPrompt = null;
+  var instalada = false;
+
+  function esStandalone() {
+    try {
+      if (window.navigator.standalone === true) return true;
+      if (!window.matchMedia) return false;
+      return window.matchMedia('(display-mode: standalone)').matches ||
+             window.matchMedia('(display-mode: fullscreen)').matches ||
+             window.matchMedia('(display-mode: minimal-ui)').matches ||
+             window.matchMedia('(display-mode: window-controls-overlay)').matches;
+    } catch (e) { return false; }
+  }
+
+  // Si ya se abrio en modo app instalada, entra directo a la aplicacion.
+  if (esStandalone()) {
+    window.location.replace('index.html');
+    return;
+  }
+
+  // El boton pasa a ABRIR APLICACION y lanza la app instalada.
+  function modoAbrir() {
+    instalada = true;
+    deferredPrompt = null;
+    btn.classList.remove('cargando');
+    btn.classList.add('ok');
+    label.textContent = 'ABRIR APLICACI\u00d3N';
+  }
+
+  /* Lanza la app INSTALADA en su ventana standalone.
+     Nunca navega a index.html desde el navegador: la aplicacion no se abre
+     jamas dentro de una pestania. Se usa el protocol handler declarado en el
+     manifest (web+baremos), que el sistema resuelve abriendo la PWA instalada. */
+  function abrirApp() {
+    var vino = false;
+    var marcar = function () { vino = true; };
+    window.addEventListener('blur', marcar, { once: true });
+    document.addEventListener('visibilitychange', marcar, { once: true });
+
+    try {
+      window.location.href = 'web+baremos://abrir';
+    } catch (e) {}
+
+    // Si el sistema no cambio de ventana, avisamos en el propio boton.
+    setTimeout(function () {
+      if (vino || document.hidden) return;
+      // Plan B: navegar al start_url. Si el sistema tiene la app instalada y
+      // la captura de enlaces activa, se abre en su ventana standalone. Si no,
+      // la puerta de entrada devuelve a esta presentacion: la aplicacion no
+      // se abre nunca dentro del navegador.
+      window.location.href = 'index.html';
+    }, 1400);
+  }
+
+  // Si el navegador ya la reconoce instalada, arrancamos en modo ABRIR.
+  if (navigator.getInstalledRelatedApps) {
+    navigator.getInstalledRelatedApps().then(function (apps) {
+      if (apps && apps.length) modoAbrir();
+    }).catch(function () {});
+  }
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    instalada = false;
+    btn.classList.add('listo');
+  });
+
+  btn.addEventListener('click', async function () {
+    if (instalada) { abrirApp(); return; }
+
+    if (deferredPrompt) {
+      btn.classList.add('cargando');
+      deferredPrompt.prompt();
+      var res = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      btn.classList.remove('cargando');
+      if (res && res.outcome === 'accepted') {
+        label.textContent = 'Instalando\u2026';
+        btn.classList.add('ok');
+      }
+      return;
+    }
+
+    // Sin evento disponible: feedback breve, sin instrucciones.
+    btn.classList.add('shake');
+    setTimeout(function () { btn.classList.remove('shake'); }, 500);
+  });
+
+  // Instalacion terminada: el boton queda listo para lanzar la app.
+  window.addEventListener('appinstalled', function () {
+    modoAbrir();
+    // Apertura automatica: si el sistema no la abrio solo, entramos a la app.
+    setTimeout(function () { if (!document.hidden) abrirApp(); }, 900);
+  });
+
+  // Si la app se abre en su ventana, esta pestania deja de ser necesaria.
+  window.addEventListener('visibilitychange', function () {
+    if (!document.hidden && instalada) label.textContent = 'ABRIR APLICACI\u00d3N';
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./service-worker.js').catch(function () {});
+  }
+
+  // Version real, tomada del mismo archivo que usa la app.
+  fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.version) document.getElementById('appVersion').textContent = 'v' + d.version;
+    })
+    .catch(function () {});
+})();
+</script>
+
+<script>
+/* La marca repite la entrada electrica cuando volves a esta pagina.
+   La animacion ya arranca sola por CSS (la clase viene en el HTML), asi que
+   si este script no corre, el logo se ve y se anima igual. */
+(function () {
+  'use strict';
+
+  var stage = document.getElementById('brandStage');
+  if (!stage) return;
+
+  var t0 = Date.now();
+  var enCurso = false;
+
+  function relanzar() {
+    if (enCurso || document.hidden) return;
+    if (Date.now() - t0 < 2200) return;
+    enCurso = true;
+    stage.classList.remove('animar');
+    void stage.offsetWidth;            // fuerza el reinicio de la animacion
+    stage.classList.add('animar');
+    setTimeout(function () { enCurso = false; }, 2000);
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) relanzar();
+  });
+  window.addEventListener('pageshow', relanzar);
+})();
+</script>
+
+</body>
+</html>

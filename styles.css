@@ -1,0 +1,2786 @@
+:root {
+  /* v5.9.39 - Base de color = piel AURORA. Las otras pieles solo
+     redefinen estas mismas variables, por eso toda la app cambia sola. */
+  --primary: #4f46e5;
+  --primary-dark: #3730a3;
+  --primary-light: #7c3aed;
+  --bg: #f5f6ff;
+  --surface: #ffffff;
+  --surface-2: #f0f1fe;
+  --text: #1b1a3a;
+  --text-soft: #5b5b7a;
+  --border: #e3e2f7;
+  --success: #22a06b;
+  --success-soft: #d4f4e2;
+  --warn: #e0a800;
+  --warn-soft: #fff4cc;
+  --danger: #d93025;
+  --danger-soft: #fde7e5;
+  --shadow: 0 4px 16px rgba(79,70,229,.10);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --transition: .25s cubic-bezier(.4,0,.2,1);
+  /* marca: los dos extremos del degradado + el acento que da el brillo */
+  --grad-1: #4338ca;
+  --grad-2: #7c3aed;
+  --accent: #22d3ee;
+  --brand-rgb: 79,70,229;
+  /* paleta de los graficos (la lee app.js con paletaGraficos()) */
+  --chart-1: #4338ca;
+  --chart-2: #7c3aed;
+  --chart-3: #22d3ee;
+  --chart-4: #22a06b;
+  --chart-5: #f59e0b;
+  --chart-6: #94a3b8;
+}
+[data-theme="dark"] {
+  /* v5.9.39: el modo oscuro ya no impone colores de marca propios.
+     Respeta la piel elegida y solo cambia las superficies. */
+  --bg: #0e1420;
+  --surface: #182033;
+  --surface-2: #1f2940;
+  --text: #e6ecf5;
+  --text-soft: #9aa5b8;
+  --border: #2a3550;
+  --shadow: 0 4px 16px rgba(0,0,0,.4);
+  --danger-soft: #3a1f1d;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text); font-size: 15px;
+  overflow-x: hidden;
+}
+.app-header {
+  position: sticky; top: 0; z-index: 50;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: #fff; padding: 14px 16px;
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.app-header .row-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.app-header h1 { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+/* Logo de marca del encabezado. Escala con el viewport para adaptarse a
+   cualquier dispositivo y es puramente decorativo: pointer-events none deja
+   pasar el toque, no se puede clickear, arrastrar ni seleccionar. */
+.app-header h1 .logo-img {
+  height: clamp(26px, 7.2vw, 34px);
+  width: auto;
+  max-width: 42vw;
+  object-fit: contain;
+  flex: 0 0 auto;
+  display: block;
+  background: transparent;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+/* Si el archivo no esta disponible, no se muestra el icono de imagen rota. */
+.app-header h1 .logo-img.logo-img-falla { display: none; }
+
+/* LOGO ENMASCARADO DEL ENCABEZADO
+   El logo no se dibuja como imagen: su silueta se usa como mascara y el
+   relleno es el propio diseno de fondo de la aplicacion (gradiente de marca).
+   Resultado: fondo 100% transparente, cero recuadro, cero halo blanco, y el
+   logo se integra con el degradado del header en tema claro y oscuro.
+   Si el SVG no existe todavia, no se ve ningun icono roto. */
+/* Marca del encabezado: imagen real del logo. brand.js detecta como esta
+   exportado el archivo y le aplica la tecnica correcta, asi nunca aparece un
+   bloque blanco o gris. */
+.app-header h1 .brand-logo-img {
+  height: clamp(34px, 9vw, 44px);
+  width: clamp(34px, 9vw, 44px);
+  flex: 0 0 auto;
+  min-width: 30px;
+  min-height: 30px;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+/* El titulo del encabezado no puede encogerse ni recortar el logo */
+.app-header h1 { flex: 0 0 auto; }
+[data-theme="dark"] .app-header h1 .brand-logo-img { filter: drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.app-header .user-chip { background: rgba(255,255,255,.18); padding: 6px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; flex-wrap: wrap; }
+.app-header .date-line { font-size: 12px; opacity: .9; display: flex; align-items: center; gap: 6px; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.icon-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,.15); border: none; color: #fff; display: grid; place-items: center; cursor: pointer; font-size: 16px; }
+
+.btn-ayuda {
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.4);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.btn-ayuda:active { background: rgba(255,255,255,.3); }
+
+.tab-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(6, 1fr); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); z-index: 40; }
+.tab-btn { background: none; border: none; color: var(--text-soft); padding: 6px 2px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 600; cursor: pointer; }
+.tab-btn .ico { font-size: 20px; }
+.tab-btn.active { color: var(--primary); }
+main { padding: 14px 12px 100px; max-width: 720px; margin: 0 auto; }
+.view { display: none; animation: fadeIn .35s ease; }
+.view.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.card { background: var(--surface); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); margin-bottom: 12px; border: 1px solid var(--border); }
+.card-title { font-size: 13px; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 16px; border-radius: var(--radius-sm); border: none; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; font-family: inherit; }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-sm { padding: 8px 12px; font-size: 12px; }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-soft); margin-bottom: 4px; text-transform: uppercase; }
+.input, .select { width: 100%; padding: 12px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; font-family: inherit; }
+.input:disabled, .select:disabled { background: var(--surface-2); color: var(--text-soft); cursor: not-allowed; }
+.search-wrap { position: sticky; top: 0; z-index: 30; background: var(--surface); padding: 10px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 10px; border: 1px solid var(--border); }
+.search-row { display: grid; grid-template-columns: 1fr 80px; gap: 8px; }
+.search-input-wrap { position: relative; }
+.search-input-wrap .input { padding-left: 40px; font-weight: 600; }
+.search-input-wrap .search-ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: .6; }
+.qty-field { display: flex; flex-direction: column; gap: 4px; }
+.qty-field label { font-size: 10px; font-weight: 700; color: var(--text-soft); text-transform: uppercase; }
+.qty-field .input { text-align: center; font-weight: 700; padding: 12px 6px; font-size: 16px; }
+.search-list { margin-top: 8px; max-height: 260px; overflow-y: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); display: none; }
+.search-list.show { display: block; }
+.sr-item { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.sr-item:last-child { border-bottom: none; }
+.sr-item:active { background: var(--surface-2); }
+.sr-item-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }
+.sr-item .sr-code { font-weight: 700; color: var(--primary); font-size: 13px; }
+.sr-item .sr-price { font-weight: 700; color: var(--success); font-size: 13px; }
+.sr-item .sr-desc { font-size: 11px; color: var(--text-soft); }
+.sr-empty { padding: 14px; text-align: center; color: var(--danger); font-weight: 600; }
+
+.table-wrap { overflow-x: auto; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid var(--border); }
+th { font-size: 11px; text-transform: uppercase; font-weight: 700; }
+.td-desc { max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+tbody tr.adding { animation: rowIn .4s ease; }
+@keyframes rowIn { from { opacity: 0; } to { opacity: 1; } }
+.qty-input { width: 60px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); font-weight: 600; text-align: center; }
+.del-btn { background: var(--danger); color: #fff; border: none; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; }
+.totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.total-card { background: var(--surface); border-radius: var(--radius-sm); padding: 10px; text-align: center; border: 1px solid var(--border); }
+.total-card .lbl { font-size: 10px; color: var(--text-soft); text-transform: uppercase; font-weight: 700; }
+.total-card .val { font-size: 16px; font-weight: 800; margin-top: 4px; }
+.total-general { padding: 16px; border-radius: var(--radius); text-align: center; color: #fff; font-weight: 800; margin-bottom: 12px; position: relative; overflow: hidden; }
+.total-general .lbl { font-size: 12px; opacity: .9; text-transform: uppercase; }
+.total-general .val { font-size: 28px; margin-top: 4px; position: relative; z-index: 2; }
+
+/* Rangos de color del día (getConfigDia). Se exponen también como --card-bg para
+   que otras tarjetas con fondo propio, como .stat-card, puedan reutilizar el
+   mismo degradado sin depender del orden de las reglas. */
+.bg-green-intense { --card-bg: linear-gradient(135deg, #16a34a, #22c55e); background: var(--card-bg); }
+.bg-green-soft { --card-bg: linear-gradient(135deg, #65a30d, #84cc16); background: var(--card-bg); }
+.bg-yellow-green { --card-bg: linear-gradient(135deg, #ca8a04, #eab308); background: var(--card-bg); }
+.bg-red { --card-bg: linear-gradient(135deg, #ef4444, #b91c1c); background: var(--card-bg); }
+.bg-gold { 
+  --card-bg: linear-gradient(135deg, #D4AF37, #AA8A2A);
+  background: linear-gradient(135deg, #D4AF37, #AA8A2A) !important; 
+  box-shadow: 0 0 35px rgba(212, 175, 55, 0.7) !important; 
+  color: #fff !important; 
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4) !important; 
+}
+
+/* DASHBOARD MINIMALISTA
+   Tarjetas y tipografias mas chicas y compactas para reducir el scroll.
+   v5.9.32: TOTAL ACUMULADO (.total-acumulado-card) tambien se afino, pero
+   conserva intacta su mecanica: color por rango, barra de progreso,
+   medalla, confeti y mensajes. */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 10px; }
+.stat-card {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 8px 8px 7px;
+  border: 1px solid var(--border);
+  box-shadow: none;
+  min-width: 0;
+}
+.stat-card .ico { font-size: 13px; margin-bottom: 1px; line-height: 1.1; opacity: .9; }
+.stat-card .lbl { font-size: 8.5px; letter-spacing: .2px; line-height: 1.25; color: var(--text-soft); text-transform: uppercase; font-weight: 700; }
+.stat-card .val { font-size: 13.5px; font-weight: 800; margin-top: 1px; line-height: 1.2; overflow-wrap: anywhere; }
+.chart-box { background: var(--surface); border-radius: var(--radius); padding: 10px; border: 1px solid var(--border); margin-bottom: 10px; }
+.chart-box h3 { font-size: 12px; margin-bottom: 8px; }
+canvas { max-width: 100%; height: 220px !important; }
+/* v5.9.33 - barras horizontales: alto fijo segun la cantidad de barras.
+   Antes el alto era igual para todos y sobraba aire arriba y abajo. */
+#chartDiario { height: 178px !important; }
+#chartMensual { height: 158px !important; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; display: none; align-items: flex-end; justify-content: center; }
+.modal-backdrop.show { display: flex; }
+.modal { background: var(--surface); width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 20px; max-height: 85vh; overflow-y: auto; }
+.toast-wrap { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast { background: var(--surface); padding: 12px 18px; border-radius: 30px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; border-left: 4px solid var(--primary); }
+.toast.success { border-left-color: var(--success); }
+.toast.error { border-left-color: var(--danger); }
+.toast.warn { border-left-color: var(--warn); }
+.jornada-item { background: var(--surface); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.ji-left { flex: 1; }
+.ji-left .fecha { font-weight: 700; font-size: 14px; }
+.ji-left .zonas { font-size: 11px; font-weight: 700; color: var(--primary); margin-top: 3px; }
+.ji-left .meta { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
+.ji-right { text-align: right; }
+.ji-right .total { font-weight: 800; color: var(--primary); font-size: 15px; }
+.ji-right .estado { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; }
+.estado.cerrada { background: var(--success-soft); color: var(--success); }
+.estado.abierta { background: var(--warn-soft); color: var(--warn); }
+.ji-actions { display: flex; gap: 4px; margin-top: 4px; }
+.mini-btn { width: 28px; height: 28px; border-radius: 6px; border: none; display: grid; place-items: center; cursor: pointer; font-size: 12px; }
+.mini-btn.export { background: var(--primary); color: #fff; }
+.mini-btn.view { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.registro-item { background: var(--surface); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.ri-left .pat { font-weight: 700; font-size: 14px; }
+
+/* --- Combustible: patente preregistrada --- */
+.comb-pat-box { display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; margin-bottom: 14px; }
+.comb-pat-box .cpb-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.comb-pat-box .cpb-lbl { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-soft); }
+.comb-pat-box .cpb-val { font-size: 18px; font-weight: 800; letter-spacing: .06em; color: var(--primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comb-pat-box .cpb-btn { flex: 0 0 auto; background: transparent; color: var(--primary);
+  border: 1px solid var(--primary); border-radius: 999px; padding: 7px 14px;
+  font-size: 12px; font-weight: 700; cursor: pointer; }
+.comb-pat-box .cpb-btn:active { opacity: .7; }
+.cpf-hint { font-size: 11px; color: var(--text-soft); margin-top: 6px; line-height: 1.4; }
+.cpf-cancel { background: transparent; border: 0; color: var(--text-soft); text-decoration: underline;
+  font-size: 11px; padding: 6px 0 0; cursor: pointer; }
+.tag-pat-ant { font-size: 9px; background: var(--surface-2); color: var(--text-soft);
+  padding: 2px 6px; border-radius: 6px; margin-left: 4px; white-space: nowrap; }
+@media (max-width: 360px) {
+  .comb-pat-box .cpb-val { font-size: 16px; }
+  .comb-pat-box .cpb-btn { padding: 6px 10px; }
+}
+.ri-left .fecha { font-size: 11px; color: var(--text-soft); }
+.ri-right .monto { font-weight: 800; color: var(--primary); font-size: 16px; }
+.empty { text-align: center; padding: 30px 16px; color: var(--text-soft); }
+.empty .ico { font-size: 48px; margin-bottom: 8px; opacity: .5; }
+.splash { position: fixed; inset: 0; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; transition: opacity .5s ease; }
+.splash.hide { opacity: 0; pointer-events: none; }
+/* v5.9.41: el arranque ya no muestra el recuadro estatico detras del rayo.
+   Queda solo la animacion SVG sobre el degradado y despues entra el logo
+   animado de la B, que no se toca. */
+.splash .logo { width: 90px; height: 90px; background: none; border: 0; border-radius: 0; box-shadow: none; display: grid; place-items: center; margin-bottom: 16px; }
+.splash h1 { font-size: 26px; font-weight: 800; letter-spacing: 2px; }
+.splash p { font-size: 13px; opacity: .85; margin-top: 4px; }
+.user-actions { display: flex; gap: 6px; margin-left: auto; }
+.user-actions .mini-btn { width: 32px; height: 32px; border-radius: 8px; font-size: 14px; }
+.mini-btn.del { background: var(--danger-soft); color: var(--danger); }
+.mini-btn.logout { background: var(--warn-soft); color: var(--warn); }
+.ajustes-list { display: flex; flex-direction: column; gap: 10px; }
+.ajuste-item { background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); display: flex; align-items: center; gap: 14px; cursor: pointer; }
+.ajuste-item:active { background: var(--surface-2); }
+.ajuste-item .aj-ico { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; display: grid; place-items: center; font-size: 22px; }
+.ajuste-item.warn .aj-ico { background: linear-gradient(135deg, #e0a800, #f59e0b); }
+.ajuste-item.admin { background: linear-gradient(135deg, #dc2626, #ef4444); color: #fff; border: none; }
+.ajuste-item.admin .aj-ico { background: rgba(255,255,255,.2); }
+.ajuste-item.admin .aj-title, .ajuste-item.admin .aj-desc, .ajuste-item.admin .aj-arrow { color: #fff; }
+.ajuste-item .aj-text { flex: 1; }
+.ajuste-item .aj-title { font-weight: 700; font-size: 14px; }
+.ajuste-item .aj-desc { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
+.ajuste-item .aj-arrow { font-size: 18px; color: var(--text-soft); }
+
+.credits { text-align: center; margin-top: 20px; padding: 24px 20px; border-radius: var(--radius); background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%); color: #fff; font-size: 13px; line-height: 1.7; }
+.credits .credits-emoji { display: inline-block; font-size: 28px; margin-bottom: 8px; }
+.credits .credits-label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: rgba(255,255,255,.65); margin-bottom: 6px; }
+.credits .credits-author { display: inline-block; font-size: 17px; font-weight: 800; background: linear-gradient(90deg, #fbbf24, #f472b6, #a78bfa, #60a5fa); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: creditsGradient 3s linear infinite; }
+@keyframes creditsGradient { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+.credits .credits-divider { display: block; width: 40px; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent); margin: 10px auto; }
+.credits .app-version { display: inline-block; padding: 3px 12px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); border-radius: 20px; font-size: 10px; color: rgba(255,255,255,.8); }
+
+/* ---------- v5.9.39: chip de fecha con cara de almanaque ---------- */
+.mini-calendar {
+  position: relative;
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 56px;
+  padding: 9px 10px 7px;
+  border: 1px solid rgba(255,255,255,.30);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.26) 0%, rgba(255,255,255,.10) 100%);
+  -webkit-backdrop-filter: blur(7px) saturate(140%);
+  backdrop-filter: blur(7px) saturate(140%);
+  box-shadow: 0 4px 12px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.34);
+  color: #fff;
+  font-family: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: var(--transition);
+}
+/* la cinta superior del almanaque */
+.mini-calendar::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 5px;
+  background: linear-gradient(90deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,.45) 100%);
+}
+/* el brillo diagonal que le da relieve */
+.mini-calendar::after {
+  content: '';
+  position: absolute; left: -40%; top: -60%;
+  width: 60%; height: 220%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.22) 50%, rgba(255,255,255,0) 100%);
+  pointer-events: none;
+}
+.mini-calendar .mc-dow {
+  font-size: 8.5px; font-weight: 800; letter-spacing: 1px;
+  color: rgba(255,255,255,.9); line-height: 1;
+}
+.mini-calendar .mc-day {
+  font-size: 20px; font-weight: 900; line-height: 1.05;
+  letter-spacing: -.5px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.mini-calendar .mc-month {
+  font-size: 8.5px; font-weight: 800; letter-spacing: 1px;
+  color: rgba(255,255,255,.86); line-height: 1;
+}
+.mini-calendar:active { transform: scale(.95); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.zona-chip { background: rgba(255,255,255,.15); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; cursor: pointer; }
+.hist-filtros { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.hist-filtro-btn { padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.hist-filtro-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.hist-actions-bar { background: var(--primary); color: #fff; padding: 10px 14px; border-radius: var(--radius); margin-bottom: 10px; display: none; align-items: center; justify-content: space-between; gap: 10px; }
+.hist-actions-bar.show { display: flex; }
+.hist-actions-bar .hab-info { font-size: 12px; font-weight: 600; }
+.hist-actions-bar .hab-actions { display: flex; gap: 6px; }
+.hist-actions-bar .hab-btn { padding: 6px 12px; border-radius: 6px; border: none; background: rgba(255,255,255,.2); color: #fff; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.hist-actions-bar .hab-btn.primary { background: #fff; color: var(--primary); }
+.check-box { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border); background: var(--surface); display: grid; place-items: center; cursor: pointer; }
+.check-box.checked { background: var(--primary); border-color: var(--primary); }
+.check-box.checked::after { content: '✓'; color: #fff; font-size: 14px; font-weight: 800; }
+.quincena-bloque { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; border: 2px solid var(--border); }
+.quincena-bloque.bloqueada { background: var(--success-soft); border-color: var(--success); }
+.quincena-bloque.deshabilitada { opacity: .5; pointer-events: none; }
+.quincena-bloque .qb-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.quincena-bloque .qb-title { font-size: 14px; font-weight: 700; }
+.quincena-bloque .qb-badge { font-size: 10px; padding: 3px 10px; border-radius: 12px; font-weight: 700; text-transform: uppercase; }
+.qb-badge.pendiente { background: var(--warn-soft); color: var(--warn); }
+.qb-badge.bloqueada { background: var(--primary); color: #fff; }
+.qb-badge.deshabilitada { background: var(--surface-2); color: var(--text-soft); }
+.quincena-bloque .qb-fechas { font-size: 11px; color: var(--text-soft); margin-bottom: 10px; font-style: italic; }
+.quincena-bloque .qb-alerta { background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 8px 12px; border-radius: 6px; font-size: 11px; color: #7c5e00; margin-bottom: 12px; }
+.quincena-bloque.bloqueada .qb-alerta { background: var(--success-soft); border-left-color: var(--success); color: #065f46; }
+.quincena-bloque .qb-total { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center; }
+.quincena-bloque .qb-total .qb-total-value { font-size: 18px; font-weight: 800; color: var(--primary); }
+.quincena-bloque.bloqueada .qb-total .qb-total-value { color: var(--success); }
+.stat-card.produccion-cobrar { grid-column: 1 / -1; background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 100%); color: #fff; border: none; padding: 10px 12px; }
+.stat-card.produccion-cobrar .pc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.stat-card.produccion-cobrar .pc-title { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+.stat-card.produccion-cobrar .pc-status { font-size: 10px; padding: 4px 10px; border-radius: 12px; font-weight: 700; text-transform: uppercase; }
+.pc-status.ok { background: rgba(34, 160, 107, .3); color: #bbf7d0; }
+.pc-status.pendiente { background: rgba(234, 179, 8, .3); color: #fef3c7; }
+.stat-card.produccion-cobrar .pc-amount { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+.stat-card.produccion-cobrar .pc-desglose { font-size: 11px; color: rgba(255,255,255,.85); line-height: 1.6; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.2); }
+.stat-card.produccion-cobrar .pc-desglose .pc-line { display: flex; justify-content: space-between; padding: 2px 0; }
+.stat-card.produccion-cobrar .pc-desglose .pc-line.total { font-weight: 700; margin-top: 4px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,.3); }
+/* v5.9.32 - renglon chico que aclara de que mes descuenta la 2da quincena */
+.stat-card.produccion-cobrar .pc-desglose .pc-line.pc-sub { font-size: 9px; line-height: 1.35;
+  opacity: .72; font-style: italic; padding: 0 0 3px 10px; }
+.stat-card.produccion-cobrar .pc-mensaje { margin-top: 10px; padding: 8px 12px; background: rgba(255,255,255,.15); border-radius: 8px; font-size: 11px; font-style: italic; display: flex; align-items: center; gap: 6px; }
+.zona-mapa-container { margin-top: 14px; border-radius: var(--radius); overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); display: none; }
+.zona-mapa-container.show { display: block; }
+.zona-mapa-header { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: #fff; padding: 10px 14px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+.zona-mapa-img-wrap { position: relative; width: 100%; aspect-ratio: 16 / 10; background: var(--surface); overflow: hidden; }
+.zona-mapa-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.zona-mapa-placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-soft); font-size: 13px; background: var(--surface-2); }
+.zona-mapa-placeholder .zmp-ico { font-size: 40px; margin-bottom: 6px; opacity: .4; display: block; text-align: center; }
+.zona-mapa-footer { padding: 8px 14px; background: var(--surface); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-soft); display: flex; align-items: center; justify-content: space-between; }
+.zona-mapa-footer .zmf-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; margin-right: 6px; }
+.admin-panel { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; border: 2px solid var(--primary); }
+.admin-panel .admin-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.admin-panel .admin-badge { background: linear-gradient(135deg, #dc2626, #ef4444); color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.admin-panel .admin-title { font-size: 16px; font-weight: 700; flex: 1; }
+.admin-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.admin-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.admin-logout-btn { background: var(--danger); color: #fff; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.admin-report-type { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.admin-report-type button { padding: 10px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.admin-report-type button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.admin-summary { background: var(--surface-2); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 14px; font-size: 12px; line-height: 1.6; }
+.admin-summary .as-title { font-weight: 700; margin-bottom: 6px; text-transform: uppercase; font-size: 11px; color: var(--text-soft); }
+.admin-summary .as-line { display: flex; justify-content: space-between; padding: 2px 0; }
+.admin-summary .as-line.total { font-weight: 700; margin-top: 4px; padding-top: 6px; border-top: 1px dashed var(--border); }
+
+/* ============================================================
+   TÉRMINOS Y PRIVACIDAD (MODAL)
+   ============================================================ */
+.terms-modal {
+  max-width: 450px;
+  padding: 25px 20px;
+  border-radius: 24px;
+  text-align: left;
+}
+.terms-icon {
+  font-size: 40px;
+  text-align: center;
+  margin-bottom: 8px;
+  animation: termsPulse 2s infinite;
+}
+.terms-modal h2 {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 6px;
+}
+.terms-subtitle {
+  font-size: 13px;
+  color: var(--text-soft);
+  text-align: center;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.terms-list {
+  list-style: none;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.terms-list li {
+  font-size: 11px;
+  line-height: 1.4;
+  padding-left: 22px;
+  position: relative;
+  color: var(--text-soft);
+}
+.terms-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--success);
+  font-weight: 800;
+  font-size: 14px;
+}
+.terms-list li strong {
+  color: var(--text);
+  display: block;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+.terms-footer {
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-soft);
+  font-style: italic;
+  margin-bottom: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+/* ============================================================
+   NUEVO: SCROLL PARA TÉRMINOS INYECTADOS
+   ============================================================ */
+.terms-content-scroll {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  padding: 10px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.5;
+  text-align: left;
+}
+.terms-content-scroll h3 { color: var(--text); margin: 12px 0 6px; font-size: 14px; font-weight: 700; }
+.terms-content-scroll p { margin-bottom: 8px; }
+.terms-content-scroll ul { margin-left: 20px; margin-bottom: 8px; }
+.terms-content-scroll li { margin-bottom: 4px; }
+
+@keyframes termsPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
+/* ============================================================
+   ESTILOS DE MENÚ AYUDA (SEO)
+   ============================================================ */
+/* Tarjetas de temas. Reemplazan al indice de anclas: antes los enlaces saltaban
+   al fondo del articulo y obligaban a scrollear para leer cada tema. */
+.ayuda-hint { font-size: 12.5px; color: var(--text-soft); margin-bottom: 12px; }
+.ayuda-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+.ayuda-card {
+  display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 13px 12px; font-family: inherit; color: var(--text); cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+.ayuda-card:active { background: var(--surface-2); transform: scale(.98); }
+.ayuda-card .ac-ico { font-size: 20px; line-height: 1; flex: none; }
+.ayuda-card .ac-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.ayuda-card .ac-tit { font-size: 13px; font-weight: 700; line-height: 1.25; }
+.ayuda-card .ac-sub { font-size: 11px; color: var(--text-soft); line-height: 1.2; }
+.ayuda-card .ac-arrow { font-size: 20px; color: var(--text-soft); flex: none; }
+
+/* La fuente de contenido queda en el HTML (SEO) pero no se muestra en la vista:
+   el modal la clona al abrir cada tema. */
+.help-source { display: none; }
+
+/* Modal de ayuda: cabecera fija y el texto scrollea dentro del modal, nunca la pagina. */
+.help-modal { padding: 0; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+.help-modal-head {
+  display: flex; align-items: center; gap: 10px; padding: 15px 18px; flex: none;
+  border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.help-modal-head h2 { font-size: 17px; font-weight: 800; color: var(--primary); flex: 1; line-height: 1.25; }
+.help-modal-close {
+  flex: none; width: 34px; height: 34px; border-radius: 10px; cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text); font-size: 15px;
+}
+.help-modal-close:active { background: var(--border); }
+.help-modal-body {
+  padding: 16px 18px 26px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+/* El titulo del tema ya vive en la cabecera del modal. */
+.help-modal-body > h2:first-child { display: none; }
+
+/* Con un modal abierto la pagina de fondo no se mueve. */
+body.modal-abierto { overflow: hidden; }
+
+@media (max-width: 430px) {
+  .ayuda-cards { grid-template-columns: 1fr; }
+}
+
+.help-article h2 { font-size: 18px; color: var(--primary); margin: 24px 0 10px; padding-bottom: 4px; border-bottom: 2px solid var(--border); }
+.help-article h2:first-child { margin-top: 0; }
+.help-article h3 { font-size: 15px; margin: 16px 0 8px; color: var(--text); font-weight: 700; }
+.help-article p { font-size: 14px; color: var(--text-soft); line-height: 1.6; margin-bottom: 12px; }
+.help-article ul { margin: 0 0 16px 24px; color: var(--text-soft); font-size: 14px; line-height: 1.6; }
+.help-article li { margin-bottom: 6px; }
+
+/* ============================================================
+   FRASE MOTIVACIONAL ANIMADA Y COLORIDA
+   ============================================================ */
+.frase-card {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #8e2de2, #4a00e0);
+  background-size: 400% 400%;
+  animation: fraseGradient 8s ease infinite, fraseFloat 3s ease-in-out infinite;
+  color: #fff;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(231, 60, 126, 0.22);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+.frase-card::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: fraseShine 3s linear infinite;
+}
+.frase-card::after {
+  content: '✨';
+  position: absolute;
+  top: 6px; right: 9px;
+  font-size: 13px;
+  opacity: .85;
+  animation: fraseSparkle 2s ease-in-out infinite;
+}
+.frase-card .frase-texto {
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  font-style: italic;
+  position: relative;
+  z-index: 2;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.28), 0 0 12px rgba(255,255,255,0.4);
+  letter-spacing: 0.2px;
+  animation: frasePulse 2s ease-in-out infinite;
+}
+.frase-card .frase-autor {
+  margin-top: 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(90deg, #fff, #ffd700, #fff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: fraseAutor 3s linear infinite;
+}
+@keyframes fraseGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes fraseFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.5px); }
+}
+@keyframes fraseShine {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
+}
+@keyframes fraseSparkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.3) rotate(180deg); opacity: 0.7; }
+}
+@keyframes frasePulse {
+  0%, 100% { text-shadow: 1px 1px 3px rgba(0,0,0,0.28), 0 0 12px rgba(255,255,255,0.4); }
+  50% { text-shadow: 1px 1px 3px rgba(0,0,0,0.28), 0 0 18px rgba(255,255,255,0.75); }
+}
+@keyframes fraseAutor {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ============================================================
+   EFECTOS Y MEDALLAS
+   ============================================================ */
+.total-general.imparables {
+  animation: totalImparable 1s ease-in-out infinite alternate;
+}
+.total-general.imparables::before {
+  content: '🚀';
+  position: absolute;
+  top: 10px; left: 15px;
+  font-size: 28px;
+  animation: cohete 1.5s ease-in-out infinite;
+  z-index: 3;
+}
+.total-general.imparables::after {
+  content: '⭐';
+  position: absolute;
+  top: 10px; right: 15px;
+  font-size: 28px;
+  animation: estrella 1s ease-in-out infinite;
+  z-index: 3;
+}
+@keyframes totalImparable {
+  0% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.3); }
+  100% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.9), 0 0 80px rgba(255, 215, 0, 0.6); }
+}
+@keyframes cohete {
+  0%, 100% { transform: translateY(0) rotate(-15deg); }
+  50% { transform: translateY(-10px) rotate(15deg); }
+}
+@keyframes estrella {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.3) rotate(180deg); }
+}
+
+.mensaje-impulso {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: linear-gradient(135deg, #ffd700, #ff6b6b, #4ecdc4);
+  color: #fff;
+  padding: 40px 60px;
+  border-radius: 20px;
+  font-size: 32px;
+  font-weight: 900;
+  text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  text-align: center;
+  letter-spacing: 2px;
+  opacity: 0;
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+.mensaje-impulso.show {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  animation: mensajeBounce 2s ease-in-out;
+}
+@keyframes mensajeBounce {
+  0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.2) rotate(5deg); opacity: 1; }
+  70% { transform: translate(-50%, -50%) scale(0.95) rotate(-2deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+}
+
+.confeti-container {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+  overflow: hidden;
+}
+.confeti {
+  position: absolute;
+  width: 10px; height: 10px;
+  top: -10px;
+  animation: confetiFall 3s linear forwards;
+}
+@keyframes confetiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.bengala {
+  position: absolute;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  animation: bengala 2s ease-out forwards;
+}
+@keyframes bengala {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+
+/* ============================================================
+   TOTAL ACUMULADO Y COLORES DINÁMICOS
+   ============================================================ */
+.total-acumulado-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 18px 15px;
+  margin-bottom: 14px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.5s ease, box-shadow 0.5s ease;
+  box-shadow: var(--shadow);
+}
+.tac-title { font-size: 10.5px; font-weight: 800; opacity: 0.9; margin-bottom: 3px; letter-spacing: 1.4px; }
+.tac-amount { font-size: 32px; font-weight: 900; margin-bottom: 9px; line-height: 1.1; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+.tac-progress-container { background: rgba(0,0,0,0.25); height: 9px; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+.tac-progress-bar { background: #fff; height: 100%; width: 0%; border-radius: 8px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+.tac-details { display: flex; justify-content: space-between; font-size: 10.5px; opacity: 0.95; font-weight: 700; flex-wrap: wrap; gap: 6px; }
+
+.tac-overlay-msg {
+  position: absolute; top: 11px; right: 12px;
+  background: rgba(255,255,255,0.3);
+  padding: 5px 11px; border-radius: 20px;
+  font-size: 10.5px; font-weight: 800;
+  opacity: 0; transform: scale(0.8);
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  backdrop-filter: blur(4px);
+  z-index: 5;
+}
+.tac-yellow .tac-overlay-msg { background: rgba(0,0,0,0.1); }
+.tac-overlay-msg.show { opacity: 1; transform: scale(1); }
+
+.tac-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.tac-yellow { background: linear-gradient(135deg, #facc15, #ca8a04); color: #1a2238 !important; }
+.tac-yellow .tac-amount, .tac-yellow .val, .dac-interactive.tac-yellow .lbl, .dac-interactive.tac-yellow .val { text-shadow: none; color: #1a2238 !important; }
+.dac-interactive.tac-yellow .ico { opacity: 0.8; color: #1a2238 !important; }
+
+.tac-yellow .tac-progress-container { background: rgba(0,0,0,0.1); }
+.tac-yellow .tac-progress-bar { background: #1a2238; }
+.tac-green-soft { background: linear-gradient(135deg, #4ade80, #16a34a); }
+.tac-green-intense { background: linear-gradient(135deg, #22c55e, #15803d); box-shadow: 0 0 25px rgba(22, 163, 74, 0.5); }
+.tac-gold { background: linear-gradient(135deg, #fbbf24, #d97706); box-shadow: 0 0 35px rgba(217, 119, 6, 0.7); color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+/* v5.9.32 - superada la meta de $3.000.000 se mantiene toda la mecanica
+   (oro, medalla, confeti, mensaje); lo unico nuevo es que el monto brilla. */
+.tac-gold .tac-amount { color: #fffdf5; animation: tacBrillo 2.4s ease-in-out infinite; }
+@keyframes tacBrillo {
+  0%, 100% { text-shadow: 0 0 6px rgba(255,255,255,.55), 0 0 14px rgba(253,224,71,.45); }
+  50% { text-shadow: 0 0 15px rgba(255,255,255,.95), 0 0 30px rgba(253,224,71,.9), 0 0 46px rgba(251,191,36,.65); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tac-gold .tac-amount { animation: none; text-shadow: 0 0 12px rgba(255,255,255,.85); }
+}
+
+.tac-medal {
+  position: absolute; right: 12px; bottom: 4px;
+  font-size: 48px; opacity: 0; transform: scale(0) rotate(-20deg);
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none; z-index: 4;
+}
+.tac-gold .tac-medal, .bg-gold .tg-medal { opacity: 1; transform: scale(1) rotate(0deg); animation: medalBounce 2s infinite ease-in-out; }
+
+.tg-medal {
+  position: absolute; right: 15px; bottom: 5px;
+  font-size: 40px; opacity: 0; transform: scale(0) rotate(-20deg);
+  transition: all 0.5s; pointer-events: none; z-index: 4;
+}
+
+.dac-interactive {
+  color: #fff !important;
+  border: none !important;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease;
+}
+/* `.stat-card` define `background: var(--surface)` después de las clases .bg-*,
+   con la misma especificidad, así que las tapaba: la tarjeta quedaba con fondo
+   claro y el texto blanco de .dac-interactive se volvía invisible. Con dos
+   clases gana esta regla y el color del rango se aplica de verdad. */
+.stat-card.dac-interactive { background: var(--card-bg, var(--surface)); }
+.stat-card.dac-interactive.bg-green-intense { box-shadow: 0 0 25px rgba(22, 163, 74, 0.4); }
+.dac-interactive.tac-gold,
+.dac-interactive.bg-gold { padding-right: 45px !important; }
+.dac-interactive .lbl {
+  color: rgba(255,255,255,0.9) !important;
+  z-index: 2; position: relative;
+}
+.dac-interactive .val {
+  color: #fff !important;
+  z-index: 2; position: relative;
+}
+.dac-interactive .ico {
+  z-index: 2; position: relative;
+}
+.dac-medal {
+  position: absolute; right: 10px; bottom: 5px;
+  font-size: 35px; opacity: 0; transform: scale(0) rotate(-20deg);
+  transition: all 0.5s; pointer-events: none; z-index: 1;
+}
+.tac-gold .dac-medal,
+.bg-gold .dac-medal {
+  opacity: 1; transform: scale(1) rotate(0deg); animation: medalBounce 2s infinite ease-in-out;
+}
+
+@keyframes medalBounce {
+  0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 10px rgba(255,255,255,0.6)); }
+  50% { transform: translateY(-12px) scale(1.1); filter: drop-shadow(0 0 20px rgba(255,255,255,0.9)); }
+}
+
+@media (max-width: 480px) {
+  .hide-mob { display: none !important; }
+  .td-desc { max-width: 90px; }
+  th, td { padding: 8px 4px; font-size: 11px; }
+  .qty-input { width: 44px; padding: 6px 2px; }
+  .del-btn { width: 24px; height: 24px; font-size: 10px; }
+}
+
+@media (max-width: 360px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .stat-card { padding: 7px; }
+  .stat-card .val { font-size: 12.5px; }
+  .totals { grid-template-columns: 1fr; }
+  .stat-card.produccion-cobrar .pc-amount { font-size: 22px; }
+  .mensaje-impulso { font-size: 22px; padding: 30px 40px; }
+}
+
+.electric-wrapper {
+  position: relative;
+  overflow: visible !important;
+}
+.electric-bolt {
+  fill: #fff;
+  animation: boltColor 3s linear infinite, boltGlow 1.5s ease-in-out infinite, boltShake 0.1s infinite alternate;
+  transform-origin: center;
+}
+.splash .logo svg.electric-bolt {
+  width: 48px; height: 48px;
+}
+
+@keyframes boltColor {
+  0% { fill: #ffffff; }
+  20% { fill: #a78bfa; }
+  40% { fill: #60a5fa; }
+  60% { fill: #34d399; }
+  80% { fill: #fbbf24; }
+  100% { fill: #ffffff; }
+}
+@keyframes boltGlow {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(255,255,255,0.6)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 8px rgba(255,215,0,1)) drop-shadow(0 0 12px rgba(96,165,250,0.8)); transform: scale(1.15); }
+}
+@keyframes boltShake {
+  0% { transform: translateX(-0.5px) rotate(-2deg); }
+  100% { transform: translateX(0.5px) rotate(2deg); }
+}
+.bolt-spark {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 10;
+}
+
+.bs1 { top: 10%; left: 10%; width: 3px; height: 3px; background: #fbbf24; animation: spark1 1s infinite linear; }
+.bs2 { top: 50%; right: 0; width: 2.5px; height: 2.5px; background: #60a5fa; animation: spark2 1.4s infinite linear 0.3s; }
+.bs3 { bottom: 10%; left: 20%; width: 2px; height: 2px; background: #a78bfa; animation: spark3 1.2s infinite linear 0.6s; }
+
+@keyframes spark1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; box-shadow: 0 0 4px #fbbf24; }
+  100% { transform: translate(-15px, -20px) scale(0); opacity: 0; }
+}
+@keyframes spark2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; box-shadow: 0 0 4px #60a5fa; }
+  100% { transform: translate(20px, -5px) scale(0); opacity: 0; }
+}
+@keyframes spark3 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; box-shadow: 0 0 4px #a78bfa; }
+  100% { transform: translate(-15px, 15px) scale(0); opacity: 0; }
+}
+/* ============================================================
+   BOTÓN "📲 INSTALAR APP" (PWA) — aislado, no afecta otros botones
+   ============================================================ */
+.btn-install-pwa {
+  display: none;
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, #ffdd66 0%, #ffb300 55%, #ff9d00 100%);
+  border: 1px solid rgba(255,255,255,.55);
+  color: #16233c;
+  padding: 8px 11px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,.22);
+  animation: bmInstallPulse 2.6s ease-in-out infinite;
+}
+.btn-install-pwa.is-visible { display: inline-flex; }
+.btn-install-pwa::after {
+  content: "";
+  position: absolute;
+  top: 0; left: -60%;
+  width: 45%; height: 100%;
+  background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.55) 50%, rgba(255,255,255,0) 100%);
+  transform: skewX(-20deg);
+  animation: bmInstallShine 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.btn-install-pwa:active {
+  transform: scale(.95);
+  animation-play-state: paused;
+}
+@keyframes bmInstallPulse {
+  0%, 100% { transform: scale(1);     box-shadow: 0 2px 8px rgba(0,0,0,.22), 0 0 0 0 rgba(255,193,7,.45); }
+  50%      { transform: scale(1.045); box-shadow: 0 3px 12px rgba(0,0,0,.28), 0 0 0 6px rgba(255,193,7,0); }
+}
+@keyframes bmInstallShine {
+  0%   { left: -60%; }
+  55%  { left: 130%; }
+  100% { left: 130%; }
+}
+@media (max-width: 380px) {
+  .btn-install-pwa { padding: 7px 9px; font-size: 10px; letter-spacing: .3px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-install-pwa { animation: none; }
+  .btn-install-pwa::after { animation: none; opacity: 0; }
+}
+
+/* ============================================================
+   TAREAS DEL DÍA + UBICACIÓN GPS — estilos nuevos aislados
+   ============================================================ */
+.btn-finalizar-tarea {
+  width: 100%;
+  margin-bottom: 10px;
+  background: linear-gradient(135deg, #15a35b 0%, #0e8046 100%);
+  color: #fff;
+  border: none;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: .5px;
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(14,128,70,.28);
+}
+.btn-finalizar-tarea:disabled { opacity: .85; cursor: progress; }
+.btn-finalizar-tarea.gps-buscando {
+  background: linear-gradient(135deg, var(--grad-2) 0%, var(--grad-1) 100%);
+  animation: bmGpsPulse 1.2s ease-in-out infinite;
+}
+@keyframes bmGpsPulse { 0%,100% { opacity: 1; } 50% { opacity: .72; } }
+
+.tareas-dia { margin-top: 16px; }
+.tareas-dia-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.tareas-dia-title { font-size: 13px; font-weight: 800; color: var(--primary); letter-spacing: .4px; }
+.tareas-dia-count { background: var(--primary); color: #fff; font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 20px; }
+
+.tarea-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid #15a35b;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+.tarea-card.ubic-manual { border-left-color: #f0a422; }
+.tarea-card.ubic-ninguna { border-left-color: var(--text-soft); }
+.tarea-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.tarea-num { font-size: 15px; font-weight: 800; color: var(--primary); }
+.tarea-total { font-size: 17px; font-weight: 800; color: #15a35b; white-space: nowrap; }
+.tarea-total-lbl { font-size: 10px; color: var(--text-soft); font-weight: 600; text-transform: uppercase; display: block; text-align: right; }
+.tarea-row { font-size: 12px; margin-bottom: 3px; display: flex; gap: 5px; }
+.tarea-row .k { color: var(--text-soft); font-weight: 600; min-width: 62px; }
+.tarea-row .v { color: var(--text); font-weight: 600; word-break: break-word; }
+.tarea-badge { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 6px; margin-left: 4px; vertical-align: middle; }
+.tarea-badge.gps { background: rgba(21,163,91,.15); color: #0e8046; }
+.tarea-badge.manual { background: rgba(240,164,34,.18); color: #a86c00; }
+.tarea-badge.sin { background: rgba(120,120,120,.15); color: var(--text-soft); }
+.tarea-mapa {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px; padding: 6px 11px;
+  background: rgba(37,99,201,.1); color: var(--primary);
+  border: 1px solid rgba(37,99,201,.28); border-radius: 8px;
+  font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none;
+}
+.tarea-baremos { margin-top: 9px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.tarea-baremos-lbl { font-size: 11px; font-weight: 700; color: var(--text-soft); margin-bottom: 5px; }
+.tarea-baremo-item { font-size: 11.5px; padding: 3px 0; display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border); }
+.tarea-baremo-item:last-child { border-bottom: none; }
+.tarea-baremo-item .tb-cod { font-weight: 700; color: var(--text); }
+.tarea-baremo-item .tb-desc { color: var(--text-soft); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tarea-baremo-item .tb-sub { font-weight: 700; white-space: nowrap; }
+.tarea-card-actions { display: flex; justify-content: flex-start; margin-top: 10px; }
+.tarea-del-btn {
+  background: rgba(214,45,45,.1); color: #c62828;
+  border: 1px solid rgba(214,45,45,.3); border-radius: 8px;
+  padding: 7px 12px; font-size: 12px; font-weight: 800; cursor: pointer;
+}
+
+.ubic-motivo {
+  background: rgba(240,164,34,.12); border: 1px solid rgba(240,164,34,.35);
+  color: #a86c00; border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; font-weight: 600; margin-bottom: 10px;
+}
+.ubic-resumen {
+  background: rgba(37,99,201,.07); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px;
+  color: var(--text-soft); margin-bottom: 12px; line-height: 1.5;
+}
+.ubic-resumen strong { color: var(--text); }
+
+.mj-ubic {
+  background: rgba(37,99,201,.07); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px; margin-bottom: 10px; font-size: 12px;
+}
+.mj-ubic-title { font-size: 12px; font-weight: 800; color: var(--primary); margin-bottom: 6px; }
+.mj-ubic-row { padding: 5px 0; border-bottom: 1px solid var(--border); }
+.mj-ubic-row:last-child { border-bottom: none; }
+
+/* ============================================================
+   v5.8.36 - Formato de tarjeta de tarea (colapsable) y barra de
+   busqueda siempre visible. Bloque aditivo: no altera reglas previas.
+   ============================================================ */
+
+/* La barra "Buscar baremos" queda fija justo debajo de la cabecera */
+.search-wrap { top: var(--hdr-h, 92px); z-index: 45; }
+
+/* Cabecera de la tarjeta: clickeable para expandir / colapsar */
+.tarea-card-top { cursor: pointer; user-select: none; align-items: center; }
+.tarea-card-top:focus-visible { outline: 2px solid var(--primary-light); outline-offset: 2px; border-radius: 6px; }
+.tarea-caret { color: var(--text-soft); font-size: 12px; transition: transform .2s ease; flex: 0 0 auto; }
+.tarea-card.open .tarea-caret { transform: rotate(180deg); }
+
+/* Los baremos y el boton ELIMINAR se ven al expandir */
+.tarea-body { display: none; }
+.tarea-card.open .tarea-body { display: block; animation: fadeIn .2s ease; }
+
+/* Fila de direccion con chip y enlace al mapa */
+.tarea-row.dir { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tarea-row.dir .k { flex: 0 0 auto; }
+.dir-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 3px 10px;
+  font-size: 12.5px; font-weight: 600; color: var(--text);
+  max-width: 100%; word-break: break-word;
+}
+.dir-chip.manual { border-style: dashed; }
+.dir-chip.ninguna { color: var(--text-soft); font-weight: 500; }
+.tarea-row.dir .tarea-mapa { margin: 0; }
+
+/* Total de la tarea en linea */
+.tarea-row.total { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
+.tarea-row.total .k { font-weight: 700; }
+
+/* Tipo de trabajo: selector previo a FINALIZAR TAREA y chips con contador/filtro */
+.tipo-trabajo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tipo-trabajo-row label { font-size: 11px; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .4px; flex: 0 0 auto; }
+.tipo-trabajo-row .select { padding: 9px 12px; font-size: 14px; font-weight: 600; }
+
+.tareas-dia-tipos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.tipo-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 4px 10px; font-size: 11.5px; font-weight: 700;
+  font-family: inherit; cursor: pointer; line-height: 1.4;
+}
+.tipo-chip .tc-n { background: rgba(0,0,0,.10); border-radius: 10px; padding: 0 6px; font-size: 11px; font-weight: 800; }
+.tipo-chip.activo { background: var(--primary); color: #fff; border-color: var(--primary); }
+.tipo-chip.activo .tc-n { background: rgba(255,255,255,.25); }
+.tipo-chip.vacio { opacity: .55; }
+.tipo-chip:active { transform: scale(.97); }
+
+.tarea-tipo {
+  display: inline-block; margin-left: 8px; padding: 1px 8px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 12px; font-size: 10.5px; font-weight: 700;
+  color: var(--text-soft); letter-spacing: .3px; vertical-align: middle;
+}
+.tareas-vacio { text-align: center; color: var(--text-soft); font-size: 13px; padding: 14px 8px; }
+
+/* ============================================================
+   v5.8.38 — Tipo de trabajo con checks de seleccion unica,
+   cabecera siempre visible y barra de busqueda sin superponerse.
+   Bloque aislado: no modifica reglas anteriores.
+   ============================================================ */
+
+/* La cabecera nunca desaparece al hacer scroll */
+.app-header { position: sticky; position: -webkit-sticky; top: 0; z-index: 60; }
+
+/* La barra de busqueda acompana el scroll: deja de taparse con las tareas */
+.search-wrap { position: relative; top: auto; z-index: 1; }
+
+/* Fila de tipo de trabajo */
+.tipo-trabajo-row {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 10px 12px; margin-bottom: 10px;
+}
+.tipo-trabajo-lbl {
+  display: block; font-size: 10px; font-weight: 800; color: var(--text-soft);
+  text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px;
+}
+.tipo-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Check individual: aspecto de casilla, comportamiento de opcion unica */
+.tipo-check {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 11px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg); cursor: pointer; user-select: none;
+  font-size: 12px; font-weight: 700; color: var(--text-soft);
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.tipo-check-input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.tipo-check-box {
+  width: 16px; height: 16px; flex: 0 0 auto; border-radius: 5px;
+  border: 2px solid var(--border); background: var(--surface);
+  display: grid; place-items: center; transition: all .15s ease;
+}
+.tipo-check-box::after {
+  content: '✓'; font-size: 11px; font-weight: 900; line-height: 1; color: #fff;
+  opacity: 0; transform: scale(.6); transition: all .15s ease;
+}
+.tipo-check.activo { border-color: var(--primary); background: rgba(var(--brand-rgb),.08); color: var(--text); }
+.tipo-check.activo .tipo-check-box { border-color: var(--primary); background: var(--primary); }
+.tipo-check.activo .tipo-check-box::after { opacity: 1; transform: scale(1); }
+.tipo-check-input:focus-visible + .tipo-check-box { outline: 2px solid var(--primary-light); outline-offset: 2px; }
+.tipo-check:active { transform: scale(.98); }
+
+/* ============================================================
+   v5.8.39 — Botones en una sola linea (Agregar / Finalizar tarea /
+   Cerrar jornada), tipos de trabajo compactos y tarjeta
+   "Total del dia" mas minimalista. Bloque aislado.
+   ============================================================ */
+
+/* Los tres botones en una sola fila: FINALIZAR TAREA queda al medio */
+.btn-row-3 { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 6px; align-items: stretch; }
+.btn-row-3 .btn { padding: 11px 6px; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; width: 100%; }
+
+/* El boton finalizar deja de ocupar una linea propia, sin perder su estilo ni su animacion GPS */
+.btn-row-3 .btn-finalizar-tarea {
+  margin-bottom: 0;
+  padding: 11px 6px;
+  font-size: 11.5px;
+  letter-spacing: .2px;
+  border-radius: 10px;
+  box-shadow: 0 3px 9px rgba(14,128,70,.24);
+}
+
+@media (max-width: 380px) {
+  .btn-row-3 { gap: 5px; }
+  .btn-row-3 .btn { font-size: 10.5px; padding: 10px 4px; }
+  .btn-row-3 .btn-finalizar-tarea { font-size: 10.5px; }
+}
+
+/* Tipos de trabajo: texto mas chico para ocupar menos espacio */
+.tipo-trabajo-row { padding: 8px 10px; margin-bottom: 8px; }
+.tipo-trabajo-lbl { font-size: 9px; margin-bottom: 6px; letter-spacing: .5px; }
+.tipo-checks { gap: 5px; }
+.tipo-check { padding: 5px 8px; gap: 5px; font-size: 10.5px; border-radius: 999px; }
+.tipo-check-box { width: 13px; height: 13px; border-width: 1.5px; border-radius: 4px; }
+.tipo-check-box::after { font-size: 9px; }
+
+/* Tarjeta "Total del dia": mas fina y minimalista (conserva colores, medalla y reglas) */
+.total-general { padding: 9px 12px; border-radius: 12px; margin-bottom: 10px; }
+.total-general .lbl { font-size: 9.5px; letter-spacing: .8px; font-weight: 700; opacity: .88; }
+.total-general .val { font-size: 19px; margin-top: 1px; letter-spacing: -.3px; }
+.total-general .tg-medal { font-size: 24px; right: 10px; bottom: 2px; }
+
+/* Totales superiores tambien mas compactos, en linea con el resto */
+.totals { gap: 6px; margin-bottom: 10px; }
+.total-card { padding: 7px 6px; }
+.total-card .lbl { font-size: 9px; }
+.total-card .val { font-size: 14px; margin-top: 2px; }
+
+/* ============================================================
+   v5.8.46 — Cabecera y buscador siempre visibles, cabecera mejor
+   organizada, boton INSTALAR minimalista (antes de AYUDA),
+   tipos de trabajo en una sola linea y tarjetas de tareas del dia
+   mas compactas. Bloque aislado y aditivo.
+   ============================================================ */
+
+/* --- El scroll nunca tapa la cabecera ------------------------------------ */
+/* overflow-x: clip evita crear un contenedor de scroll (no rompe sticky) */
+html { overflow-x: clip; }
+body {
+  overflow-x: clip;
+  padding-top: var(--hdr-h, 92px);
+}
+
+.app-header {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 300;
+  padding: calc(9px + env(safe-area-inset-top)) 12px 9px;
+  gap: 5px;
+  border-bottom: 1px solid rgba(255,255,255,.14);
+}
+
+/* Cabecera mejor organizada: titulo + acciones sin desbordes */
+.app-header .row-top { gap: 8px; min-width: 0; flex-wrap: nowrap; }
+.app-header h1 { font-size: clamp(15px, 4.4vw, 18px); gap: 7px; min-width: 0; }
+.app-header h1 .logo-img { height: clamp(24px, 6.8vw, 32px); }
+.app-header h1 .brand-logo-img { height: clamp(32px, 8.4vw, 40px); width: clamp(32px, 8.4vw, 40px); }
+.header-actions { gap: 6px; flex: 0 0 auto; flex-wrap: nowrap; }
+.app-header .user-chip { flex-wrap: nowrap; white-space: nowrap; padding: 5px 9px; }
+.app-header .date-line { min-width: 0; justify-content: flex-end; }
+
+.btn-ayuda { padding: 6px 10px; font-size: 10.5px; letter-spacing: .6px; border-radius: 9px; }
+.icon-btn { width: 32px; height: 32px; border-radius: 9px; font-size: 15px; }
+
+/* --- Boton "Instalar app": minimalista, primero en la cabecera ----------- */
+.btn-install-pwa {
+  order: -1;                     /* siempre antes de AYUDA */
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.34);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 9px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-transform: none;
+  gap: 5px;
+  box-shadow: none;
+  animation: none;
+}
+.btn-install-pwa::after { content: none; animation: none; }
+.btn-install-pwa:active { background: rgba(255,255,255,.28); transform: scale(.96); }
+.btn-install-pwa .bip-ico { font-size: 12px; line-height: 1; }
+
+/* --- La barra de busqueda tampoco desaparece ----------------------------- */
+/* Queda pegada justo debajo de la cabecera fija (nunca se superponen) */
+.search-wrap {
+  position: sticky; position: -webkit-sticky;
+  top: calc(var(--hdr-h, 92px) + 6px);
+  z-index: 120;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+.search-list { max-height: min(260px, 42vh); }
+
+/* --- Tipo de trabajo: checks chicos y lineales --------------------------- */
+.tipo-trabajo-row { display: block; padding: 8px 9px; }
+.tipo-trabajo-lbl { display: block; white-space: nowrap; }
+.tipo-checks { flex-wrap: nowrap; gap: 4px; align-items: stretch; }
+.tipo-check {
+  flex: 1 1 0; min-width: 0;
+  justify-content: center;
+  padding: 5px 5px;
+  gap: 4px;
+  border-radius: 8px;
+  font-size: clamp(8.5px, 2.5vw, 11px);
+  line-height: 1.15;
+  text-align: center;
+}
+.tipo-check-txt, .tipo-check-short { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tipo-check-short { display: none; }
+.tipo-check-box { width: 12px; height: 12px; border-width: 1.5px; border-radius: 4px; }
+.tipo-check-box::after { font-size: 8px; }
+
+/* Pantallas medianas y chicas: etiquetas abreviadas para no romper la linea */
+@media (max-width: 560px) {
+  .tipo-check-txt { display: none; }
+  .tipo-check-short { display: inline; }
+}
+@media (max-width: 400px) {
+  .tipo-checks { gap: 3px; }
+  .tipo-check { padding: 5px 3px; gap: 3px; }
+  .tipo-check-box { width: 10px; height: 10px; border-radius: 3px; }
+  .tipo-check-box::after { font-size: 7px; }
+}
+/* Pantallas muy angostas: el check se vuelve solo estado de la pastilla */
+@media (max-width: 330px) {
+  .tipo-check-box { display: none; }
+}
+
+/* --- Tarjetas de tareas del dia mas compactas ---------------------------- */
+.tareas-dia { margin-top: 12px; }
+.tarea-card {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border-left-width: 3px;
+  margin-bottom: 7px;
+}
+.tarea-card-top { margin-bottom: 4px; gap: 6px; }
+.tarea-num { font-size: 12.5px; letter-spacing: .2px; }
+.tarea-tipo { margin-left: 6px; padding: 1px 6px; font-size: 9.5px; }
+.tarea-row { font-size: 11.5px; margin-bottom: 1px; }
+.tarea-row .k { min-width: 0; }
+.tarea-row.meta { display: flex; flex-wrap: wrap; gap: 5px; color: var(--text-soft); font-weight: 600; }
+.tarea-row.meta .v { color: var(--text-soft); font-weight: 600; }
+.tarea-row.meta .meta-sep { opacity: .5; }
+.tarea-row.dir { gap: 5px; }
+.dir-chip { padding: 2px 8px; font-size: 11.5px; border-radius: 12px; }
+.tarea-mapa { margin-top: 0; padding: 3px 8px; font-size: 11px; border-radius: 7px; }
+.tarea-row.total { margin-top: 3px; }
+.tarea-total { font-size: 14.5px; }
+.tarea-caret { font-size: 10px; }
+.tarea-baremos { margin-top: 7px; padding-top: 6px; }
+.tarea-baremo-item { font-size: 11px; padding: 2px 0; }
+.tarea-card-actions { margin-top: 8px; }
+.tarea-del-btn { padding: 5px 10px; font-size: 11px; }
+
+/* Cabecera en pantallas muy angostas: el titulo nunca choca con las acciones */
+/* v5.9.28 - antes era overflow:hidden y, al apretarse la cabecera en
+   pantallas angostas, el logo quedaba recortado hasta no verse. */
+.app-header h1 { overflow: visible; flex: 0 0 auto; }
+@media (max-width: 360px) {
+  .app-header { padding-left: 10px; padding-right: 10px; }
+  .app-header h1 { font-size: 14px; gap: 6px; }
+  .app-header h1 .logo-img { height: 22px; }
+  .app-header h1 .brand-logo-img { height: 30px; width: 30px; }
+  .header-actions { gap: 5px; }
+  .btn-install-pwa { padding: 6px 8px; }
+  .btn-install-pwa .bip-txt { display: none; }   /* solo icono: minimalista */
+  .btn-ayuda { padding: 6px 8px; font-size: 10px; letter-spacing: .3px; }
+  .icon-btn { width: 30px; height: 30px; font-size: 14px; }
+}
+
+
+/* ============================================================
+   MARCA, ACCESIBILIDAD Y AVISO DE ACTUALIZACION (v5.9.5)
+   ============================================================ */
+
+/* Texto solo para lectores de pantalla: el nombre BAREMO sigue existiendo
+   para accesibilidad y SEO, pero no se dibuja en pantalla. */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Logo del splash enmascarado, mismo criterio que el encabezado. */
+.splash-brand { line-height: 0; margin: 0; }
+.splash .splash-logo {
+  width: clamp(132px, 44vw, 188px);
+  height: clamp(132px, 44vw, 188px);
+  margin: 10px auto 14px;
+}
+
+/* Aviso de actualizacion: barra chica abajo, cerrable, nunca bloquea la app. */
+.update-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
+  transform: translate(-50%, 16px);
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(92vw, 420px);
+  padding: 9px 10px 9px 14px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, .92);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  color: #e8edf5;
+  font-size: 12.5px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .26s ease, transform .26s cubic-bezier(.22,1,.36,1);
+  backdrop-filter: blur(10px);
+}
+.update-bar.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.update-bar .ub-dot {
+  width: 8px; height: 8px; flex: 0 0 8px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 0 0 rgba(56,189,248,.55);
+  animation: ubPulse 2.4s ease-out infinite;
+}
+@keyframes ubPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(56,189,248,.5); }
+  70%  { box-shadow: 0 0 0 9px rgba(56,189,248,0); }
+  100% { box-shadow: 0 0 0 0 rgba(56,189,248,0); }
+}
+.update-bar .ub-txt { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.update-bar .ub-go {
+  flex: 0 0 auto;
+  padding: 7px 13px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--grad-2), var(--accent));
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.update-bar .ub-go:disabled { opacity: .7; cursor: default; }
+.update-bar .ub-x {
+  flex: 0 0 auto;
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  color: #cbd5e1;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .update-bar { transition: none; }
+  .update-bar .ub-dot { animation: none; }
+}
+
+
+/* ============================================================
+   LOGO DE MARCA (v5.9.9)
+   brand.js genera la mascara real del logo (a partir de su transparencia
+   o quitando el fondo opaco) y aca se define el relleno: el degradado
+   claro del propio encabezado. Asi el logo se integra al fondo azul de la
+   app sin recuadro, sin borde y sin bloque blanco o gris.
+   ============================================================ */
+.brand-logo-img {
+  display: block;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: contain;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 1;
+}
+.splash .brand-logo-img { background-position: center; }
+.brand-logo-img.brand-listo { opacity: 1; }
+/* v5.9.28 - el logo NUNCA se oculta: antes se escondia hasta que brand.js
+   confirmaba la descarga y, si esa confirmacion no llegaba (sin conexion,
+   cache lenta, re-render del DOM), la marca del encabezado desaparecia.
+   Ahora el fondo tambien esta declarado aca, asi el logo se ve siempre,
+   incluso sin JavaScript. */
+.brand-logo-img:not(.brand-sin-logo) {
+  visibility: visible;
+  background-image: url("icons/logo.png?v=5.9.38");
+}
+
+/* El logo se muestra tal cual: imagen a color con fondo transparente. */
+
+/* Caso raro: la mascara no se pudo calcular, se muestra la imagen real */
+.brand-logo-img.brand-plana { filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+
+/* Sin archivo de logo: se muestra el nombre, nunca un bloque vacio. */
+.brand-logo-img.brand-sin-logo {
+  opacity: 1;
+  width: auto !important;
+  height: auto !important;
+  font-size: clamp(17px, 5.2vw, 22px);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: .5px;
+  color: #fff;
+  background: none;
+  filter: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.splash .brand-logo-img.brand-sin-logo { font-size: clamp(24px, 8vw, 34px); margin: 6px auto 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo-img { transition: none; }
+}
+
+/* v5.9.9 - logo original: colores propios, fondo transparente, sin recuadro */
+.brand-logo-img,
+[data-brand-logo] {
+  background-color: transparent !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.brand-logo-img.brand-plana {
+  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, .28));
+}
+.splash .splash-logo.brand-plana {
+  background-position: center !important;
+  filter: drop-shadow(0 6px 22px rgba(0, 0, 0, .38));
+  animation: brandFloat 3.4s ease-in-out infinite;
+}
+#headerLogo.brand-plana { background-position: left center !important; }
+
+@keyframes brandFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.02); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash .splash-logo.brand-plana { animation: none; }
+}
+
+/* ============================================================
+   ARRANQUE (v5.9.12): rayo animado -> salto al logo -> app
+   El fondo negro del arranque lo ponia Android desde el manifest
+   (background_color). Ahora el manifest usa el mismo azul del splash,
+   asi el arranque nativo y esta pantalla se ven como una sola.
+   ============================================================ */
+.splash {
+  background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 100%) !important;
+  overflow: hidden;
+}
+/* el rayo se centra en absoluto para que al desaparecer no mueva nada */
+.splash .logo.electric-wrapper {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120px;
+  height: 120px;
+  margin: 0;
+  background: transparent !important;
+  border-radius: 0 !important;
+  animation: splashRayo 1.85s cubic-bezier(.22,.9,.24,1) forwards;
+}
+.splash .logo svg.electric-bolt { width: 92px; height: 92px; }
+@keyframes splashRayo {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.30); }
+  16%  { opacity: 1; transform: translate(-50%, -50%) scale(1.18); }
+  50%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70%  { opacity: .55; transform: translate(-50%, -50%) scale(1.9); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.6); visibility: hidden; }
+}
+/* el logo entra justo cuando el rayo se abre */
+.splash .splash-brand {
+  animation: splashLogo 1.85s cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes splashLogo {
+  0%, 48% { opacity: 0; transform: scale(.5); }
+  70%     { opacity: 1; transform: scale(1.09); }
+  86%     { transform: scale(.985); }
+  100%    { opacity: 1; transform: scale(1); }
+}
+.splash p { animation: splashTexto 2.1s ease forwards; }
+@keyframes splashTexto {
+  0%, 66% { opacity: 0; }
+  100%    { opacity: .85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash .logo.electric-wrapper { animation: none; opacity: 0; visibility: hidden; }
+  .splash .splash-brand, .splash p { animation: none; opacity: 1; }
+}
+
+/* ===================== v5.9.28 =====================
+   Tarea en curso (no suma al Total del dia) + Detalle
+   del Historial agrupado por TAREA con sus baremos.
+   =================================================== */
+.total-en-curso {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  background: linear-gradient(135deg, rgba(255,193,7,.10), rgba(255,193,7,.03));
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  align-items: center;
+}
+.total-en-curso .tec-lbl { font-size: 12px; font-weight: 800; color: #b07d00; letter-spacing: .3px; }
+.total-en-curso .tec-val { font-size: 18px; font-weight: 900; color: var(--primary); text-align: right; }
+.total-en-curso .tec-meta { font-size: 11px; color: var(--text-soft); }
+.total-en-curso .tec-nota {
+  grid-column: 1 / -1;
+  font-size: 10.5px;
+  color: var(--text-soft);
+  border-top: 1px solid var(--border);
+  margin-top: 5px;
+  padding-top: 5px;
+}
+
+.mj-tareas { display: flex; flex-direction: column; gap: 12px; margin: 10px 0 4px; }
+.mj-tarea {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card, #fff);
+}
+.mj-tarea.ubic-gps { border-left-color: #15a35b; }
+.mj-tarea.ubic-manual { border-left-color: #f0a500; }
+.mj-tarea.ubic-ninguna, .mj-tarea.sin-tarea { border-left-color: #c0392b; }
+.mj-tarea-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, rgba(var(--brand-rgb),.12), rgba(var(--brand-rgb),.04));
+}
+.mj-t-num { font-size: 12.5px; font-weight: 900; color: var(--primary); }
+.mj-t-tipo {
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+  background: rgba(var(--brand-rgb),.12); color: var(--primary);
+}
+.mj-t-badge {
+  font-size: 9.5px; font-weight: 800; padding: 2px 7px; border-radius: 20px;
+  color: #fff; letter-spacing: .4px;
+}
+.mj-t-badge.gps { background: #15a35b; }
+.mj-t-badge.manual { background: #f0a500; }
+.mj-t-badge.ninguna { background: #c0392b; }
+.mj-t-total { margin-left: auto; font-size: 15px; font-weight: 900; color: var(--primary); }
+.mj-tarea-meta, .mj-tarea-dir { padding: 5px 10px; font-size: 11px; color: var(--text-soft); }
+.mj-tarea-dir { border-bottom: 1px solid var(--border); word-break: break-word; }
+.mj-tarea-dir a { color: var(--primary); font-weight: 700; text-decoration: none; }
+.mj-tabla { width: 100%; border-collapse: collapse; font-size: 11px; }
+.mj-tabla th {
+  background: rgba(var(--brand-rgb),.06);
+  color: var(--text-soft);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  padding: 6px 8px;
+  text-align: left;
+}
+.mj-tabla td { padding: 6px 8px; border-top: 1px solid var(--border); }
+.mj-tabla .num { text-align: right; white-space: nowrap; }
+.mj-tabla th.num { text-align: right; }
+.mj-tabla .td-desc { max-width: 190px; }
+.mj-sin { padding: 10px; font-size: 11.5px; color: var(--text-soft); font-style: italic; }
+
+/* ===================== v5.9.28 =====================
+   Dentro de la app no se selecciona texto. Sin avisos,
+   sin mensajes: simplemente no hay seleccion.
+   Los campos de formulario SI se pueden editar y
+   seleccionar, porque si no se podria escribir en ellos.
+   =================================================== */
+html, body {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+input, textarea, select, [contenteditable="true"], [contenteditable=""] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* ===== v5.9.28 - BOTON CERRAR JORNADA =====
+   Diseno elegante y llamativo: degradado animado, borde luminoso,
+   destello que recorre el boton y candado con latido suave. */
+.btn-cerrar-jornada {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: .3px;
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(120deg, #6d0f2a 0%, #a81238 22%, #d81b60 45%, #a81238 68%, #6d0f2a 100%);
+  background-size: 300% 100%;
+  animation: bcjGradiente 7s ease-in-out infinite;
+  box-shadow: 0 4px 14px rgba(168, 18, 56, .38), inset 0 1px 0 rgba(255, 255, 255, .22);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+  transition: box-shadow .25s ease, transform .12s ease;
+}
+
+/* Destello que cruza el boton */
+.btn-cerrar-jornada::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, .38) 50%, transparent 100%);
+  transform: skewX(-18deg);
+  animation: bcjDestello 4.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Resplandor dorado del borde */
+.btn-cerrar-jornada::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 193, 7, .55);
+  opacity: 0;
+  animation: bcjBorde 3.6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.btn-cerrar-jornada .bcj-ico,
+.btn-cerrar-jornada .bcj-txt {
+  position: relative;
+  z-index: 3;
+}
+
+.btn-cerrar-jornada .bcj-ico {
+  font-size: 1.05em;
+  line-height: 1;
+  animation: bcjLatido 2.8s ease-in-out infinite;
+}
+
+.btn-cerrar-jornada:hover {
+  box-shadow: 0 6px 20px rgba(216, 27, 96, .5), inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+
+.btn-cerrar-jornada:active {
+  transform: scale(.96);
+  box-shadow: 0 2px 8px rgba(168, 18, 56, .45), inset 0 2px 6px rgba(0, 0, 0, .22);
+}
+
+@keyframes bcjGradiente {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes bcjDestello {
+  0% { left: -60%; }
+  55%, 100% { left: 130%; }
+}
+
+@keyframes bcjBorde {
+  0%, 100% { opacity: 0; }
+  50% { opacity: .9; }
+}
+
+@keyframes bcjLatido {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+
+/* Accesibilidad: si el sistema pide menos movimiento, queda fijo pero elegante. */
+@media (prefers-reduced-motion: reduce) {
+  .btn-cerrar-jornada,
+  .btn-cerrar-jornada .bcj-ico { animation: none; }
+  .btn-cerrar-jornada::before,
+  .btn-cerrar-jornada::after { animation: none; opacity: 0; }
+}
+
+/* ===================================================
+   v5.9.28 - INICIAR JORNADA + RELOJ DE ARENA ANIMADO
+   =================================================== */
+
+/* --- Botonera de 3 lugares fijos --------------------------------
+   El tercer lugar de la botonera es compartido: Iniciar o Cerrar jornada.
+   El contenedor ocupa una sola celda de la grilla y el boton que toca
+   se estira a todo su ancho y alto. Asi uno reemplaza al otro en el
+   mismo punto exacto, sin correr los otros dos botones. */
+.btn-slot-jornada { display: block; min-width: 0; }
+.btn-slot-jornada > .btn { width: 100%; height: 100%; }
+
+/* --- Boton Iniciar jornada (minimalista, al tono del resto) ----- */
+.btn-iniciar-jornada {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--card, #fff);
+  color: var(--primary);
+  border: 1.5px solid var(--primary);
+  border-radius: 12px;
+  font-weight: 800;
+  letter-spacing: .2px;
+  transition: background .18s ease, color .18s ease, transform .12s ease, box-shadow .18s ease;
+}
+.btn-iniciar-jornada .bij-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 9px;
+  line-height: 1;
+  padding-left: 1px;              /* centra el triangulo opticamente */
+  flex: 0 0 auto;
+  animation: bijLatido 2.4s ease-in-out infinite;
+}
+.btn-iniciar-jornada .bij-txt { white-space: nowrap; }
+.btn-iniciar-jornada:hover {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(var(--brand-rgb),.22);
+}
+.btn-iniciar-jornada:hover .bij-ico { background: #fff; color: var(--primary); }
+.btn-iniciar-jornada:active { transform: scale(.985); }
+
+/* Late suave, para que se note que es el paso a dar. Sin ser molesto. */
+@keyframes bijLatido {
+  0%, 100% { transform: scale(1);    opacity: 1;   }
+  50%      { transform: scale(1.14); opacity: .82; }
+}
+
+/* --- Reloj de arena animado ("Tarea en curso") -------------------
+   Dibujado con CSS, no es un emoji: por eso puede moverse.
+   La arena baja de a poco y, al vaciarse, el reloj gira 180 grados y
+   vuelve a empezar. Comunica que la tarea sigue corriendo.         */
+/* --- Recuadro "Tarea en curso": alineacion prolija ----------------
+   Cada pieza tiene su lugar fijo en la grilla, para que el monto quede
+   alineado a la derecha y a la misma altura que el titulo, en vez de
+   flotar suelto entre los textos.
+
+       [ reloj Tarea en curso ]        [ $ monto ]
+       [ 2 baremos, 3 items   ]
+       [ nota al pie, ancho completo   ]                              */
+.total-en-curso { column-gap: 14px; row-gap: 3px; }
+.total-en-curso .tec-lbl {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.total-en-curso .tec-meta { grid-column: 1; grid-row: 2; }
+.total-en-curso .tec-val {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  text-align: right;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.tec-reloj {
+  position: relative;
+  display: inline-block;
+  width: 11px;
+  height: 15px;
+  flex: 0 0 auto;
+  border: 1.5px solid #b07d00;
+  border-radius: 2px;
+  overflow: hidden;
+  /* Estrangula el centro para darle la silueta de reloj de arena. */
+  clip-path: polygon(0 0, 100% 0, 100% 8%, 56% 46%, 56% 54%, 100% 92%, 100% 100%, 0 100%, 0 92%, 44% 54%, 44% 46%, 0 8%);
+  animation: tecGiro 4s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+/* La arena: una banda que se va consumiendo de arriba hacia abajo. */
+.tec-reloj-arena {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100%;
+  background: #f0a500;
+  animation: tecArena 4s ease-in-out infinite;
+}
+@keyframes tecArena {
+  0%     { height: 100%; }
+  46%    { height: 6%;   }
+  50%    { height: 6%;   }
+  /* Ya vacio: el reloj gira y la arena vuelve a estar llena. */
+  50.01% { height: 100%; }
+  100%   { height: 100%; }
+}
+@keyframes tecGiro {
+  0%, 48%   { transform: rotate(0deg); }
+  58%, 100% { transform: rotate(180deg); }
+}
+
+/* Respeta a quien pidio menos movimiento en el sistema operativo. */
+@media (prefers-reduced-motion: reduce) {
+  .tec-reloj,
+  .tec-reloj-arena,
+  .btn-iniciar-jornada .bij-ico { animation: none; }
+  .tec-reloj-arena { height: 55%; }
+}
+
+/* La nota al pie: renglon propio, ancho completo y separada del monto. */
+.total-en-curso .tec-nota {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  margin-top: 6px;
+  padding-top: 6px;
+  line-height: 1.45;
+}
+
+/* ===================================================
+   v5.9.28 - DETALLE DE COBRO POR MES
+   Cada mes se muestra como un bloque propio: el titulo separa
+   "mes en curso" de "mes cerrado", para que se vea de un vistazo
+   que la 2da quincena del mes cerrado no toca el mes nuevo.
+   =================================================== */
+.stat-card.produccion-cobrar .pc-desglose .pc-titulo {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: rgba(255,255,255,.7);
+  margin: 10px 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.18);
+}
+/* El primer titulo no necesita linea arriba: ya la trae el contenedor. */
+.stat-card.produccion-cobrar .pc-desglose .pc-titulo:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.stat-card.produccion-cobrar .pc-desglose .pc-nota {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,.14);
+  border-radius: 8px;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+
+/* ==================================================================
+   ===== v5.9.29 =====================================================
+   Estilos nuevos: subtitulos de tarjetas del dashboard, aviso del
+   Detalle Saldo Final, cierres de combustible, creditos compactos,
+   balance + tarjetas del Historial y guia de carga de baremos.
+   ================================================================== */
+
+/* --- Dashboard: subtitulo de la tarjeta --- */
+.stat-card .sub { font-size: 9.5px; line-height: 1.25; color: var(--text-soft); margin-top: 3px;
+  text-transform: uppercase; letter-spacing: .03em; min-height: 12px; }
+.stat-card.produccion-cobrar .sub { color: rgba(255,255,255,.75); }
+
+/* --- Detalle Saldo Final: aviso de baremos --- */
+.pc-alerta { margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 10px; line-height: 1.45;
+  background: rgba(255,255,255,.12); border: 1px dashed rgba(255,255,255,.35); color: #fde68a; }
+.pc-alerta b { color: #fff; }
+
+/* --- Graficos: estado vacio --- */
+.chart-vacio { text-align: center; font-size: 12px; color: var(--text-soft); padding: 26px 10px; }
+
+/* --- Combustible: subtotal y cierres mensuales --- */
+.comb-sub { font-size: 11px; color: var(--text-soft); margin-top: 4px; }
+.comb-vacio { text-align: center; padding: 22px 14px; background: var(--surface); border: 1px dashed var(--border);
+  border-radius: var(--radius); color: var(--text-soft); }
+.comb-vacio .cv-ico { font-size: 32px; opacity: .55; }
+.comb-vacio .cv-txt { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 6px; }
+.comb-vacio .cv-sub { font-size: 11px; margin-top: 2px; }
+.comb-tag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  padding: 4px 8px; border-radius: 20px; white-space: nowrap; }
+.comb-tag.si { background: var(--danger-soft); color: var(--danger); }
+.comb-tag.no { background: var(--surface-2); color: var(--text-soft); }
+.registro-item.comb-nodesc { opacity: .85; }
+.comb-cierre { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 8px; overflow: hidden; }
+.comb-cierre > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: grid;
+  grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+.comb-cierre > summary::-webkit-details-marker { display: none; }
+.comb-cierre .cc-mes { font-size: 13px; font-weight: 700; text-transform: capitalize; }
+.comb-cierre .cc-tot { font-size: 15px; font-weight: 800; color: var(--primary); text-align: right; }
+.comb-cierre .cc-meta { grid-column: 1 / -1; font-size: 10.5px; color: var(--text-soft); }
+.comb-cierre[open] > summary { border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.comb-cierre .cc-body { padding: 10px 10px 2px; background: var(--surface-2); }
+.comb-cierre .cc-body .registro-item { margin-bottom: 8px; }
+.cc-vacio { text-align: center; font-size: 12px; color: var(--text-soft); padding: 16px 10px;
+  border: 1px dashed var(--border); border-radius: var(--radius); }
+.cc-hist { text-align: right; font-size: 11px; color: var(--text-soft); padding: 4px 6px 2px; }
+
+/* --- Ajustes: creditos compactos (menos scroll) --- */
+.credits.credits-min { margin-top: 16px; padding: 12px 14px; font-size: 12px; line-height: 1.4; text-align: left; }
+.credits-min .credits-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.credits-min .credits-emoji { font-size: 18px; margin: 0; }
+.credits-min .credits-label { display: inline; font-size: 9px; letter-spacing: 1.4px; margin: 0; }
+.credits-min .credits-author { font-size: 14px; }
+.credits-min .app-version { margin-left: auto; }
+.credits-min .credits-legal { margin-top: 8px; border-top: 1px solid rgba(255,255,255,.15); padding-top: 6px; }
+.credits-min .credits-legal > summary { list-style: none; cursor: pointer; font-size: 10px;
+  color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: 1px; }
+.credits-min .credits-legal > summary::-webkit-details-marker { display: none; }
+.credits-min .credits-legal p { font-size: 10px; color: rgba(255,255,255,.55); line-height: 1.5; margin-top: 6px; }
+
+/* v5.9.31 - boton de WhatsApp en la tarjeta de jornada */
+.mini-btn.wa { background: #25D366; color: #fff; }
+.mini-btn.wa svg { width: 15px; height: 15px; display: block; }
+.mini-btn[disabled] { opacity: .55; pointer-events: none; }
+/* v5.9.30 - fuera la grilla de metricas repetidas: solo chips de contexto. */
+
+/* --- Historial: tarjeta de jornada --- */
+.jornada-card { position: relative; display: flex; gap: 0; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition); }
+.jornada-card:active { transform: scale(.99); }
+.jornada-card.selected { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(var(--brand-rgb),.18); }
+.jornada-card.is-abierta { border-style: dashed; }
+.jornada-card .jc-franja { width: 6px; flex: 0 0 6px; }
+.jornada-card .jc-body { flex: 1; min-width: 0; padding: 11px 13px; }
+.jornada-card .jc-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.jornada-card .jc-fecha { font-size: 13.5px; font-weight: 700; text-transform: capitalize; }
+.jornada-card .jc-total { font-size: 17px; font-weight: 800; color: var(--primary); }
+.jornada-card .jc-zonas { font-size: 11px; color: var(--text-soft); margin-top: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jornada-card .jc-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.jornada-card .jc-chip { font-size: 10px; font-weight: 600; color: var(--text-soft);
+  background: var(--surface-2); border-radius: 20px; padding: 3px 8px; }
+.jornada-card .jc-foot { display: flex; align-items: center; gap: 8px; margin-top: 9px;
+  padding-top: 8px; border-top: 1px dashed var(--border); }
+.jornada-card .jc-estado { font-size: 9px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 20px; }
+.jornada-card .jc-estado.cerrada { background: var(--success-soft); color: var(--success); }
+.jornada-card .jc-estado.abierta { background: var(--warn-soft); color: var(--warn); }
+.jornada-card .jc-rango { font-size: 9.5px; color: var(--text-soft); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.jornada-card .ji-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+
+/* --- Ayuda: guia de carga de baremos --- */
+.help-pasos { counter-reset: paso; margin: 10px 0 0; padding: 0; list-style: none; }
+.help-pasos > li { counter-increment: paso; position: relative; padding: 0 0 14px 34px; margin-bottom: 14px;
+  border-bottom: 1px dashed var(--border); }
+.help-pasos > li:last-child { border-bottom: none; }
+.help-pasos > li::before { content: counter(paso); position: absolute; left: 0; top: 0; width: 24px; height: 24px;
+  border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 800;
+  display: grid; place-items: center; }
+.help-pasos > li h4 { font-size: 13.5px; margin: 2px 0 4px; }
+/* v5.9.39: las capturas de la guia dejaron de ser imagenes navegables.
+   Se pintan como fondo, sin puntero y sin menu de imagen, asi el navegador
+   no puede abrirlas en una pestana ni mostrar su direccion. */
+.help-shot { display: block; width: 100%; max-width: 300px; margin: 8px auto 4px; border-radius: 12px;
+  border: 1px solid var(--border); box-shadow: var(--shadow); background-color: var(--surface-2);
+  background-repeat: no-repeat; background-position: center center; background-size: contain;
+  pointer-events: none; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; -webkit-user-drag: none; }
+.help-shot-cap { display: block; text-align: center; font-size: 10.5px; color: var(--text-soft); margin-bottom: 4px; }
+.help-tabla-demo { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0; }
+.help-tabla-demo th, .help-tabla-demo td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+.help-tabla-demo th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.help-nota { background: var(--warn-soft); border-left: 3px solid var(--warn); color: #7c5e00;
+  padding: 9px 12px; border-radius: 8px; font-size: 12px; margin: 10px 0; }
+[data-theme="dark"] .help-nota { background: rgba(224,168,0,.14); color: #fcd34d; }
+.help-ok { background: var(--success-soft); border-left: 3px solid var(--success); color: #065f46;
+  padding: 9px 12px; border-radius: 8px; font-size: 12px; margin: 10px 0; }
+[data-theme="dark"] .help-ok { background: rgba(34,160,107,.16); color: #6ee7b7; }
+
+/* ==================================================================
+   v5.9.34 - DETALLE FINAL PRODUCCION: COMPACTA Y EXPANDIBLE
+   Misma idea que la tarjeta "Desarrollado por" de Ajustes: poco alto,
+   tipografias chicas y el contenido largo escondido hasta que se pide.
+   Cerrada muestra el saldo y el estado; EXPANDIR abre todo el desglose.
+   ================================================================== */
+.stat-card.produccion-cobrar .pc-toggle {
+  flex: 0 0 auto;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.35);
+  color: #fff;
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+.stat-card.produccion-cobrar .pc-toggle:hover { background: rgba(255,255,255,.3); }
+.stat-card.produccion-cobrar .pc-toggle:active { transform: scale(.96); }
+
+.stat-card.produccion-cobrar .pc-resumen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.stat-card.produccion-cobrar .pc-resumen .pc-amount { font-size: 21px; margin-bottom: 0; }
+
+/* Cerrada por defecto: el desglose completo solo aparece al expandir. */
+.stat-card.produccion-cobrar .pc-desglose { display: none; }
+.stat-card.produccion-cobrar.expandida .pc-desglose { display: block; margin-top: 8px; }
+
+/* ---------- v5.9.36: franja del mes en el Historial ----------
+   Aparece solo con los filtros Este mes / Mes anterior. Misma altura y
+   mismos bordes que el resto de las tarjetas, con las dos acciones
+   alineadas a la derecha y apiladas a lo ancho en pantallas chicas. */
+.hist-mes-panel { display: none; }
+.hist-mes-panel.show { display: flex; align-items: center; justify-content: space-between; gap: 10px 12px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; }
+.hist-mes-panel .hmp-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hist-mes-panel .hmp-mes { font-size: 13px; font-weight: 700; color: var(--text); text-transform: capitalize; letter-spacing: .2px; }
+.hist-mes-panel .hmp-meta { font-size: 10.5px; color: var(--text-soft); }
+.hist-mes-panel .hmp-acciones { display: flex; gap: 6px; margin-left: auto; }
+.hist-mes-panel .hmp-btn { padding: 7px 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); font-size: 11.5px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; }
+.hist-mes-panel .hmp-btn:disabled { opacity: .5; cursor: default; }
+.hist-mes-panel .hmp-btn.activo { background: var(--surface-2); color: var(--text); border-color: var(--primary-light); }
+.hist-mes-panel .hmp-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+@media (max-width: 400px) {
+  .hist-mes-panel .hmp-acciones { margin-left: 0; flex: 1 1 100%; }
+  .hist-mes-panel .hmp-btn { flex: 1 1 0; text-align: center; padding: 8px 10px; }
+}
+
+/* ============================================================
+   v5.9.37 - EL RAYO DEL ARRANQUE, CON DESTELLOS Y ELECTRICIDAD
+
+   Secuencia (dura lo mismo que antes, 1,85 s, asi el arranque no
+   se hace mas largo):
+     1. el contorno del rayo se dibuja de punta a punta con un trazo
+        de luz blanca;
+     2. el cuerpo se va cargando de energia con un degrade que va del
+        blanco al dorado;
+     3. tres arcos electricos chispean alrededor;
+     4. a mitad de camino descarga: halo que se expande y un flash
+        que ilumina toda la pantalla;
+     5. el rayo se abre y entra el logo con la B, como siempre.
+   Todo es SVG + CSS: no hay imagenes nuevas ni librerias.
+   ============================================================ */
+.splash .splash-flash {
+  position: absolute; inset: 0; z-index: 0; opacity: 0; pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.95) 0%, rgba(210,232,255,.55) 32%, rgba(var(--brand-rgb),0) 68%);
+  animation: splashFlash 1.85s ease-out forwards;
+}
+.splash .splash-brand, .splash p { position: relative; z-index: 2; }
+.splash .logo.electric-wrapper { z-index: 1; }
+
+.splash .electric-wrapper .bolt-halo {
+  position: absolute; left: 50%; top: 50%; width: 150px; height: 150px;
+  margin: -75px 0 0 -75px; border-radius: 50%; opacity: 0; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,.6) 0%, rgba(130,185,255,.3) 38%, rgba(var(--brand-rgb),0) 70%);
+  animation: boltHalo 1.85s ease-out forwards;
+}
+
+/* Pisa las animaciones viejas del rayo (color, brillo y temblor). */
+.splash .electric-wrapper svg.electric-bolt {
+  width: 92px; height: 92px; overflow: visible; fill: none;
+  animation: boltLatido 1.85s cubic-bezier(.22,.9,.24,1) forwards;
+}
+.splash .electric-wrapper .bolt-body {
+  fill: url(#boltGrad);
+  filter: drop-shadow(0 0 6px rgba(255,255,255,.9)) drop-shadow(0 0 16px rgba(255,213,74,.7));
+  animation: boltCarga 1.85s ease-out forwards;
+}
+.splash .electric-wrapper .bolt-trazo {
+  fill: none; stroke: #ffffff; stroke-width: 1.1;
+  stroke-linejoin: round; stroke-linecap: round;
+  stroke-dasharray: 100; stroke-dashoffset: 100;
+  filter: drop-shadow(0 0 4px rgba(255,255,255,.95));
+  animation: boltTrazo 1.85s cubic-bezier(.4,.05,.25,1) forwards;
+}
+.splash .electric-wrapper .bolt-arc {
+  fill: none; stroke: rgba(196,228,255,.95); stroke-width: .55; stroke-linecap: round;
+  opacity: 0; filter: drop-shadow(0 0 3px rgba(150,205,255,.9));
+}
+.splash .electric-wrapper .bolt-arc.a1 { animation: boltArco 1.85s linear forwards; }
+.splash .electric-wrapper .bolt-arc.a2 { animation: boltArco 1.85s linear .16s forwards; }
+.splash .electric-wrapper .bolt-arc.a3 { animation: boltArco 1.85s linear .32s forwards; }
+
+.splash .electric-wrapper .bs4 {
+  top: 24%; right: 12%; width: 3.5px; height: 3.5px; background: #ffffff;
+  animation: chispaAlta 1.1s infinite linear .15s;
+}
+.splash .electric-wrapper .bs5 {
+  bottom: 22%; right: 26%; width: 2.5px; height: 2.5px; background: #ffd54a;
+  animation: chispaBaja 1.3s infinite linear .45s;
+}
+
+@keyframes boltTrazo {
+  0%   { stroke-dashoffset: 100; opacity: 1; }
+  46%  { stroke-dashoffset: 0; opacity: 1; }
+  58%  { stroke-dashoffset: 0; opacity: .85; stroke-width: 1.6; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes boltCarga {
+  0%   { opacity: 0; }
+  14%  { opacity: .28; }
+  34%  { opacity: .62; }
+  50%  { opacity: 1; filter: drop-shadow(0 0 12px rgba(255,255,255,1)) drop-shadow(0 0 28px rgba(255,213,74,.95)); }
+  62%  { opacity: .92; }
+  100% { opacity: .85; }
+}
+@keyframes boltLatido {
+  0%   { transform: scale(.94); }
+  50%  { transform: scale(1.07); }
+  64%  { transform: scale(.99); }
+  100% { transform: scale(1); }
+}
+@keyframes boltHalo {
+  0%   { opacity: 0; transform: scale(.4); }
+  40%  { opacity: .45; transform: scale(.85); }
+  52%  { opacity: .95; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(2); }
+}
+@keyframes boltArco {
+  0%, 22%  { opacity: 0; }
+  24%      { opacity: 1; }
+  28%      { opacity: 0; }
+  38%      { opacity: .9; }
+  42%      { opacity: 0; }
+  52%      { opacity: 1; }
+  57%      { opacity: 0; }
+  100%     { opacity: 0; }
+}
+@keyframes splashFlash {
+  0%, 42% { opacity: 0; }
+  50%     { opacity: .8; }
+  60%     { opacity: .14; }
+  100%    { opacity: 0; }
+}
+@keyframes chispaAlta {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; box-shadow: 0 0 6px #ffffff; }
+  100% { transform: translate(22px, -24px) scale(0); opacity: 0; }
+}
+@keyframes chispaBaja {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; box-shadow: 0 0 6px #ffd54a; }
+  100% { transform: translate(16px, 20px) scale(0); opacity: 0; }
+}
+
+/* Con el movimiento reducido activado el rayo no chispea: se ve quieto. */
+@media (prefers-reduced-motion: reduce) {
+  .splash .splash-flash,
+  .splash .electric-wrapper .bolt-halo,
+  .splash .electric-wrapper .bolt-trazo,
+  .splash .electric-wrapper .bolt-arc,
+  .splash .electric-wrapper .bs4,
+  .splash .electric-wrapper .bs5 { animation: none; opacity: 0; }
+  .splash .electric-wrapper svg.electric-bolt { animation: none; }
+  .splash .electric-wrapper .bolt-body { animation: none; opacity: 1; }
+}
+
+/* ============================================================
+   v5.9.38 - EL LOGO CON LA B, ANIMADO. Y EL RAYO, ADENTRO DEL CIRCULO
+
+   Dos cosas:
+
+   1) TODO EL FUEGO DEL RAYO QUEDA DENTRO DEL CIRCULO DE LA B.
+      Antes el destello ocupaba la pantalla completa y el halo se
+      expandia al doble, asi que la luz se derramaba por todos lados.
+      Ahora el destello es un circulo del mismo diametro que el logo,
+      centrado justo donde va el logo, y el rayo, su halo y sus chispas
+      estan recortados en ese mismo circulo: nada se sale del borde.
+      De paso el rayo dejo de estar 22 px mas abajo que el logo, asi
+      que ahora se transforma en la B en el mismo punto exacto.
+
+   2) EL LOGO DE LA B SE ANIMA.
+      Es un PNG, no un dibujo vectorial, asi que no se puede animar la
+      B por dentro separada de su circulo. Lo que si se puede, y es lo
+      que se hace, es animar la pieza entera:
+        - entra con rebote (ya lo hacia);
+        - un aro de energia se cierra sobre el borde del circulo;
+        - un barrido de luz cruza la B en diagonal, recortado dentro
+          del circulo;
+        - el resplandor late dos veces, fuerte y despues suave;
+        - y queda flotando apenas, como respirando.
+   ============================================================ */
+.splash {
+  --brand-circulo: clamp(132px, 44vw, 188px);
+  --brand-centro: calc(50% - 22px);
+}
+
+/* ---- 1) el destello, contenido en el circulo del logo ---- */
+.splash .splash-flash {
+  position: absolute;
+  /* OJO: inset va ANTES de left/top. Puesto despues, los anula (inset es la
+     forma corta de top/right/bottom/left) y el destello se va de lugar. */
+  inset: auto;
+  left: 50%;
+  top: var(--brand-centro);
+  width: var(--brand-circulo);
+  height: var(--brand-circulo);
+  margin: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  clip-path: circle(50% at 50% 50%);
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.95) 0%, rgba(214,234,255,.5) 44%, rgba(255,255,255,0) 72%);
+}
+
+/* ---- el rayo: mismo centro que el logo y recortado en su circulo ---- */
+.splash .logo.electric-wrapper {
+  top: var(--brand-centro);
+  width: var(--brand-circulo);
+  height: var(--brand-circulo);
+  clip-path: circle(50% at 50% 50%);
+  animation: splashRayoDentro 1.85s cubic-bezier(.22,.9,.24,1) forwards;
+}
+@keyframes splashRayoDentro {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.30); }
+  16%  { opacity: 1; transform: translate(-50%, -50%) scale(1.10); }
+  50%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70%  { opacity: .5;  transform: translate(-50%, -50%) scale(1.06); }
+  100% { opacity: 0;  transform: translate(-50%, -50%) scale(1.12); visibility: hidden; }
+}
+.splash .electric-wrapper .bolt-halo {
+  width: 100%;
+  height: 100%;
+  margin: -50% 0 0 -50%;
+  animation: boltHaloDentro 1.85s ease-out forwards;
+}
+@keyframes boltHaloDentro {
+  0%   { opacity: 0;   transform: scale(.34); }
+  40%  { opacity: .5;  transform: scale(.72); }
+  52%  { opacity: .95; transform: scale(.92); }
+  100% { opacity: 0;   transform: scale(1); }
+}
+/* las chispas tampoco se van del circulo */
+@keyframes chispaAlta {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; box-shadow: 0 0 6px #ffffff; }
+  100% { transform: translate(11px, -12px) scale(0); opacity: 0; }
+}
+@keyframes chispaBaja {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; box-shadow: 0 0 6px #ffd54a; }
+  100% { transform: translate(8px, 10px) scale(0); opacity: 0; }
+}
+
+/* ---- 2) el logo con la B, animado ---- */
+.splash .splash-logo {
+  position: relative;
+  isolation: isolate;
+}
+/* aro de energia que se cierra sobre el borde del circulo */
+.splash .splash-logo::before {
+  content: '';
+  position: absolute;
+  inset: 1%;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.55);
+  box-shadow: 0 0 14px rgba(255,255,255,.45), inset 0 0 18px rgba(150,205,255,.35);
+  opacity: 0;
+  pointer-events: none;
+  animation: brandAro 1.85s ease-out forwards;
+}
+/* barrido de luz en diagonal, recortado dentro del circulo */
+.splash .splash-logo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  clip-path: circle(48% at 50% 50%);
+  background-image: linear-gradient(115deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.85) 50%, rgba(255,255,255,0) 58%);
+  background-repeat: no-repeat;
+  background-size: 300% 300%;
+  background-position: 130% 50%;
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  animation: brandBrillo 1.85s ease-out forwards;
+}
+/* el resplandor late: fuerte cuando entra, suave despues. Y queda flotando. */
+.splash .splash-brand .splash-logo,
+.splash .splash-brand .splash-logo.brand-plana {
+  animation: brandResplandor 1.85s ease-out forwards, brandFloat 3.4s ease-in-out 1.9s infinite;
+}
+@keyframes brandAro {
+  0%, 48% { opacity: 0; transform: scale(.72); }
+  60%     { opacity: .95; transform: scale(.9); }
+  78%     { opacity: .5; transform: scale(.98); }
+  100%    { opacity: 0; transform: scale(1); }
+}
+@keyframes brandBrillo {
+  0%, 54% { opacity: 0; background-position: 130% 50%; }
+  60%     { opacity: 1; }
+  92%     { opacity: .9; background-position: -30% 50%; }
+  100%    { opacity: 0; background-position: -30% 50%; }
+}
+@keyframes brandResplandor {
+  0%, 46% { filter: drop-shadow(0 6px 22px rgba(0,0,0,.38)); }
+  58%     { filter: drop-shadow(0 0 18px rgba(255,255,255,.95)) drop-shadow(0 0 34px rgba(255,213,74,.75)); }
+  72%     { filter: drop-shadow(0 4px 18px rgba(0,0,0,.3)) drop-shadow(0 0 10px rgba(255,255,255,.4)); }
+  86%     { filter: drop-shadow(0 0 14px rgba(255,255,255,.7)) drop-shadow(0 0 26px rgba(130,190,255,.55)); }
+  100%    { filter: drop-shadow(0 6px 22px rgba(0,0,0,.38)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash .splash-logo::before,
+  .splash .splash-logo::after { animation: none; opacity: 0; }
+  .splash .splash-brand .splash-logo,
+  .splash .splash-brand .splash-logo.brand-plana { animation: none; }
+  .splash .logo.electric-wrapper { animation: none; opacity: 0; visibility: hidden; }
+}
+
+
+/* ============================================================
+   v5.9.39 - PIELES DE LA APP
+   Tres identidades de color elegibles desde Ajustes > Apariencia.
+   Cada piel solo pisa variables: no toca ni una regla de layout.
+   El atributo data-piel lo escribe un script chico en el <head>,
+   asi el arranque (splash) ya sale con el color elegido y no
+   se ve ningun parpadeo de color al abrir la app.
+   ============================================================ */
+[data-piel="aurora"] {
+  --primary: #4f46e5;
+  --primary-dark: #3730a3;
+  --primary-light: #7c3aed;
+  --bg: #f5f6ff;
+  --surface-2: #f0f1fe;
+  --text: #1b1a3a;
+  --text-soft: #5b5b7a;
+  --border: #e3e2f7;
+  --shadow: 0 4px 16px rgba(79,70,229,.10);
+  --grad-1: #4338ca;
+  --grad-2: #7c3aed;
+  --accent: #22d3ee;
+  --brand-rgb: 79,70,229;
+  --chart-1: #4338ca;
+  --chart-2: #7c3aed;
+  --chart-3: #22d3ee;
+  --chart-4: #22a06b;
+  --chart-5: #f59e0b;
+  --chart-6: #94a3b8;
+}
+[data-piel="esmeralda"] {
+  --primary: #0f766e;
+  --primary-dark: #115e59;
+  --primary-light: #10b981;
+  --bg: #f2faf7;
+  --surface-2: #eaf7f2;
+  --text: #12241f;
+  --text-soft: #516560;
+  --border: #d7ece5;
+  --shadow: 0 4px 16px rgba(15,118,110,.12);
+  --grad-1: #0f766e;
+  --grad-2: #10b981;
+  --accent: #a3e635;
+  --brand-rgb: 15,118,110;
+  --chart-1: #0f766e;
+  --chart-2: #10b981;
+  --chart-3: #a3e635;
+  --chart-4: #0ea5e9;
+  --chart-5: #f59e0b;
+  --chart-6: #94a3b8;
+}
+[data-piel="grafito"] {
+  --primary: #1e293b;
+  --primary-dark: #0b1120;
+  --primary-light: #334155;
+  --bg: #f4f6f9;
+  --surface-2: #eef1f6;
+  --text: #0f172a;
+  --text-soft: #55617a;
+  --border: #dbe1ea;
+  --shadow: 0 4px 16px rgba(15,23,42,.14);
+  --grad-1: #1f2937;
+  --grad-2: #0b1120;
+  --accent: #22d3ee;
+  --brand-rgb: 30,41,59;
+  --chart-1: #1e293b;
+  --chart-2: #22d3ee;
+  --chart-3: #a3e635;
+  --chart-4: #f472b6;
+  --chart-5: #f59e0b;
+  --chart-6: #94a3b8;
+}
+/* el modo oscuro sigue manejando las superficies: va con mas peso
+   (html + atributo) para que ninguna piel le pise el fondo */
+html[data-theme="dark"] {
+  --bg: #0e1420;
+  --surface: #182033;
+  --surface-2: #1f2940;
+  --text: #e6ecf5;
+  --text-soft: #9aa5b8;
+  --border: #2a3550;
+  --shadow: 0 4px 16px rgba(0,0,0,.4);
+  --danger-soft: #3a1f1d;
+}
+
+/* ---------- Ajustes > Apariencia: elegir la piel ---------- */
+.piel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-top: 14px;
+  box-shadow: var(--shadow);
+}
+.piel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.piel-ico {
+  width: 34px; height: 34px; flex: 0 0 auto;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 100%);
+}
+.piel-title { font-size: 13.5px; font-weight: 800; color: var(--text); line-height: 1.2; }
+.piel-desc { font-size: 11px; color: var(--text-soft); line-height: 1.3; margin-top: 2px; }
+.piel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.piel-op {
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 8px 6px 9px;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.piel-op:active { transform: scale(.97); }
+.piel-muestra {
+  width: 100%; height: 34px;
+  border-radius: 9px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+}
+/* el puntito con brillo muestra el color de acento de cada piel */
+.piel-muestra::after {
+  content: '';
+  position: absolute;
+  right: 6px; bottom: 6px;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--pm-ac, #fff);
+  box-shadow: 0 0 8px var(--pm-ac, #fff);
+}
+.piel-nombre { font-size: 10.5px; font-weight: 700; color: var(--text-soft); text-align: center; line-height: 1.2; }
+.piel-op.activo { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(var(--brand-rgb),.18); }
+.piel-op.activo .piel-nombre { color: var(--primary); }
+.piel-op.activo .piel-muestra::before {
+  content: '';
+  position: absolute;
+  left: 6px; top: 6px;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+}
+@media (max-width: 360px) {
+  .piel-muestra { height: 30px; }
+  .piel-nombre { font-size: 9.5px; }
+}
+
+
+/* ============================================================
+   v5.9.39 - AJUSTES MAS LIVIANO Y PANEL DE APARIENCIA
+   ============================================================ */
+
+/* accion secundaria adentro de una fila de Ajustes (forzar actualizacion) */
+.aj-sub {
+  margin-top: 7px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 10.5px; font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.aj-sub:active { transform: scale(.96); border-color: var(--primary); color: var(--primary); }
+
+/* panel de apariencia (modo + piel) */
+.apar-modal { max-width: 360px; }
+.apar-h { font-size: 18px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+.apar-intro {
+  font-size: 11.5px; color: var(--text-soft);
+  text-align: center; line-height: 1.4;
+  margin-bottom: 14px;
+}
+.apar-sec { margin-bottom: 14px; }
+.apar-lbl {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--text-soft);
+  margin-bottom: 7px;
+}
+.apar-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.apar-modo {
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: 13px;
+  padding: 11px 8px 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.apar-modo:active { transform: scale(.97); }
+.apar-modo-ico { font-size: 20px; line-height: 1; }
+.apar-modo-txt { font-size: 12.5px; font-weight: 800; color: var(--text); }
+.apar-modo-sub { font-size: 9.5px; color: var(--text-soft); text-align: center; line-height: 1.25; }
+.apar-modo.activo {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(var(--brand-rgb),.18);
+  background: linear-gradient(180deg, rgba(var(--brand-rgb),.10) 0%, var(--surface) 100%);
+}
+.apar-modo.activo .apar-modo-txt { color: var(--primary); }
+/* la tarjeta de pieles, ya adentro del panel, no necesita marco propio */
+.apar-card { margin-top: 0; box-shadow: none; }
+@media (max-width: 360px) {
+  .apar-modo-sub { display: none; }
+  .apar-modal { max-width: 320px; }
+}
+
+/* ============================================================
+   v5.9.41 - CIERRE DE JORNADA: BOTON Y CARTEL ANIMADOS
+   El boton acusa el cierre con un movimiento leve (se comprime, el candado
+   traba y el borde pasa a verde) y despues aparece el cartel de confirmacion.
+   ============================================================ */
+.btn-cerrar-jornada.bcj-cerrando {
+  pointer-events: none;
+  animation: bcjTrabar .56s cubic-bezier(.34, 1.56, .64, 1) forwards;
+}
+.btn-cerrar-jornada.bcj-cerrando::before {
+  animation: none;
+  opacity: 0;
+}
+.btn-cerrar-jornada.bcj-cerrando::after {
+  animation: none;
+  opacity: 1;
+  border-color: rgba(34, 197, 94, .9);
+  box-shadow: 0 0 16px rgba(34, 197, 94, .55);
+}
+.btn-cerrar-jornada.bcj-cerrando .bcj-ico {
+  animation: bcjCandado .56s cubic-bezier(.34, 1.56, .64, 1) forwards;
+}
+@keyframes bcjTrabar {
+  0%   { transform: scale(1); }
+  32%  { transform: scale(.93); }
+  66%  { transform: scale(1.035); }
+  100% { transform: scale(1); filter: saturate(.82) brightness(.94); }
+}
+@keyframes bcjCandado {
+  0%   { transform: rotate(0) scale(1); }
+  38%  { transform: rotate(-13deg) scale(1.24); }
+  68%  { transform: rotate(7deg) scale(1.07); }
+  100% { transform: rotate(0) scale(1); }
+}
+
+/* ---- cartel: "Tu jornada ha sido cerrada satisfactoriamente" ---- */
+.cierre-ok {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 9600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(86vw, 320px);
+  padding: 22px 20px 20px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid rgba(34, 197, 94, .35);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .3), 0 0 0 6px rgba(34, 197, 94, .1);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.86);
+  transition: opacity .3s ease, transform .38s cubic-bezier(.34, 1.56, .64, 1);
+}
+.cierre-ok.ver {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.cierre-ok .cok-aro {
+  position: absolute;
+  left: 50%;
+  top: 22px;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 2px solid rgba(34, 197, 94, .55);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) scale(.7);
+}
+.cierre-ok.ver .cok-aro { animation: cokAro 1.15s ease-out .5s 2; }
+.cierre-ok .cok-ico {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+}
+.cierre-ok .cok-ico svg {
+  width: 62px;
+  height: 62px;
+  overflow: visible;
+}
+.cierre-ok .cok-circ {
+  fill: none;
+  stroke: rgba(34, 197, 94, .85);
+  stroke-width: 2.5;
+  stroke-dasharray: 150;
+  stroke-dashoffset: 150;
+}
+.cierre-ok.ver .cok-circ { animation: cokCirculo .66s ease-out .06s forwards; }
+.cierre-ok .cok-tilde {
+  fill: none;
+  stroke: #16a34a;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, .45));
+}
+.cierre-ok.ver .cok-tilde { animation: cokTilde .52s cubic-bezier(.65, 0, .45, 1) .44s forwards; }
+.cierre-ok .cok-txt {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--text);
+}
+@keyframes cokCirculo {
+  0%   { stroke-dashoffset: 150; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes cokTilde {
+  0%   { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes cokAro {
+  0%   { opacity: .75; transform: translateX(-50%) scale(.7); }
+  100% { opacity: 0;   transform: translateX(-50%) scale(1.7); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-cerrar-jornada.bcj-cerrando,
+  .btn-cerrar-jornada.bcj-cerrando .bcj-ico { animation: none; }
+  .cierre-ok { transition: opacity .2s ease; transform: translate(-50%, -50%) scale(1); }
+  .cierre-ok.ver .cok-aro { animation: none; }
+  .cierre-ok .cok-circ,
+  .cierre-ok .cok-tilde { stroke-dashoffset: 0; }
+  .cierre-ok.ver .cok-circ,
+  .cierre-ok.ver .cok-tilde { animation: none; }
+}
