@@ -9,7 +9,7 @@
    persistente, recordatorio de backup, librerias locales con respaldo
    en CDN, cache de geocodificacion y limpieza del service worker.
    ============================================================ */
-const APP_VERSION = '5.9.43';
+const APP_VERSION = '5.9.44';
 
 /* Control de versión de Términos y Condiciones */
 const CURRENT_TERMS_VERSION = 1;
@@ -1158,6 +1158,31 @@ function cerrarModalFirebase() {
   if (m) m.classList.remove('show');
 }
 
+async function procesarLoginGoogle(user) {
+  if (!user) return;
+  toast(`Sesión iniciada: ${user.displayName || user.email}`, 'success');
+  try {
+    const cloudProf = await window.FirebaseSync.getCloudUserProfile();
+    if (cloudProf && cloudProf.legajo) {
+      await dbPut('usuarios', { nombre: cloudProf.nombre, legajo: cloudProf.legajo, zona: cloudProf.zona, email: cloudProf.email, creado: cloudProf.creado });
+      await dbPut('config', { key: 'activeUser', value: cloudProf.legajo });
+      State.user = cloudProf;
+      $('#viewLogin')?.classList.remove('active');
+      await loadOrCreateJornada();
+      showApp();
+      actualizarEstadoFirebase();
+      window.FirebaseSync.syncFullCloudDatabase().catch(() => {});
+    } else {
+      if ($('#loginNombre')) $('#loginNombre').value = user.displayName || '';
+      toast('Ingresá tu legajo y zona para completar tu perfil', 'info');
+    }
+  } catch (err) {
+    console.warn('Error loading cloud profile:', err);
+  }
+}
+
+window.onGoogleLoginSuccess = procesarLoginGoogle;
+
 function initFirebaseUI() {
   const btnChip = $('#btnCloudSync');
   if (btnChip) btnChip.onclick = abrirModalFirebase;
@@ -1213,7 +1238,11 @@ function initFirebaseUI() {
             actualizarEstadoFirebase();
           }
         } catch (e) {
-          toast('Error al conectar Google', 'error');
+          if (e?.code === 'auth/popup-blocked') {
+            toast('Permití ventanas emergentes para conectar tu cuenta de Google.', 'warn');
+          } else if (e?.code !== 'auth/popup-closed-by-user') {
+            toast('Error al conectar Google: ' + (e?.message || 'Intente nuevamente'), 'error');
+          }
         }
       }
     };
@@ -1224,6 +1253,95 @@ function initFirebaseUI() {
       actualizarEstadoFirebase();
     });
   }
+
+  window.addEventListener('firebase-ready', () => {
+    actualizarEstadoFirebase();
+    setupGoogleLogin();
+  });
+  setupGoogleLogin();
+}
+
+async function asegurarFirebaseListo(timeoutMs = 3000) {
+  if (window.FirebaseSync?.auth && (window.FirebaseSync?.signInWithPopup || window.FirebaseSync?.loginWithGoogle)) {
+    return true;
+  }
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs) {
+    await new Promise(r => setTimeout(r, 100));
+    if (window.FirebaseSync?.auth && (window.FirebaseSync?.signInWithPopup || window.FirebaseSync?.loginWithGoogle)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function setupGoogleLogin() {
+  const btnG = $('#btnGoogleLogin');
+  if (!btnG) return;
+
+  btnG.onclick = async () => {
+    if (btnG.dataset.busy === '1') return;
+
+    // Verificar si el SDK de Firebase está listo al momento del click
+    const listo = await asegurarFirebaseListo(3000);
+    if (!listo) {
+      toast('El servicio Firebase aún no está disponible. Verificá tu conexión a internet o recargá la página.', 'warn');
+      return;
+    }
+
+    const originalHTML = btnG.innerHTML;
+    try {
+      btnG.dataset.busy = '1';
+      btnG.disabled = true;
+      btnG.style.opacity = '0.65';
+      btnG.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;">⏳</span> <span>Conectando con Google...</span>';
+
+      const sync = window.FirebaseSync;
+      let user = null;
+
+      // Llamada explícita a signInWithPopup con auth y el proveedor de Google
+      if (typeof sync.signInWithPopup === 'function' && sync.auth && sync.googleProvider) {
+        const res = await sync.signInWithPopup(sync.auth, sync.googleProvider);
+        user = res?.user;
+      } else if (typeof sync.loginWithGoogle === 'function') {
+        user = await sync.loginWithGoogle();
+      } else {
+        throw new Error('Método de autenticación con Google no disponible');
+      }
+
+      if (user) {
+        await procesarLoginGoogle(user);
+      }
+    } catch (err) {
+      console.error('[Google Auth Error]:', err);
+      if (err?.code === 'auth/popup-blocked') {
+        toast('El navegador bloqueó la ventana emergente. Intentando acceder por redirección...', 'info');
+        try {
+          if (window.FirebaseSync?.signInWithRedirect && window.FirebaseSync?.auth && window.FirebaseSync?.googleProvider) {
+            await window.FirebaseSync.signInWithRedirect(window.FirebaseSync.auth, window.FirebaseSync.googleProvider);
+            return;
+          }
+        } catch (redirErr) {
+          console.error('[Redirect Auth Error]:', redirErr);
+        }
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        toast('Ventana de acceso con Google cerrada.', 'info');
+      } else if (err?.code === 'auth/cancelled-popup-request') {
+        // Ignorar solicitudes repetidas
+      } else if (err?.code === 'auth/network-request-failed') {
+        toast('Error de red al conectar con Google. Comprobá tu conexión.', 'error');
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        toast('Dominio no autorizado en la consola de Firebase.', 'error');
+      } else {
+        toast('No se pudo conectar con Google: ' + (err?.message || 'Error'), 'error');
+      }
+    } finally {
+      btnG.disabled = false;
+      btnG.style.opacity = '1';
+      btnG.innerHTML = originalHTML;
+      btnG.dataset.busy = '0';
+    }
+  };
 }
 
 function showLogin() {
@@ -1231,43 +1349,7 @@ function showLogin() {
   $$('.tab-btn').forEach(b => b.classList.remove('active'));
   $('#viewLogin')?.classList.add('active');
 
-  const btnG = $('#btnGoogleLogin');
-  if (btnG) {
-    btnG.onclick = async () => {
-      if (!window.FirebaseSync) {
-        toast('Firebase no está disponible', 'warn');
-        return;
-      }
-      try {
-        btnG.disabled = true;
-        btnG.style.opacity = '0.6';
-        const user = await window.FirebaseSync.loginWithGoogle();
-        if (user) {
-          toast(`Sesión iniciada: ${user.displayName || user.email}`, 'success');
-          const cloudProf = await window.FirebaseSync.getCloudUserProfile();
-          if (cloudProf && cloudProf.legajo) {
-            await dbPut('usuarios', { nombre: cloudProf.nombre, legajo: cloudProf.legajo, zona: cloudProf.zona, email: cloudProf.email, creado: cloudProf.creado });
-            await dbPut('config', { key: 'activeUser', value: cloudProf.legajo });
-            State.user = cloudProf;
-            $('#viewLogin')?.classList.remove('active');
-            await loadOrCreateJornada();
-            showApp();
-            actualizarEstadoFirebase();
-            window.FirebaseSync.syncFullCloudDatabase().catch(() => {});
-          } else {
-            if ($('#loginNombre')) $('#loginNombre').value = user.displayName || '';
-            toast('Ingresá tu legajo y zona para completar tu perfil', 'info');
-          }
-        }
-      } catch (err) {
-        console.error('Google login error:', err);
-        toast('No se pudo iniciar sesión con Google', 'error');
-      } finally {
-        btnG.disabled = false;
-        btnG.style.opacity = '1';
-      }
-    };
-  }
+  setupGoogleLogin();
 
   const f = $('#loginForm');
   if (f) {

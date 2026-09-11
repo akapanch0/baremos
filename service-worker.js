@@ -36,7 +36,7 @@
    Se mantiene el control del usuario: el service worker nuevo espera y
    la cache vieja recien se reemplaza cuando se acepta actualizar.
    ------------------------------------------------------------ */
-const SHELL_CACHE = 'baremo-shell-5.9.43';
+const SHELL_CACHE = 'baremo-shell-5.9.44';
 
 // Se guardan las dos formas de cada pagina (con y sin .html) porque el
 // hosting puede entrar por cualquiera de las dos.
@@ -45,37 +45,38 @@ const PAGINAS = ['./', './index.html', './index', './landing.html', './landing']
 // Copias locales de las librerias (si estan en ./vendor). Si no existen, se
 // omiten en silencio y la app usa el CDN, que tambien queda cacheado.
 const VENDOR_ASSETS = [
-  './vendor/chart.umd.min.js?v=5.9.43',
-  './vendor/jspdf.umd.min.js?v=5.9.43',
-  './vendor/jspdf.plugin.autotable.min.js?v=5.9.43',
-  './vendor/xlsx.full.min.js?v=5.9.43'
+  './vendor/chart.umd.min.js?v=5.9.44',
+  './vendor/jspdf.umd.min.js?v=5.9.44',
+  './vendor/jspdf.plugin.autotable.min.js?v=5.9.44',
+  './vendor/xlsx.full.min.js?v=5.9.44'
 ];
 
 const ASSETS = [
-  './landing.css?v=5.9.43',
-  './styles.css?v=5.9.43',
-  './main.js?v=5.9.43',
-  './brand.js?v=5.9.43',
-  './app.js?v=5.9.43',
-  './db.js?v=5.9.43',
+  './landing.css?v=5.9.44',
+  './styles.css?v=5.9.44',
+  './main.js?v=5.9.44',
+  './brand.js?v=5.9.44',
+  './firebase-bundle.js?v=5.9.44',
+  './app.js?v=5.9.44',
+  './db.js?v=5.9.44',
   './baremo.json',
-  './manifest.json?v=5.9.43',
-  './icons/logo.png?v=5.9.43',
-  './icons/icon-192.png?v=5.9.43',
-  './icons/icon-512.png?v=5.9.43',
-  './icons/icon-any-192.png?v=5.9.43',
-  './icons/icon-any-512.png?v=5.9.43',
-  './icons/icon-maskable-192.png?v=5.9.43',
-  './icons/icon-maskable-512.png?v=5.9.43',
-  './icons/apple-touch-icon-180.png?v=5.9.43',
+  './manifest.json?v=5.9.44',
+  './icons/logo.png?v=5.9.44',
+  './icons/icon-192.png?v=5.9.44',
+  './icons/icon-512.png?v=5.9.44',
+  './icons/icon-any-192.png?v=5.9.44',
+  './icons/icon-any-512.png?v=5.9.44',
+  './icons/icon-maskable-192.png?v=5.9.44',
+  './icons/icon-maskable-512.png?v=5.9.44',
+  './icons/apple-touch-icon-180.png?v=5.9.44',
   './maps/trujui.png', './maps/cuartelv.png', './maps/moreno.png',
   './maps/gralrodriguez.png', './maps/tigre.png', './maps/sanmartin.png',
   './maps/olivos.png', './maps/pilarescobar.png',
-  './help/baremos-1.png?v=5.9.43',
-  './help/baremos-2.png?v=5.9.43',
-  './help/baremos-3.png?v=5.9.43',
-  './help/baremos-4.png?v=5.9.43',
-  './help/baremos-5.png?v=5.9.43'
+  './help/baremos-1.png?v=5.9.44',
+  './help/baremos-2.png?v=5.9.44',
+  './help/baremos-3.png?v=5.9.44',
+  './help/baremos-4.png?v=5.9.44',
+  './help/baremos-5.png?v=5.9.44'
 ];
 
 const CDN_ASSETS = [

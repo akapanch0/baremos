@@ -22,34 +22,34 @@ html.piel-grafito { background: #1f2937; }</style>
 <meta property="og:title" content="BAREMO">
 <meta property="og:description" content="Registro de baremos y producción diaria para contratistas con control de tareas geolocalizadas, combustible y reportes.">
 <title>BAREMO</title>
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.43">
-<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.43">
-<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.43">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.43">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.43">
-<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.43">
-<link rel="manifest" href="manifest.json?v=5.9.43">
-<link rel="stylesheet" href="styles.css?v=5.9.43">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.44">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.44">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.44">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.44">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.44">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.44">
+<link rel="manifest" href="manifest.json?v=5.9.44">
+<link rel="stylesheet" href="styles.css?v=5.9.44">
 <!-- GATE PWA: la app completa se abre en modo standalone; desde el navegador
      se redirige a landing.html. El contenido se oculta SOLO mientras dura la
      redireccion; si esta no ocurre, main.js quita el atributo y la app se ve.
      Nunca se detiene la carga de la pagina: no puede quedar en gris. -->
 <style>html[data-gate="redirecting"] body { visibility: hidden; }</style>
-<script src="main.js?v=5.9.43"></script>
-<script src="brand.js?v=5.9.43"></script>
+<script src="main.js?v=5.9.44"></script>
+<script src="brand.js?v=5.9.44"></script>
 <!-- Librerias externas (v5.9.29): primero la copia local de ./vendor y, solo si
      falta o falla, el CDN. Asi la app instalada nunca se queda sin graficos,
      sin PDF ni sin Excel. Ver vendor/README.txt -->
-<script src="vendor/chart.umd.min.js?v=5.9.43" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/chart.umd.min.js?v=5.9.44" onerror="this.dataset.fallo='1'"></script>
 <script>window.Chart||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/jspdf.umd.min.js?v=5.9.43" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/jspdf.umd.min.js?v=5.9.44" onerror="this.dataset.fallo='1'"></script>
 <script>window.jspdf||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/jspdf.plugin.autotable.min.js?v=5.9.43" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js?v=5.9.44" onerror="this.dataset.fallo='1'"></script>
 <script>(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API&&window.jspdf.jsPDF.API.autoTable)||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.6.0/dist/jspdf.plugin.autotable.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/xlsx.full.min.js?v=5.9.43" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/xlsx.full.min.js?v=5.9.44" onerror="this.dataset.fallo='1'"></script>
 <script>window.XLSX||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/scr'+'ipt>');</script>
 </head>
 <body>
@@ -116,13 +116,6 @@ html.piel-grafito { background: #1f2937; }</style>
   <section class="view" id="viewLogin">
     <div class="card" style="margin-top:40px">
       <div class="card-title">👤 Ingreso de usuario</div>
-      <div id="firebaseLoginSection" style="margin-bottom:16px;">
-        <button class="btn btn-ghost" id="btnGoogleLogin" type="button" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; border:1px solid rgba(0,0,0,.15); padding:12px; border-radius:10px; font-weight:600; cursor:pointer;">
-          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
-          <span>Acceder con Google</span>
-        </button>
-        <div style="text-align:center; font-size:12px; color:var(--text-soft); margin:12px 0;">— o ingresá con legajo local —</div>
-      </div>
       <form id="loginForm">
         <div class="field"><label>Nombre</label><input class="input" id="loginNombre" placeholder="Ej: Juan Pérez" required></div>
         <div class="field"><label>Legajo</label><input class="input" id="loginLegajo" placeholder="Ej: 1234" required></div>
@@ -158,6 +151,13 @@ html.piel-grafito { background: #1f2937; }</style>
         </div>
         <button class="btn btn-primary" type="submit" style="margin-top:14px">Ingresar</button>
       </form>
+      <div id="firebaseLoginSection" style="margin-top:16px;">
+        <div style="text-align:center; font-size:12px; color:var(--text-soft); margin:12px 0;">— o acceder con Google —</div>
+        <button class="btn btn-ghost" id="btnGoogleLogin" type="button" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; border:1px solid rgba(0,0,0,.15); padding:12px; border-radius:10px; font-weight:600; cursor:pointer;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+          <span>Acceder con Google</span>
+        </button>
+      </div>
     </div>
   </section>
   
@@ -358,15 +358,15 @@ html.piel-grafito { background: #1f2937; }</style>
           <li>
             <h4>Abrí el menú Ajustes</h4>
             <p>Último botón de la barra inferior.</p>
-            <span class="help-shot" role="img" aria-label="Barra inferior con el botón Ajustes resaltado" data-shot="help/baremos-1.png?v=5.9.43" style="aspect-ratio: 780 / 126"></span>
+            <span class="help-shot" role="img" aria-label="Barra inferior con el botón Ajustes resaltado" data-shot="help/baremos-1.png?v=5.9.44" style="aspect-ratio: 780 / 126"></span>
             <span class="help-shot-cap">Barra inferior → Ajustes</span>
           </li>
           <li>
             <h4>Tocá “Cargar Baremos actualizados”</h4>
             <p>Es la cuarta opción de la lista.</p>
-            <span class="help-shot" role="img" aria-label="Menú Ajustes con la opción Cargar Baremos actualizados resaltada" data-shot="help/baremos-2.png?v=5.9.43" style="aspect-ratio: 732 / 1418"></span>
+            <span class="help-shot" role="img" aria-label="Menú Ajustes con la opción Cargar Baremos actualizados resaltada" data-shot="help/baremos-2.png?v=5.9.44" style="aspect-ratio: 732 / 1418"></span>
             <span class="help-shot-cap">Ajustes → Cargar Baremos actualizados</span>
-            <span class="help-shot" role="img" aria-label="Detalle de la tarjeta Cargar Baremos actualizados" data-shot="help/baremos-3.png?v=5.9.43" style="aspect-ratio: 732 / 156"></span>
+            <span class="help-shot" role="img" aria-label="Detalle de la tarjeta Cargar Baremos actualizados" data-shot="help/baremos-3.png?v=5.9.44" style="aspect-ratio: 732 / 156"></span>
             <span class="help-shot-cap">Acepta archivos JSON, Excel o CSV</span>
           </li>
           <li>
@@ -376,14 +376,14 @@ html.piel-grafito { background: #1f2937; }</style>
           <li>
             <h4>Confirmá el aviso</h4>
             <p>Si el archivo está bien, aparece un cartel verde con la cantidad de ítems cargados. Ese número tiene que parecerse a la cantidad de filas del archivo.</p>
-            <span class="help-shot" role="img" aria-label="Aviso de confirmación con la cantidad de ítems cargados" data-shot="help/baremos-4.png?v=5.9.43" style="aspect-ratio: 780 / 1688"></span>
+            <span class="help-shot" role="img" aria-label="Aviso de confirmación con la cantidad de ítems cargados" data-shot="help/baremos-4.png?v=5.9.44" style="aspect-ratio: 780 / 1688"></span>
             <span class="help-shot-cap">Aviso de carga correcta</span>
             <div class="help-nota">Si en cambio ves <b>“Sin datos válidos”</b>, <b>“Formato no soportado”</b> o <b>“Error”</b>, el baremo anterior ya fue reemplazado: volvé a cargar un archivo correcto antes de seguir trabajando.</div>
           </li>
           <li>
             <h4>Verificá en Registro</h4>
             <p>Andá a <b>Registro</b> y escribí un código o una palabra de la descripción. Tienen que aparecer los códigos nuevos con su precio.</p>
-            <span class="help-shot" role="img" aria-label="Buscador de Registro mostrando los baremos cargados" data-shot="help/baremos-5.png?v=5.9.43" style="aspect-ratio: 732 / 372"></span>
+            <span class="help-shot" role="img" aria-label="Buscador de Registro mostrando los baremos cargados" data-shot="help/baremos-5.png?v=5.9.44" style="aspect-ratio: 732 / 372"></span>
             <span class="help-shot-cap">Buscador de Registro con los baremos nuevos</span>
             <div class="help-ok">Las jornadas ya cerradas <b>conservan el precio con el que fueron cargadas</b>. El baremo nuevo se aplica a los trabajos que registres desde ahora.</div>
           </li>
@@ -936,8 +936,8 @@ html.piel-grafito { background: #1f2937; }</style>
   </div>
 </div>
 
-<script src="firebase-bundle.js?v=5.9.43"></script>
-<script src="db.js?v=5.9.43"></script>
-<script src="app.js?v=5.9.43"></script>
+<script src="firebase-bundle.js?v=5.9.44"></script>
+<script src="db.js?v=5.9.44"></script>
+<script src="app.js?v=5.9.44"></script>
 </body>
 </html>

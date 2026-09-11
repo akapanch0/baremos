@@ -1,14 +1,14 @@
 {
   "name": "baremos",
-  "version": "5.9.43",
+  "version": "5.9.44",
   "description": "Registro de baremos para contratistas",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build:firebase": "bun build firebase-bridge.js --outfile firebase-bundle.js --target browser",
-    "build": "bun build firebase-bridge.js --outfile firebase-bundle.js --target browser && node -e 'console.log(\"Static build ready\")'"
+    "build:firebase": "bun build firebase-bridge.js --outfile firebase-bundle.js --target browser --format=iife",
+    "build": "bun build firebase-bridge.js --outfile firebase-bundle.js --target browser --format=iife && node -e 'console.log(\"Static build ready\")'"
   },
   "dependencies": {
     "express": "^4.21.2",

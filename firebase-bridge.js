@@ -2,6 +2,8 @@ import { initializeApp } from 'firebase/app';
 import {
   getAuth,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged
@@ -64,23 +66,45 @@ export async function testConnection() {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
+      console.warn('Firebase: client is offline or waiting for network.');
     }
   }
 }
 
 // Execute connection test on initialization
-testConnection();
+testConnection().catch(e => console.warn('Firebase test connection failed:', e));
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+// Check redirect login results on load
+getRedirectResult(auth).then(res => {
+  if (res && res.user) {
+    console.log('Firebase: Login con Google por redirección exitoso:', res.user.email);
+    if (typeof window.onGoogleLoginSuccess === 'function') {
+      window.onGoogleLoginSuccess(res.user);
+    }
+  }
+}).catch(err => {
+  console.warn('Firebase getRedirectResult error:', err);
+});
 
 export async function loginWithGoogle() {
   try {
     const res = await signInWithPopup(auth, googleProvider);
     return res.user;
   } catch (err) {
-    console.error('Firebase Auth error:', err);
+    console.warn('Firebase signInWithPopup error code:', err?.code, err?.message);
+    if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
+      try {
+        console.log('Ventana emergente bloqueada, intentando redirección...');
+        await signInWithRedirect(auth, googleProvider);
+        return null;
+      } catch (redirErr) {
+        console.error('Firebase signInWithRedirect error:', redirErr);
+        throw redirErr;
+      }
+    }
     throw err;
   }
 }
@@ -290,6 +314,10 @@ export async function syncFullCloudDatabase() {
 window.FirebaseSync = {
   auth,
   db,
+  googleProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   loginWithGoogle,
   logoutUser,
   saveCloudUserProfile,
@@ -303,3 +331,7 @@ window.FirebaseSync = {
   OperationType,
   onAuthStateChanged: (cb) => onAuthStateChanged(auth, cb)
 };
+window.FirebaseReady = true;
+try {
+  window.dispatchEvent(new CustomEvent('firebase-ready', { detail: window.FirebaseSync }));
+} catch (e) {}

@@ -1,7 +1,8 @@
 {
-  "version": "5.9.43",
-  "fecha": "2026-09-08",
+  "version": "5.9.44",
+  "fecha": "2026-09-10",
   "cambios": [
+    "Integración completa con Firebase Firestore y autenticación con Google corregida: bundle compatible y soporte de ventanas emergentes y redirección segura para sincronización en la nube",
     "El logo cuadrado que mostraba Android al lanzar la app ya no lleva la placa azul: el icono del sistema pasa a ser el escudo redondo con la B y el rayo sobre fondo transparente, y el color de fondo del arranque quedo igual al de la app, asi ese primer cuadro se funde con la animacion en lugar de cortarla",
     "La presentacion se rediseño y se reparo: el logo volvio ADENTRO del escenario de la animacion, que era la causa de los espacios vacios y del logo descolgado. La secuencia del rayo y de la B no se toco",
     "Presentacion mas compacta: marca, titulo y descripcion forman un solo bloque sin aire muerto, las seis funciones pasan a fichas de vidrio en dos columnas, el boton Instalar ocupa todo el ancho con una nota corta debajo y los creditos quedan en una sola linea",
