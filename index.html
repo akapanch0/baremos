@@ -22,34 +22,34 @@ html.piel-grafito { background: #1f2937; }</style>
 <meta property="og:title" content="BAREMO">
 <meta property="og:description" content="Registro de baremos y producción diaria para contratistas con control de tareas geolocalizadas, combustible y reportes.">
 <title>BAREMO</title>
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.48">
-<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.48">
-<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.48">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.48">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.48">
-<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.48">
-<link rel="manifest" href="manifest.json?v=5.9.48">
-<link rel="stylesheet" href="styles.css?v=5.9.48">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.49">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.49">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.49">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.49">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.49">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.49">
+<link rel="manifest" href="manifest.json?v=5.9.49">
+<link rel="stylesheet" href="styles.css?v=5.9.49">
 <!-- GATE PWA: la app completa se abre en modo standalone; desde el navegador
      se redirige a landing.html. El contenido se oculta SOLO mientras dura la
      redireccion; si esta no ocurre, main.js quita el atributo y la app se ve.
      Nunca se detiene la carga de la pagina: no puede quedar en gris. -->
 <style>html[data-gate="redirecting"] body { visibility: hidden; }</style>
-<script src="main.js?v=5.9.48"></script>
-<script src="brand.js?v=5.9.48"></script>
+<script src="main.js?v=5.9.49"></script>
+<script src="brand.js?v=5.9.49"></script>
 <!-- Librerias externas (v5.9.29): primero la copia local de ./vendor y, solo si
      falta o falla, el CDN. Asi la app instalada nunca se queda sin graficos,
      sin PDF ni sin Excel. Ver vendor/README.txt -->
-<script src="vendor/chart.umd.min.js?v=5.9.48" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/chart.umd.min.js?v=5.9.49" onerror="this.dataset.fallo='1'"></script>
 <script>window.Chart||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/jspdf.umd.min.js?v=5.9.48" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/jspdf.umd.min.js?v=5.9.49" onerror="this.dataset.fallo='1'"></script>
 <script>window.jspdf||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/jspdf.plugin.autotable.min.js?v=5.9.48" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js?v=5.9.49" onerror="this.dataset.fallo='1'"></script>
 <script>(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API&&window.jspdf.jsPDF.API.autoTable)||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.6.0/dist/jspdf.plugin.autotable.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/xlsx.full.min.js?v=5.9.48" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/xlsx.full.min.js?v=5.9.49" onerror="this.dataset.fallo='1'"></script>
 <script>window.XLSX||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/scr'+'ipt>');</script>
 </head>
 <body>
@@ -920,263 +920,333 @@ html.piel-grafito { background: #1f2937; }</style>
   </div>
 </div>
 
-<!-- Modal de Formulario ATS (Análisis de Trabajo Seguro) - Formato oficial sin logo -->
+<!-- Modal de Formulario ATS (Análisis de Trabajo Seguro) - Formato Oficial Planilla sin logo -->
 <div class="modal-backdrop" id="modalATS" style="z-index: 9996;">
   <div class="modal ats-modal">
-    <div class="ats-header-modal">
-      <div class="ats-title-wrap">
-        <div class="ats-badge-code">CÓDIGO: PR SH 06 FOR 03 · REV. 2 · VIGENCIA: 02/09/2020</div>
-        <h2 class="ats-modal-title">FORMULARIO</h2>
-        <div class="ats-modal-sub">Análisis de trabajo seguro (ATS)</div>
+    <!-- Barra superior de acciones -->
+    <div class="ats-modal-topbar">
+      <div class="ats-topbar-info">
+        <span class="ats-topbar-badge">PR SH 06 FOR 03 · REV. 2</span>
+        <span class="ats-topbar-title">Planilla Oficial ATS — Análisis de Trabajo Seguro</span>
       </div>
-      <button class="ats-close-btn" id="btnAtsClose" type="button" aria-label="Cerrar modal">✕</button>
+      <div class="ats-topbar-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnAtsQuickPdfTop" title="Exportar PDF firmado">📄 PDF</button>
+        <button type="submit" form="formATS" class="btn btn-primary btn-sm" id="btnAtsQuickSaveTop" title="Guardar cambios">💾 Guardar</button>
+        <button class="ats-close-btn" id="btnAtsClose" type="button" aria-label="Cerrar modal">✕</button>
+      </div>
     </div>
 
     <form id="formATS" class="ats-form-content">
-      <!-- 1. Datos Generales -->
-      <div class="ats-card-sec">
-        <div class="ats-sec-head">
-          <span class="ats-sec-ico">📌</span>
-          <span class="ats-sec-tit">Datos Generales</span>
-        </div>
-        <div class="ats-grid-fields">
-          <div class="ats-fld">
-            <label for="atsOT">N° OT <span class="req">*</span></label>
-            <input class="input ats-input" id="atsOT" placeholder="Ej: 104523" required>
+      <div class="ats-sheet-scroll">
+        <div class="ats-sheet-paper">
+          
+          <!-- 1. ENCABEZADO OFICIAL (Grid de 3 columnas sin logo) -->
+          <div class="ats-doc-header">
+            <div class="ats-doc-col ats-doc-header-left">
+              <div class="ats-meta-line"><strong>Código:</strong> PR SH 06 FOR 03</div>
+              <div class="ats-meta-line"><strong>Vigencia:</strong> 02/09/2020</div>
+              <div class="ats-meta-line"><strong>Revisión:</strong> 2</div>
+              <div class="ats-meta-line"><strong>Página:</strong> 1 de 1</div>
+            </div>
+            <div class="ats-doc-col ats-doc-header-center">
+              <div class="ats-doc-title">FORMULARIO</div>
+              <div class="ats-doc-subtitle">Análisis de trabajo seguro (ATS)</div>
+            </div>
+            <div class="ats-doc-col ats-doc-header-right">
+              <div class="ats-doc-nologo">FORMATO OFICIAL<br><span class="ats-sub-nologo">Reglamentario Art. 208 Dec. 351/79</span></div>
+            </div>
           </div>
-          <div class="ats-fld">
-            <label for="atsObra">Obra</label>
-            <input class="input ats-input" id="atsObra" placeholder="Ej: Red MT/BT">
-          </div>
-          <div class="ats-fld">
-            <label for="atsPedido">Pedido</label>
-            <input class="input ats-input" id="atsPedido" placeholder="Ej: Ped. 8834">
-          </div>
-          <div class="ats-fld">
-            <label for="atsSector">Sector</label>
-            <input class="input ats-input" id="atsSector" placeholder="Ej: Distribución">
-          </div>
-          <div class="ats-fld">
-            <label for="atsFecha">Fecha <span class="req">*</span></label>
-            <input class="input ats-input" id="atsFecha" type="date" required>
-          </div>
-          <div class="ats-fld">
-            <label for="atsHora">Hora <span class="req">*</span></label>
-            <input class="input ats-input" id="atsHora" type="time" required>
-          </div>
-          <div class="ats-fld ats-fld-span2">
-            <label for="atsDireccion">Dirección</label>
-            <input class="input ats-input" id="atsDireccion" placeholder="Calle, altura o intersección">
-          </div>
-          <div class="ats-fld ats-fld-span2">
-            <label for="atsLocalidad">Localidad / Zona</label>
-            <input class="input ats-input" id="atsLocalidad" placeholder="Localidad o zona operativa">
-          </div>
-          <div class="ats-fld ats-fld-full">
-            <label for="atsTrabajoAsignado">Trabajo Asignado <span class="req">*</span></label>
-            <input class="input ats-input" id="atsTrabajoAsignado" placeholder="Descripción del trabajo a ejecutar..." required>
-          </div>
-        </div>
-      </div>
 
-      <!-- 2. Riesgos Potenciales (circulo alrededor del número) -->
-      <div class="ats-card-sec">
-        <div class="ats-sec-head">
-          <span class="ats-sec-ico">⚠️</span>
-          <div>
-            <span class="ats-sec-tit">Riesgos potenciales</span>
-            <div class="ats-sec-sub">Realizar un círculo alrededor del número (marcar los aplicables)</div>
+          <!-- 2. DATOS GENERALES (Tabla con bordes) -->
+          <div class="ats-doc-sec-table">
+            <div class="ats-doc-row ats-doc-row-5">
+              <div class="ats-doc-cell"><label for="atsOT">N° OT:</label><input class="ats-cell-input" id="atsOT" placeholder="Obligatorio" required></div>
+              <div class="ats-doc-cell"><label for="atsObra">Obra:</label><input class="ats-cell-input" id="atsObra" placeholder="Nombre de obra"></div>
+              <div class="ats-doc-cell"><label for="atsPedido">Pedido:</label><input class="ats-cell-input" id="atsPedido" placeholder="N° pedido"></div>
+              <div class="ats-doc-cell"><label for="atsSector">Sector:</label><input class="ats-cell-input" id="atsSector" placeholder="Distribución"></div>
+              <div class="ats-doc-cell"><label for="atsFecha">Fecha:</label><input class="ats-cell-input" id="atsFecha" type="date" required></div>
+            </div>
+            <div class="ats-doc-row ats-doc-row-3">
+              <div class="ats-doc-cell ats-cell-flex2"><label for="atsDireccion">Dirección:</label><input class="ats-cell-input" id="atsDireccion" placeholder="Calle, intersección o altura"></div>
+              <div class="ats-doc-cell ats-cell-flex1"><label for="atsLocalidad">Localidad:</label><input class="ats-cell-input" id="atsLocalidad" placeholder="Zona operativa"></div>
+              <div class="ats-doc-cell ats-cell-flex1"><label for="atsHora">Hora:</label><input class="ats-cell-input" id="atsHora" type="time" required></div>
+            </div>
+            <div class="ats-doc-row ats-doc-row-1">
+              <div class="ats-doc-cell ats-cell-full"><label for="atsTrabajoAsignado">Trabajo Asignado:</label><input class="ats-cell-input" id="atsTrabajoAsignado" placeholder="Descripción de las tareas a ejecutar..." required></div>
+            </div>
           </div>
-        </div>
-        <div class="ats-riesgos-grid" id="atsRiesgosGrid">
-          <!-- Generado interactivamente con los 21 riesgos -->
-        </div>
-      </div>
 
-      <!-- 3. Tipo de Tareas -->
-      <div class="ats-card-sec">
-        <div class="ats-sec-head">
-          <span class="ats-sec-ico">⚡</span>
-          <span class="ats-sec-tit">Tipo de Tareas</span>
-        </div>
-        <div class="ats-checks-grid">
-          <label class="ats-check-pill"><input type="checkbox" name="atsTipo" value="Aéreas de MT/BT"><span>Aéreas de MT/BT</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsTipo" value="Montaje de Estructuras, LAMT, LABT Y TRANSFORMADORES"><span>Montaje de Estructuras, LAMT, LABT y Transf.</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsTipo" value="Montaje de Postes y Columnas y Bases"><span>Montaje de Postes, Columnas y Bases</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsTipo" value="Medidores"><span>Medidores</span></label>
-          <div class="ats-check-input-row">
-            <label class="ats-check-pill"><input type="checkbox" name="atsTipo" value="Obra Civil"><span>Obra Civil:</span></label>
-            <input class="input ats-input-inline" id="atsTipoObraCivil" placeholder="Detalle...">
+          <!-- 3. RIESGOS POTENCIALES (Círculo alrededor del número) -->
+          <div class="ats-doc-band">
+            <span class="ats-band-title">Riesgos potenciales</span>
+            <span class="ats-band-sub">Realizar un círculo alrededor del número (marcar los aplicables)</span>
           </div>
-          <div class="ats-check-input-row">
-            <label class="ats-check-pill"><input type="checkbox" name="atsTipo" value="Poda"><span>Poda:</span></label>
-            <input class="input ats-input-inline" id="atsTipoPoda" placeholder="Detalle...">
+          <div class="ats-doc-riesgos-grid" id="atsRiesgosGrid">
+            <!-- Renderizado dinámico de los 21 riesgos con números circulares -->
           </div>
-          <div class="ats-check-input-row">
-            <label class="ats-check-pill"><input type="checkbox" name="atsTipo" value="Canalización / Zanjeo"><span>Canalización / Zanjeo:</span></label>
-            <input class="input ats-input-inline" id="atsTipoCanalizacion" placeholder="Detalle...">
-          </div>
-        </div>
-      </div>
 
-      <!-- 4. Situación del Entorno -->
-      <div class="ats-card-sec">
-        <div class="ats-sec-head">
-          <span class="ats-sec-ico">🏙️</span>
-          <span class="ats-sec-tit">Situación del Entorno (Planificar la Tarea)</span>
-        </div>
-        <div class="ats-checks-grid">
-          <label class="ats-check-pill"><input type="checkbox" name="atsEntorno" value="Normal"><span>Normal</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEntorno" value="Poste Roto"><span>Poste Roto</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEntorno" value="Distancias de Seguridad"><span>Distancias de Seguridad</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEntorno" value="Instalaciones defectuosas"><span>Instalaciones defectuosas</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEntorno" value="Orden y Limpieza"><span>Orden y Limpieza</span></label>
-          <div class="ats-check-input-row">
-            <label class="ats-check-pill"><input type="checkbox" name="atsEntorno" value="Anormal"><span>Anormal:</span></label>
-            <input class="input ats-input-inline" id="atsEntornoAnormal" placeholder="Indicar situación anormal...">
+          <!-- 4. TIPO DE TAREAS (Marcar con una X) -->
+          <div class="ats-doc-band">
+            <span class="ats-band-title">Tipo de Tareas</span>
+            <span class="ats-band-sub">Marcar con una X</span>
           </div>
-        </div>
-        <div class="ats-fld ats-fld-full" style="margin-top:10px">
-          <label for="atsObservacion">Observación:</label>
-          <textarea class="input ats-textarea" id="atsObservacion" rows="2" placeholder="Observaciones sobre el entorno o precauciones especiales..."></textarea>
-        </div>
-      </div>
+          <div class="ats-doc-table-box">
+            <div class="ats-doc-row-checks">
+              <label class="ats-doc-check-item"><span class="ats-doc-txt">Aéreas de MT/BT</span><input type="checkbox" name="atsTipo" value="Aéreas de MT/BT"><span class="ats-box-indicator"></span></label>
+              <label class="ats-doc-check-item"><span class="ats-doc-txt">Montaje de Estructuras, LAMT, LABT Y TRANSFORMADORES</span><input type="checkbox" name="atsTipo" value="Montaje de Estructuras, LAMT, LABT Y TRANSFORMADORES"><span class="ats-box-indicator"></span></label>
+              <label class="ats-doc-check-item"><span class="ats-doc-txt">Montaje de Postes y Columnas y Bases</span><input type="checkbox" name="atsTipo" value="Montaje de Postes y Columnas y Bases"><span class="ats-box-indicator"></span></label>
+            </div>
+            <div class="ats-doc-row-checks ats-doc-border-top">
+              <div class="ats-doc-inline-check"><span class="ats-doc-txt">Obra Civil:</span><input class="ats-cell-input ats-input-inline" id="atsTipoObraCivil" placeholder="Detalle..."><label class="ats-mini-box"><input type="checkbox" name="atsTipo" value="Obra Civil"><span class="ats-box-indicator"></span></label></div>
+              <div class="ats-doc-inline-check"><span class="ats-doc-txt">Poda:</span><input class="ats-cell-input ats-input-inline" id="atsTipoPoda" placeholder="Detalle..."><label class="ats-mini-box"><input type="checkbox" name="atsTipo" value="Poda"><span class="ats-box-indicator"></span></label></div>
+              <div class="ats-doc-inline-check"><span class="ats-doc-txt">Canalización / Zanjeo:</span><input class="ats-cell-input ats-input-inline" id="atsTipoCanalizacion" placeholder="Detalle..."><label class="ats-mini-box"><input type="checkbox" name="atsTipo" value="Canalización / Zanjeo"><span class="ats-box-indicator"></span></label></div>
+              <label class="ats-doc-check-item"><span class="ats-doc-txt">Medidores</span><input type="checkbox" name="atsTipo" value="Medidores"><span class="ats-box-indicator"></span></label>
+            </div>
+          </div>
 
-      <!-- 5. EPP y ESC a Utilizar -->
-      <div class="ats-card-sec">
-        <div class="ats-sec-head">
-          <span class="ats-sec-ico">🦺</span>
-          <div style="flex:1">
-            <span class="ats-sec-tit">EPP y ESC a Utilizar</span>
-            <div class="ats-sec-sub">Marcar con una X el que corresponda según la tarea</div>
+          <!-- 5. SITUACIÓN DEL ENTORNO (Planificar la Tarea) -->
+          <div class="ats-doc-band">
+            <span class="ats-band-title">Situación del Entorno (Planificar la Tarea)</span>
+            <span class="ats-band-sub">Marcar con una X</span>
           </div>
-          <button type="button" class="ats-mini-action" id="btnAtsEppEstandar">Marcar EPP básico</button>
-        </div>
-        <div class="ats-epp-grid" id="atsEppGrid">
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Casco"><span>Casco</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Botín de Seguridad"><span>Botín de Seguridad</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Guantes de prot Mec."><span>Guantes prot Mec.</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Guantes Dieléctricos"><span>Guantes Dieléctricos</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Mascara Antideflagracion"><span>Mascara Antideflagración</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Protector Ocular"><span>Protector Ocular</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Arnés anticaida y Acc."><span>Arnés anticaída y Acc.</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Alfombra y/o Manta"><span>Alfombra y/o Manta</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Botiquín 1° Auxilios"><span>Botiquín 1° Auxilios</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Matafuego"><span>Matafuego</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Herramientas Aisladas"><span>Herramientas Aisladas</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Manopla Extrac Fusible"><span>Manopla Extrac Fusible</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Escaleras Dieléctricas"><span>Escaleras Dieléctricas</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Elementos de Señalizacion"><span>Elementos de Señalización</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Trepadores"><span>Trepadores</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Soga de servicio"><span>Soga de servicio</span></label>
-          <div class="ats-check-input-row ats-fld-full">
-            <label class="ats-check-pill"><input type="checkbox" name="atsEpp" value="Otros"><span>Otros:</span></label>
-            <input class="input ats-input-inline" id="atsEppOtros" placeholder="Indicar otros elementos...">
+          <div class="ats-doc-table-box">
+            <div class="ats-doc-grid-3">
+              <label class="ats-doc-check-cell"><span class="ats-doc-txt">Normal</span><input type="checkbox" name="atsEntorno" value="Normal"><span class="ats-box-indicator"></span></label>
+              <label class="ats-doc-check-cell"><span class="ats-doc-txt">Poste Roto</span><input type="checkbox" name="atsEntorno" value="Poste Roto"><span class="ats-box-indicator"></span></label>
+              <label class="ats-doc-check-cell"><span class="ats-doc-txt">Distancias de Seguridad</span><input type="checkbox" name="atsEntorno" value="Distancias de Seguridad"><span class="ats-box-indicator"></span></label>
+            </div>
+            <div class="ats-doc-grid-3 ats-doc-border-top">
+              <div class="ats-doc-inline-cell"><span class="ats-doc-txt">Anormal:</span><input class="ats-cell-input ats-input-inline" id="atsEntornoAnormal" placeholder="Indicar situación anormal..."><label class="ats-mini-box"><input type="checkbox" name="atsEntorno" value="Anormal"><span class="ats-box-indicator"></span></label></div>
+              <label class="ats-doc-check-cell"><span class="ats-doc-txt">Instalaciones defectuosas</span><input type="checkbox" name="atsEntorno" value="Instalaciones defectuosas"><span class="ats-box-indicator"></span></label>
+              <label class="ats-doc-check-cell"><span class="ats-doc-txt">Orden y Limpieza</span><input type="checkbox" name="atsEntorno" value="Orden y Limpieza"><span class="ats-box-indicator"></span></label>
+            </div>
+            <div class="ats-doc-obs-row ats-doc-border-top">
+              <label for="atsObservacion"><strong>Observación:</strong></label>
+              <input class="ats-cell-input" id="atsObservacion" placeholder="Observaciones o precauciones del entorno...">
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- 6. Medidas de Seguridad (5 Reglas de Oro) -->
-      <div class="ats-card-sec">
-        <div class="ats-sec-head">
-          <span class="ats-sec-ico">⭐</span>
-          <div style="flex:1">
-            <span class="ats-sec-tit">Medidas de Seguridad (5 Reglas de Oro)</span>
-            <div class="ats-sec-sub">Si corresponde a la tarea a realizar</div>
+          <!-- 6. EPP Y ESC A UTILIZAR -->
+          <div class="ats-doc-band ats-doc-band-action">
+            <div>
+              <span class="ats-band-title">EPP y ESC a Utilizar</span>
+              <span class="ats-band-sub">(marcar con una X el que corresponda según la tarea a realizar)</span>
+            </div>
+            <button type="button" class="ats-sheet-btn-link" id="btnAtsEppEstandar">+ Básico habitual</button>
           </div>
-          <button type="button" class="ats-mini-action" id="btnAts5Reglas">Marcar las 5</button>
-        </div>
-        <div class="ats-checks-grid">
-          <label class="ats-check-pill"><input type="checkbox" name="atsReglas" value="Corte de Alimentación"><span>1. Corte de Alimentación</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsReglas" value="Bloqueo"><span>2. Bloqueo</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsReglas" value="Verificación de Tensión"><span>3. Verificación de Tensión</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsReglas" value="Puesta a Tierra y CC."><span>4. Puesta a Tierra y CC.</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsReglas" value="Delimitación de la zona de Trabajo"><span>5. Delimitación de la zona de Trabajo</span></label>
-        </div>
-      </div>
+          <div class="ats-doc-table-box">
+            <div class="ats-doc-epp-grid">
+              <!-- Columna 1 -->
+              <div class="ats-doc-col-epp">
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Casco</span><input type="checkbox" name="atsEpp" value="Casco"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Botín de Seguridad</span><input type="checkbox" name="atsEpp" value="Botín de Seguridad"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Guantes de prot Mec.</span><input type="checkbox" name="atsEpp" value="Guantes de prot Mec."><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Guantes Dieléctricos</span><input type="checkbox" name="atsEpp" value="Guantes Dieléctricos"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Mascara Antideflagracion</span><input type="checkbox" name="atsEpp" value="Mascara Antideflagracion"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Protector Ocular</span><input type="checkbox" name="atsEpp" value="Protector Ocular"><span class="ats-box-indicator"></span></label>
+              </div>
+              <!-- Columna 2 -->
+              <div class="ats-doc-col-epp ats-doc-border-left">
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Arnés anticaida y Acc.</span><input type="checkbox" name="atsEpp" value="Arnés anticaida y Acc."><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Alfombra y/o Manta</span><input type="checkbox" name="atsEpp" value="Alfombra y/o Manta"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Botiquín 1° Auxilios</span><input type="checkbox" name="atsEpp" value="Botiquín 1° Auxilios"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Matafuego</span><input type="checkbox" name="atsEpp" value="Matafuego"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Herramientas Aisladas</span><input type="checkbox" name="atsEpp" value="Herramientas Aisladas"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Manopla Extrac Fusible</span><input type="checkbox" name="atsEpp" value="Manopla Extrac Fusible"><span class="ats-box-indicator"></span></label>
+              </div>
+              <!-- Columna 3 -->
+              <div class="ats-doc-col-epp ats-doc-border-left">
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Escaleras Dieléctricas</span><input type="checkbox" name="atsEpp" value="Escaleras Dieléctricas"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Elementos de Señalizacion</span><input type="checkbox" name="atsEpp" value="Elementos de Señalizacion"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Trepadores</span><input type="checkbox" name="atsEpp" value="Trepadores"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">Soga de servicio</span><input type="checkbox" name="atsEpp" value="Soga de servicio"><span class="ats-box-indicator"></span></label>
+                <div class="ats-doc-inline-epp"><span class="ats-doc-txt">Otros:</span><input class="ats-cell-input ats-input-inline" id="atsEppOtros" placeholder="Otros EPP..."><label class="ats-mini-box"><input type="checkbox" name="atsEpp" value="Otros"><span class="ats-box-indicator"></span></label></div>
+                <div class="ats-doc-check-line ats-doc-empty-slot"></div>
+              </div>
+            </div>
+          </div>
 
-      <!-- 7. Charla de 5 Minutos -->
-      <div class="ats-card-sec">
-        <div class="ats-sec-head">
-          <span class="ats-sec-ico">🗣️</span>
-          <div style="flex:1">
-            <span class="ats-sec-tit">Charla de 5 Minutos</span>
-            <div class="ats-sec-sub">Marque con una X los temas que se mencionaron</div>
+          <!-- 7. MEDIDAS DE SEGURIDAD (5 REGLAS DE ORO) -->
+          <div class="ats-doc-band ats-doc-band-action">
+            <div>
+              <span class="ats-band-title">Medidas de Seguridad (5 Reglas de Oro)</span>
+              <span class="ats-band-sub">si corresponde a la tarea a realizar, Marcar con una X</span>
+            </div>
+            <button type="button" class="ats-sheet-btn-link" id="btnAts5Reglas">+ Marcar las 5</button>
           </div>
-          <button type="button" class="ats-mini-action" id="btnAtsCharlaTodo">Marcar habituales</button>
-        </div>
-        <div class="ats-charla-grid" id="atsCharlaGrid">
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="1.- Riesgos eléctricos"><span>1.- Riesgos eléctricos</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="2.- Normas de seguridad"><span>2.- Normas de seguridad</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="3.- Condiciones del lugar de trabajo"><span>3.- Condiciones lugar de trabajo</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="4.- Riesgo de trabajo en altura"><span>4.- Riesgo de trabajo en altura</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="5.- Prevción y combate de incendios"><span>5.- Prevención y combate de incendios</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="6.- Uso de Elementos de Protecion Personal."><span>6.- Uso de EPP</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="7.- Uso equipos y herramientas aisladas"><span>7.- Herramientas aisladas</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="8.- Manejo y almacenamiento de materiales"><span>8.- Manejo y almacenamiento</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="09.- Señalización en vía pública"><span>09.- Señalización en vía pública</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="10.- Superficies de trabajo"><span>10.- Superficies de trabajo</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="11.- Normas de higiene y aseo"><span>11.- Higiene y aseo</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="12.- Orden y limpieza"><span>12.- Orden y limpieza</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="13.- Riesgos específicos"><span>13.- Riesgos específicos</span></label>
-          <label class="ats-check-pill"><input type="checkbox" name="atsCharla" value="14.- Respuestas ante emergencias"><span>14.- Respuestas ante emergencias</span></label>
-        </div>
-        <div class="ats-legal-box">
-          El objetivo de la NOTIFICACIÓN DE RIESGOS es dar cumplimiento al Art. 208 del Dec. 351/79 "capacitar en... En prevención de enfermedades profesionales y de accidentes del trabajo", siendo parte, la presente notificación, de un conjunto de acciones y registros tendientes a cumplimentar todo el capítulo 21 del citado Dec. que reglamenta la Ley 19587.
-        </div>
-      </div>
+          <div class="ats-doc-table-box">
+            <div class="ats-doc-grid-5">
+              <label class="ats-doc-check-cell"><span class="ats-doc-txt">1. Corte de Alimentación</span><input type="checkbox" name="atsReglas" value="Corte de Alimentación"><span class="ats-box-indicator"></span></label>
+              <label class="ats-doc-check-cell ats-doc-border-left"><span class="ats-doc-txt">2. Bloqueo</span><input type="checkbox" name="atsReglas" value="Bloqueo"><span class="ats-box-indicator"></span></label>
+              <label class="ats-doc-check-cell ats-doc-border-left"><span class="ats-doc-txt">3. Verificación de Tensión</span><input type="checkbox" name="atsReglas" value="Verificación de Tensión"><span class="ats-box-indicator"></span></label>
+              <label class="ats-doc-check-cell ats-doc-border-left"><span class="ats-doc-txt">4. Puesta a Tierra y CC.</span><input type="checkbox" name="atsReglas" value="Puesta a Tierra y CC."><span class="ats-box-indicator"></span></label>
+              <label class="ats-doc-check-cell ats-doc-border-left"><span class="ats-doc-txt">5. Delimitación de zona</span><input type="checkbox" name="atsReglas" value="Delimitación de la zona de Trabajo"><span class="ats-box-indicator"></span></label>
+            </div>
+          </div>
 
-      <!-- 8. Personal de Cuadrilla -->
-      <div class="ats-card-sec">
-        <div class="ats-sec-head">
-          <span class="ats-sec-ico">👥</span>
-          <div style="flex:1">
-            <span class="ats-sec-tit">Apellido, Nombre y N° de Documento</span>
-            <div class="ats-sec-sub">Datos obligatorios del personal de la cuadrilla</div>
+          <!-- 8. TEXTO LEGAL REGLAMENTARIO -->
+          <div class="ats-doc-legal-box">
+            El objetivo de la <strong>NOTIFICACIÓN DE RIESGOS</strong> es dar cumplimiento al Art. 208 del Dec. 351/79 "capacitar en... En prevención de enfermedades profesionales y de accidentes del trabajo", siendo parte, la presente notificación, de un conjunto de acciones y registros tendientes a cumplimentar todo el capítulo 21 del citado Dec. que reglamenta la Ley 19587.
           </div>
-          <button type="button" class="ats-mini-action" id="btnAtsAddCuadrilla">+ Agregar integrante</button>
-        </div>
-        <div class="ats-cuadrilla-list" id="atsCuadrillaList">
-          <!-- Generado dinámicamente -->
-        </div>
-      </div>
 
-      <!-- 9. Firmas y Aclaraciones -->
-      <div class="ats-card-sec">
-        <div class="ats-sec-head">
-          <span class="ats-sec-ico">✍️</span>
-          <span class="ats-sec-tit">Firmas y Aclaraciones</span>
-        </div>
-        <div class="ats-firmas-grid">
-          <div class="ats-firma-box">
-            <div class="ats-firma-cargo">Jefe de cuadrilla</div>
-            <input class="input ats-input" id="atsFirmaJefe" placeholder="Nombre y legajo/aclaración">
-            <div class="ats-firma-sub">Firma y aclaración</div>
+          <!-- 9. CHARLA DE 5 MINUTOS -->
+          <div class="ats-doc-band ats-doc-band-action">
+            <div>
+              <span class="ats-band-title">CHARLA DE 5 MINUTOS</span>
+              <span class="ats-band-sub">(marque con una X los temas que se mencionaron)</span>
+            </div>
+            <button type="button" class="ats-sheet-btn-link" id="btnAtsCharlaTodo">+ Habituales</button>
           </div>
-          <div class="ats-firma-box">
-            <div class="ats-firma-cargo">Supervisor</div>
-            <input class="input ats-input" id="atsFirmaSupervisor" placeholder="Nombre y legajo/aclaración">
-            <div class="ats-firma-sub">Firma y aclaración</div>
+          <div class="ats-doc-table-box">
+            <div class="ats-doc-grid-2">
+              <div class="ats-doc-col-charla">
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">1.- Riesgos eléctricos</span><input type="checkbox" name="atsCharla" value="1.- Riesgos eléctricos"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">2.- Normas de seguridad</span><input type="checkbox" name="atsCharla" value="2.- Normas de seguridad"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">3.- Condiciones del lugar de trabajo</span><input type="checkbox" name="atsCharla" value="3.- Condiciones del lugar de trabajo"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">4.- Riesgo de trabajo en altura</span><input type="checkbox" name="atsCharla" value="4.- Riesgo de trabajo en altura"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">5.- Prevención y combate de incendios</span><input type="checkbox" name="atsCharla" value="5.- Prevción y combate de incendios"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">6.- Uso de Elementos de Protección Personal</span><input type="checkbox" name="atsCharla" value="6.- Uso de Elementos de Protecion Personal."><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">7.- Uso equipos y herramientas aisladas</span><input type="checkbox" name="atsCharla" value="7.- Uso equipos y herramientas aisladas"><span class="ats-box-indicator"></span></label>
+              </div>
+              <div class="ats-doc-col-charla ats-doc-border-left">
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">8.- Manejo y almacenamiento de materiales</span><input type="checkbox" name="atsCharla" value="8.- Manejo y almacenamiento de materiales"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">09.- Señalización en vía pública</span><input type="checkbox" name="atsCharla" value="09.- Señalización en vía pública"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">10.- Superficies de trabajo</span><input type="checkbox" name="atsCharla" value="10.- Superficies de trabajo"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">11.- Normas de higiene y aseo</span><input type="checkbox" name="atsCharla" value="11.- Normas de higiene y aseo"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">12.- Orden y limpieza</span><input type="checkbox" name="atsCharla" value="12.- Orden y limpieza"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">13.- Riesgos específicos</span><input type="checkbox" name="atsCharla" value="13.- Riesgos específicos"><span class="ats-box-indicator"></span></label>
+                <label class="ats-doc-check-line"><span class="ats-doc-txt">14.- Respuestas ante emergencias</span><input type="checkbox" name="atsCharla" value="14.- Respuestas ante emergencias"><span class="ats-box-indicator"></span></label>
+              </div>
+            </div>
           </div>
-          <div class="ats-firma-box">
-            <div class="ats-firma-cargo">Dto. de Higiene & Seguridad</div>
-            <input class="input ats-input" id="atsFirmaHigiene" placeholder="Nombre y matrícula/aclaración">
-            <div class="ats-firma-sub">Firma y aclaración</div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Footer Actions -->
+          <!-- 10. APELLIDO, NOMBRE Y N° DE DOCUMENTO - INTEGRANTES DE CUADRILLA CON FIRMAS -->
+          <div class="ats-doc-band ats-doc-band-action">
+            <div>
+              <span class="ats-band-title">Apellido, Nombre y Número de Documento</span>
+              <span class="ats-band-sub">(Datos obligatorios y firmas de cada integrante del equipo)</span>
+            </div>
+            <button type="button" class="ats-sheet-btn-link" id="btnAtsAddCuadrilla">+ Agregar integrante</button>
+          </div>
+          <div class="ats-doc-table-box ats-doc-cuadrilla-wrap">
+            <div class="ats-doc-cuadrilla-head">
+              <div class="ats-col-h-num">N°</div>
+              <div class="ats-col-h-nom">Apellido y Nombre</div>
+              <div class="ats-col-h-dni">N° Documento / Legajo</div>
+              <div class="ats-col-h-sign">Firma Digital del Integrante</div>
+              <div class="ats-col-h-act"></div>
+            </div>
+            <div id="atsCuadrillaList" class="ats-cuadrilla-rows-box">
+              <!-- Renderizado dinámico con campos de texto y lienzo de firma digital -->
+            </div>
+          </div>
+
+          <!-- 11. FIRMAS Y ACLARACIONES (3 COLUMNAS REGLAMENTARIAS) -->
+          <div class="ats-doc-band">
+            <span class="ats-band-title">Firmas y Aclaraciones</span>
+            <span class="ats-band-sub">Responsables autorizados</span>
+          </div>
+          <div class="ats-doc-table-box">
+            <div class="ats-doc-grid-firmas">
+              
+              <!-- Columna 1: Jefe de cuadrilla -->
+              <div class="ats-doc-firma-box">
+                <div class="ats-doc-cargo-title">Jefe de cuadrilla</div>
+                <div class="ats-doc-sign-zone" id="atsBoxSignJefe">
+                  <div class="ats-sign-placeholder" id="atsPlaceholderJefe">
+                    <button type="button" class="ats-btn-firmar-pad" id="btnSignJefe">✍️ Firmar Jefe</button>
+                  </div>
+                  <div class="ats-sign-preview-wrap" id="atsWrapSignJefe" style="display:none">
+                    <img id="atsImgSignJefe" class="ats-sign-display-img" alt="Firma Jefe">
+                    <div class="ats-sign-preview-actions">
+                      <button type="button" class="ats-btn-resign" id="btnResignJefe" title="Volver a firmar">✍️</button>
+                      <button type="button" class="ats-btn-delsign" id="btnDelSignJefe" title="Borrar firma">✕</button>
+                    </div>
+                  </div>
+                </div>
+                <input class="ats-cell-input ats-firma-aclaracion" id="atsFirmaJefe" placeholder="Aclaración: Nombre y Legajo">
+                <div class="ats-doc-firma-foot">Firma y aclaración</div>
+              </div>
+
+              <!-- Columna 2: Supervisor -->
+              <div class="ats-doc-firma-box ats-doc-border-left">
+                <div class="ats-doc-cargo-title">Supervisor</div>
+                <div class="ats-doc-sign-zone" id="atsBoxSignSup">
+                  <div class="ats-sign-placeholder" id="atsPlaceholderSup">
+                    <button type="button" class="ats-btn-firmar-pad" id="btnSignSup">✍️ Firmar Supervisor</button>
+                  </div>
+                  <div class="ats-sign-preview-wrap" id="atsWrapSignSup" style="display:none">
+                    <img id="atsImgSignSup" class="ats-sign-display-img" alt="Firma Supervisor">
+                    <div class="ats-sign-preview-actions">
+                      <button type="button" class="ats-btn-resign" id="btnResignSup" title="Volver a firmar">✍️</button>
+                      <button type="button" class="ats-btn-delsign" id="btnDelSignSup" title="Borrar firma">✕</button>
+                    </div>
+                  </div>
+                </div>
+                <input class="ats-cell-input ats-firma-aclaracion" id="atsFirmaSupervisor" placeholder="Aclaración: Nombre y Legajo">
+                <div class="ats-doc-firma-foot">Firma y aclaración</div>
+              </div>
+
+              <!-- Columna 3: Dto. Higiene & Seguridad -->
+              <div class="ats-doc-firma-box ats-doc-border-left">
+                <div class="ats-doc-cargo-title">Dto. de Higiene & Seguridad</div>
+                <div class="ats-doc-sign-zone" id="atsBoxSignHig">
+                  <div class="ats-sign-placeholder" id="atsPlaceholderHig">
+                    <button type="button" class="ats-btn-firmar-pad" id="btnSignHig">✍️ Firmar Higiene</button>
+                  </div>
+                  <div class="ats-sign-preview-wrap" id="atsWrapSignHig" style="display:none">
+                    <img id="atsImgSignHig" class="ats-sign-display-img" alt="Firma Higiene">
+                    <div class="ats-sign-preview-actions">
+                      <button type="button" class="ats-btn-resign" id="btnResignHig" title="Volver a firmar">✍️</button>
+                      <button type="button" class="ats-btn-delsign" id="btnDelSignHig" title="Borrar firma">✕</button>
+                    </div>
+                  </div>
+                </div>
+                <input class="ats-cell-input ats-firma-aclaracion" id="atsFirmaHigiene" placeholder="Aclaración: Nombre y Matrícula">
+                <div class="ats-doc-firma-foot">Firma y aclaración</div>
+              </div>
+
+            </div>
+          </div>
+
+        </div><!-- /.ats-sheet-paper -->
+      </div><!-- /.ats-sheet-scroll -->
+
+      <!-- Barra de acciones inferior -->
       <div class="ats-form-footer">
         <button type="button" class="btn btn-ghost" id="btnAtsCancel">Cerrar</button>
-        <button type="button" class="btn btn-secondary" id="btnAtsExportPDF" style="display:none">📄 Exportar PDF</button>
+        <button type="button" class="btn btn-secondary" id="btnAtsExportPDF" style="display:none">📄 Exportar PDF Firmado</button>
         <button type="submit" class="btn btn-primary" id="btnAtsSave">💾 Guardar ATS</button>
       </div>
     </form>
   </div>
 </div>
 
-<script src="db.js?v=5.9.48"></script>
-<script src="app.js?v=5.9.48"></script>
+<!-- Modal de Firma Digital Táctil para ATS (Equipo y Responsables) -->
+<div class="modal-backdrop" id="modalFirmaAts" style="z-index: 9999;">
+  <div class="modal ats-firma-modal">
+    <div class="ats-firma-modal-head">
+      <div class="ats-firma-modal-title" id="atsFirmaModalTitle">✍️ Firma Digital</div>
+      <button type="button" class="ats-close-btn" id="btnAtsFirmaClose" aria-label="Cerrar modal de firma">✕</button>
+    </div>
+    <div class="ats-firma-modal-body">
+      <p class="ats-firma-hint" id="atsFirmaHint">Dibujá tu firma con el dedo, lápiz táctil o ratón sobre la línea:</p>
+      <div class="ats-canvas-wrap">
+        <canvas id="atsSignatureCanvas" width="560" height="220"></canvas>
+        <div class="ats-canvas-line-guide"></div>
+        <div class="ats-canvas-watermark">Firma digital ATS</div>
+      </div>
+    </div>
+    <div class="ats-firma-modal-foot">
+      <button type="button" class="btn btn-ghost btn-sm" id="btnAtsFirmaClear">🗑️ Borrar</button>
+      <div style="flex:1"></div>
+      <button type="button" class="btn btn-secondary btn-sm" id="btnAtsFirmaCancel">Cancelar</button>
+      <button type="button" class="btn btn-primary btn-sm" id="btnAtsFirmaAccept">✓ Aplicar firma</button>
+    </div>
+  </div>
+</div>
+
+<script src="db.js?v=5.9.49"></script>
+<script src="app.js?v=5.9.49"></script>
 </body>
 </html>

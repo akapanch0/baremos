@@ -1,7 +1,12 @@
 {
-  "version": "5.9.48",
+  "version": "5.9.49",
   "fecha": "2026-09-11",
   "cambios": [
+    "Diseño de alta fidelidad para el Análisis de Trabajo Seguro (ATS): la interfaz dentro de la aplicación ahora replica con exactitud la cuadrícula, tipografía y estructura visual de la planilla física reglamentaria",
+    "Firma digital interactiva para el equipo: cada integrante de la cuadrilla cuenta con captura de firma táctil y de puntero en pantalla con recorte inteligente y previsualización en miniatura",
+    "Firmas digitales de autoridades: recuadros dedicados para Jefe de cuadrilla, Supervisor y Dpto. de Higiene y Seguridad con firma digital opcional y aclaración",
+    "Inclusión de firmas en el PDF exportado: el documento oficial A4 exporta e imprime las firmas digitales reales de los integrantes de la cuadrilla y de las autoridades responsables",
+    "Modal dedicado para trazado de firma con lienzo de alta resolución (Retina/DPR), soporte multitáctil, botón de borrado, cancelación y confirmación con recorte automático de márgenes",
     "Corrección crítica del flujo de actualización: sincronización de la constante interna de versión en app.js y recarga sin caché garantizada para reflejar cambios de inmediato",
     "Limpieza efectiva del almacenamiento en caché antiguo y desregistro de Service Worker previo al aplicar la actualización para visualizar todos los cambios de forma inmediata",
     "Servicio de notificaciones locales vía Service Worker: recordatorio automático en la barra del sistema al abrir la aplicación si el Análisis de Trabajo Seguro (ATS) aún no ha sido completado",

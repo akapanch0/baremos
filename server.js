@@ -11,7 +11,7 @@ const HOST = '0.0.0.0';
 
 // API health endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', app: 'BAREMO', version: '5.9.48' });
+  res.json({ status: 'ok', app: 'BAREMO', version: '5.9.49' });
 });
 
 // Servir archivos estáticos

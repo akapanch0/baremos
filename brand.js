@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '5.9.48';
+  var VERSION = '5.9.49';
   var SRC = 'icons/logo.png?v=' + VERSION;
   var MAX_REINTENTOS = 3;
 

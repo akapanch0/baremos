@@ -9,7 +9,7 @@
    persistente, recordatorio de backup, librerias locales con respaldo
    en CDN, cache de geocodificacion y limpieza del service worker.
    ============================================================ */
-const APP_VERSION = '5.9.48';
+const APP_VERSION = '5.9.49';
 
 /* Control de versión de Términos y Condiciones */
 const CURRENT_TERMS_VERSION = 1;
@@ -6870,19 +6870,232 @@ function renderATSStatus() {
   }
 }
 
+let atsFirmaJefeData = null;
+let atsFirmaSupervisorData = null;
+let atsFirmaHigieneData = null;
+
+let currentSignatureCallback = null;
+let sigCanvas = null;
+let sigCtx = null;
+let sigDrawing = false;
+let sigHasStrokes = false;
+
+function initSignatureCanvas() {
+  const canvas = $('#atsSignatureCanvas');
+  if (!canvas) return;
+  sigCanvas = canvas;
+  sigCtx = canvas.getContext('2d');
+
+  function getCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    let cx, cy;
+    if (e.touches && e.touches.length > 0) {
+      cx = e.touches[0].clientX;
+      cy = e.touches[0].clientY;
+    } else {
+      cx = e.clientX;
+      cy = e.clientY;
+    }
+    return {
+      x: cx - rect.left,
+      y: cy - rect.top
+    };
+  }
+
+  function onDown(e) {
+    e.preventDefault();
+    sigDrawing = true;
+    const p = getCoords(e);
+    sigCtx.beginPath();
+    sigCtx.moveTo(p.x, p.y);
+  }
+
+  function onMove(e) {
+    if (!sigDrawing) return;
+    e.preventDefault();
+    const p = getCoords(e);
+    sigCtx.lineTo(p.x, p.y);
+    sigCtx.stroke();
+    sigHasStrokes = true;
+  }
+
+  function onUp(e) {
+    if (sigDrawing) {
+      sigDrawing = false;
+      sigCtx.closePath();
+    }
+  }
+
+  canvas.addEventListener('mousedown', onDown);
+  canvas.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+
+  canvas.addEventListener('touchstart', onDown, { passive: false });
+  canvas.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('touchend', onUp);
+  window.addEventListener('touchcancel', onUp);
+
+  const bClear = $('#btnAtsFirmaClear');
+  if (bClear) bClear.onclick = () => limpiarCanvasFirma();
+
+  const bCancel = $('#btnAtsFirmaCancel');
+  if (bCancel) bCancel.onclick = cerrarModalFirmaDigital;
+  const bClose = $('#btnAtsFirmaClose');
+  if (bClose) bClose.onclick = cerrarModalFirmaDigital;
+
+  const bAccept = $('#btnAtsFirmaAccept');
+  if (bAccept) {
+    bAccept.onclick = () => {
+      if (!sigHasStrokes) {
+        toast('Por favor, realizá tu firma en el recuadro antes de aplicar', 'warn');
+        return;
+      }
+      const dataUrl = exportarFirmaRecortada(canvas);
+      if (typeof currentSignatureCallback === 'function') {
+        currentSignatureCallback(dataUrl);
+      }
+      cerrarModalFirmaDigital();
+      toast('✍️ Firma registrada', 'success');
+    };
+  }
+}
+
+function abrirModalFirmaDigital({ titulo = '✍️ Firma Digital', onAceptar = null } = {}) {
+  const modal = $('#modalFirmaAts');
+  if (!modal) return;
+  currentSignatureCallback = onAceptar;
+  const tEl = $('#atsFirmaModalTitle');
+  if (tEl) tEl.textContent = titulo;
+  modal.classList.add('show');
+  setTimeout(() => {
+    ajustarTamanioCanvasFirma();
+    limpiarCanvasFirma();
+  }, 60);
+}
+
+function cerrarModalFirmaDigital() {
+  const modal = $('#modalFirmaAts');
+  if (modal) modal.classList.remove('show');
+  currentSignatureCallback = null;
+}
+
+function ajustarTamanioCanvasFirma() {
+  const canvas = $('#atsSignatureCanvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(window.devicePixelRatio || 1, 2);
+  const w = rect.width || 560;
+  const h = rect.height || 220;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  sigCtx = canvas.getContext('2d');
+  sigCtx.scale(dpr, dpr);
+  sigCtx.lineCap = 'round';
+  sigCtx.lineJoin = 'round';
+  sigCtx.lineWidth = 2.8;
+  sigCtx.strokeStyle = '#0f172a';
+}
+
+function limpiarCanvasFirma() {
+  const canvas = $('#atsSignatureCanvas');
+  if (!canvas || !sigCtx) return;
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width || 560;
+  const h = rect.height || 220;
+  sigCtx.clearRect(0, 0, w, h);
+  sigHasStrokes = false;
+}
+
+function exportarFirmaRecortada(canvas) {
+  const w = canvas.width;
+  const h = canvas.height;
+  const ctx = canvas.getContext('2d');
+  try {
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    let minX = w, minY = h, maxX = 0, maxY = 0;
+    let found = false;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const a = data[(y * w + x) * 4 + 3];
+        if (a > 15) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          found = true;
+        }
+      }
+    }
+
+    if (!found) return canvas.toDataURL('image/png');
+
+    const pad = Math.round(12 * (window.devicePixelRatio || 1));
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(w, maxX + pad);
+    maxY = Math.min(h, maxY + pad);
+
+    const cW = maxX - minX;
+    const cH = maxY - minY;
+
+    const tc = document.createElement('canvas');
+    tc.width = cW;
+    tc.height = cH;
+    const tCtx = tc.getContext('2d');
+    tCtx.drawImage(canvas, minX, minY, cW, cH, 0, 0, cW, cH);
+    return tc.toDataURL('image/png');
+  } catch (err) {
+    return canvas.toDataURL('image/png');
+  }
+}
+
+function actualizarVistaFirmasAutoridades() {
+  const phJ = $('#atsPlaceholderJefe'), wrJ = $('#atsWrapSignJefe'), imJ = $('#atsImgSignJefe');
+  if (atsFirmaJefeData) {
+    if (phJ) phJ.style.display = 'none';
+    if (wrJ) wrJ.style.display = 'flex';
+    if (imJ) imJ.src = atsFirmaJefeData;
+  } else {
+    if (phJ) phJ.style.display = 'flex';
+    if (wrJ) wrJ.style.display = 'none';
+  }
+
+  const phS = $('#atsPlaceholderSup'), wrS = $('#atsWrapSignSup'), imS = $('#atsImgSignSup');
+  if (atsFirmaSupervisorData) {
+    if (phS) phS.style.display = 'none';
+    if (wrS) wrS.style.display = 'flex';
+    if (imS) imS.src = atsFirmaSupervisorData;
+  } else {
+    if (phS) phS.style.display = 'flex';
+    if (wrS) wrS.style.display = 'none';
+  }
+
+  const phH = $('#atsPlaceholderHig'), wrH = $('#atsWrapSignHig'), imH = $('#atsImgSignHig');
+  if (atsFirmaHigieneData) {
+    if (phH) phH.style.display = 'none';
+    if (wrH) wrH.style.display = 'flex';
+    if (imH) imH.src = atsFirmaHigieneData;
+  } else {
+    if (phH) phH.style.display = 'flex';
+    if (wrH) wrH.style.display = 'none';
+  }
+}
+
 function initATS() {
   // 1. Grid interactivo de los 21 riesgos
   const cont = $('#atsRiesgosGrid');
   if (cont) {
     cont.innerHTML = ATS_RIESGOS.map(r => `
-      <div class="ats-riesgo-pill" data-n="${r.n}">
-        <span class="ats-riesgo-num">${r.n}</span>
-        <span class="ats-riesgo-txt">${escapeHtml(r.t)}</span>
+      <div class="ats-doc-risk-item" data-n="${r.n}">
+        <span class="ats-doc-risk-circle">${r.n}</span>
+        <span class="ats-doc-risk-text">${escapeHtml(r.t)}</span>
       </div>
     `).join('');
-    cont.querySelectorAll('.ats-riesgo-pill').forEach(pill => {
-      pill.onclick = () => {
-        pill.classList.toggle('selected');
+    cont.querySelectorAll('.ats-doc-risk-item').forEach(item => {
+      item.onclick = () => {
+        item.classList.toggle('selected');
       };
     });
   }
@@ -6930,17 +7143,26 @@ function initATS() {
     bAddCuad.onclick = () => {
       const container = $('#atsCuadrillaList');
       if (!container) return;
-      const cant = container.querySelectorAll('.ats-cuadrilla-row').length;
+      const cant = container.querySelectorAll('.ats-cuadrilla-row-item').length;
       const div = document.createElement('div');
-      div.className = 'ats-cuadrilla-row';
+      div.className = 'ats-cuadrilla-row-item';
       div.dataset.idx = cant;
+      div.dataset.firma = '';
       div.innerHTML = `
-        <span class="ats-cuadrilla-num">${cant + 1}</span>
-        <input class="input ats-input ats-cuad-nom" placeholder="Apellido y Nombre">
-        <input class="input ats-input ats-cuad-dni" placeholder="N° Documento" style="max-width:180px">
-        <button type="button" class="ats-cuadrilla-del" title="Quitar">🗑️</button>
+        <div class="ats-cell-q-num ats-cuadrilla-num">${cant + 1}</div>
+        <div class="ats-cell-q-nom">
+          <input class="ats-cell-input ats-cuad-nom" placeholder="Apellido y Nombre">
+        </div>
+        <div class="ats-cell-q-dni">
+          <input class="ats-cell-input ats-cuad-dni" placeholder="N° Documento / Legajo">
+        </div>
+        <div class="ats-cell-q-sign ats-cuad-sign-cell"></div>
+        <div class="ats-cell-q-act">
+          <button type="button" class="ats-btn-del-cuadrilla" title="Quitar fila">🗑️</button>
+        </div>
       `;
-      div.querySelector('.ats-cuadrilla-del').onclick = () => {
+      actualizarFirmaRowCuadrilla(div);
+      div.querySelector('.ats-btn-del-cuadrilla').onclick = () => {
         div.remove();
         reindexarCuadrilla();
       };
@@ -6950,13 +7172,28 @@ function initATS() {
     };
   }
 
-  // 3. Cerrar modal
+  // 3. Cerrar modal y botones header
   const bClose = $('#btnAtsClose');
   if (bClose) bClose.onclick = cerrarModalATS;
   const bCancel = $('#btnAtsCancel');
   if (bCancel) bCancel.onclick = cerrarModalATS;
 
-  // 4. Exportar PDF desde el modal
+  const bSaveTop = $('#btnAtsQuickSaveTop');
+  if (bSaveTop) {
+    bSaveTop.onclick = async () => {
+      await guardarATS();
+    };
+  }
+
+  const bPdfTop = $('#btnAtsQuickPdfTop');
+  if (bPdfTop) {
+    bPdfTop.onclick = async () => {
+      const data = recolectarDatosATS();
+      await exportarAtsPDF(data);
+    };
+  }
+
+  // 4. Exportar PDF desde el footer
   const bExp = $('#btnAtsExportPDF');
   if (bExp) {
     bExp.onclick = async () => {
@@ -6965,7 +7202,7 @@ function initATS() {
     };
   }
 
-  // 5. Guardar ATS
+  // 5. Guardar ATS form submit
   const form = $('#formATS');
   if (form) {
     form.onsubmit = async e => {
@@ -6974,6 +7211,115 @@ function initATS() {
     };
   }
 
+  // 6. Firmas de Autoridades
+  // Jefe
+  const bSignJefe = $('#btnSignJefe');
+  if (bSignJefe) {
+    bSignJefe.onclick = () => {
+      const nom = $('#atsFirmaJefe') ? $('#atsFirmaJefe').value.trim() : 'Jefe de cuadrilla';
+      abrirModalFirmaDigital({
+        titulo: `✍️ Firma de ${nom || 'Jefe de cuadrilla'}`,
+        onAceptar: (dataUrl) => {
+          atsFirmaJefeData = dataUrl;
+          actualizarVistaFirmasAutoridades();
+        }
+      });
+    };
+  }
+  const bResignJefe = $('#btnResignJefe');
+  if (bResignJefe) {
+    bResignJefe.onclick = () => {
+      const nom = $('#atsFirmaJefe') ? $('#atsFirmaJefe').value.trim() : 'Jefe de cuadrilla';
+      abrirModalFirmaDigital({
+        titulo: `✍️ Firma de ${nom || 'Jefe de cuadrilla'}`,
+        onAceptar: (dataUrl) => {
+          atsFirmaJefeData = dataUrl;
+          actualizarVistaFirmasAutoridades();
+        }
+      });
+    };
+  }
+  const bDelSignJefe = $('#btnDelSignJefe');
+  if (bDelSignJefe) {
+    bDelSignJefe.onclick = () => {
+      atsFirmaJefeData = null;
+      actualizarVistaFirmasAutoridades();
+    };
+  }
+
+  // Supervisor
+  const bSignSup = $('#btnSignSup');
+  if (bSignSup) {
+    bSignSup.onclick = () => {
+      const nom = $('#atsFirmaSupervisor') ? $('#atsFirmaSupervisor').value.trim() : 'Supervisor';
+      abrirModalFirmaDigital({
+        titulo: `✍️ Firma de ${nom || 'Supervisor'}`,
+        onAceptar: (dataUrl) => {
+          atsFirmaSupervisorData = dataUrl;
+          actualizarVistaFirmasAutoridades();
+        }
+      });
+    };
+  }
+  const bResignSup = $('#btnResignSup');
+  if (bResignSup) {
+    bResignSup.onclick = () => {
+      const nom = $('#atsFirmaSupervisor') ? $('#atsFirmaSupervisor').value.trim() : 'Supervisor';
+      abrirModalFirmaDigital({
+        titulo: `✍️ Firma de ${nom || 'Supervisor'}`,
+        onAceptar: (dataUrl) => {
+          atsFirmaSupervisorData = dataUrl;
+          actualizarVistaFirmasAutoridades();
+        }
+      });
+    };
+  }
+  const bDelSignSup = $('#btnDelSignSup');
+  if (bDelSignSup) {
+    bDelSignSup.onclick = () => {
+      atsFirmaSupervisorData = null;
+      actualizarVistaFirmasAutoridades();
+    };
+  }
+
+  // Higiene
+  const bSignHig = $('#btnSignHig');
+  if (bSignHig) {
+    bSignHig.onclick = () => {
+      const nom = $('#atsFirmaHigiene') ? $('#atsFirmaHigiene').value.trim() : 'Higiene & Seguridad';
+      abrirModalFirmaDigital({
+        titulo: `✍️ Firma de ${nom || 'Higiene & Seguridad'}`,
+        onAceptar: (dataUrl) => {
+          atsFirmaHigieneData = dataUrl;
+          actualizarVistaFirmasAutoridades();
+        }
+      });
+    };
+  }
+  const bResignHig = $('#btnResignHig');
+  if (bResignHig) {
+    bResignHig.onclick = () => {
+      const nom = $('#atsFirmaHigiene') ? $('#atsFirmaHigiene').value.trim() : 'Higiene & Seguridad';
+      abrirModalFirmaDigital({
+        titulo: `✍️ Firma de ${nom || 'Higiene & Seguridad'}`,
+        onAceptar: (dataUrl) => {
+          atsFirmaHigieneData = dataUrl;
+          actualizarVistaFirmasAutoridades();
+        }
+      });
+    };
+  }
+  const bDelSignHig = $('#btnDelSignHig');
+  if (bDelSignHig) {
+    bDelSignHig.onclick = () => {
+      atsFirmaHigieneData = null;
+      actualizarVistaFirmasAutoridades();
+    };
+  }
+
+  // 7. Inicializar canvas de firmas
+  initSignatureCanvas();
+
   // Render inicial del banner
   renderATSStatus();
 }
@@ -6981,10 +7327,65 @@ function initATS() {
 function reindexarCuadrilla() {
   const container = $('#atsCuadrillaList');
   if (!container) return;
-  container.querySelectorAll('.ats-cuadrilla-row').forEach((row, idx) => {
+  container.querySelectorAll('.ats-cuadrilla-row-item').forEach((row, idx) => {
+    row.dataset.idx = idx;
     const num = row.querySelector('.ats-cuadrilla-num');
     if (num) num.textContent = idx + 1;
+    const actCell = row.querySelector('.ats-cell-q-act');
+    if (actCell) {
+      actCell.innerHTML = idx > 0 ? `<button type="button" class="ats-btn-del-cuadrilla" title="Quitar fila">🗑️</button>` : '';
+      const delBtn = actCell.querySelector('.ats-btn-del-cuadrilla');
+      if (delBtn) {
+        delBtn.onclick = () => {
+          row.remove();
+          reindexarCuadrilla();
+        };
+      }
+    }
   });
+}
+
+function actualizarFirmaRowCuadrilla(row) {
+  const signCell = row.querySelector('.ats-cuad-sign-cell');
+  if (!signCell) return;
+  const firma = row.dataset.firma || '';
+  const nomInput = row.querySelector('.ats-cuad-nom');
+
+  if (firma) {
+    signCell.innerHTML = `
+      <div class="ats-sign-thumb-container">
+        <img src="${firma}" class="ats-sign-thumb-img" alt="Firma digital">
+        <button type="button" class="ats-btn-resign" title="Cambiar firma">✍️</button>
+        <button type="button" class="ats-btn-delsign" title="Borrar firma">✕</button>
+      </div>
+    `;
+    signCell.querySelector('.ats-btn-resign').onclick = () => {
+      const nombre = nomInput ? nomInput.value.trim() : 'Integrante';
+      abrirModalFirmaDigital({
+        titulo: `✍️ Firma de ${nombre || 'Integrante'}`,
+        onAceptar: (dataUrl) => {
+          row.dataset.firma = dataUrl;
+          actualizarFirmaRowCuadrilla(row);
+        }
+      });
+    };
+    signCell.querySelector('.ats-btn-delsign').onclick = () => {
+      row.dataset.firma = '';
+      actualizarFirmaRowCuadrilla(row);
+    };
+  } else {
+    signCell.innerHTML = `<button type="button" class="ats-btn-sign-item">✍️ Firmar</button>`;
+    signCell.querySelector('.ats-btn-sign-item').onclick = () => {
+      const nombre = nomInput ? nomInput.value.trim() : 'Integrante';
+      abrirModalFirmaDigital({
+        titulo: `✍️ Firma de ${nombre || 'Integrante'}`,
+        onAceptar: (dataUrl) => {
+          row.dataset.firma = dataUrl;
+          actualizarFirmaRowCuadrilla(row);
+        }
+      });
+    };
+  }
 }
 
 function renderCuadrillaRows(lista) {
@@ -6993,21 +7394,34 @@ function renderCuadrillaRows(lista) {
   if (!lista || !lista.length) {
     lista = [{
       nombre: State.user ? State.user.nombre : '',
-      dni: State.user ? State.user.legajo : ''
+      dni: State.user ? (State.user.legajo || State.user.dni || '') : '',
+      firma: ''
     }];
   }
+
   container.innerHTML = lista.map((m, idx) => `
-    <div class="ats-cuadrilla-row" data-idx="${idx}">
-      <span class="ats-cuadrilla-num">${idx + 1}</span>
-      <input class="input ats-input ats-cuad-nom" placeholder="Apellido y Nombre" value="${escapeHtml(m.nombre || '')}">
-      <input class="input ats-input ats-cuad-dni" placeholder="N° Documento" value="${escapeHtml(m.dni || '')}" style="max-width:180px">
-      ${idx > 0 ? `<button type="button" class="ats-cuadrilla-del" title="Quitar">🗑️</button>` : '<span style="width:24px"></span>'}
+    <div class="ats-cuadrilla-row-item" data-idx="${idx}" data-firma="${escapeHtml(m.firma || '')}">
+      <div class="ats-cell-q-num ats-cuadrilla-num">${idx + 1}</div>
+      <div class="ats-cell-q-nom">
+        <input class="ats-cell-input ats-cuad-nom" placeholder="Apellido y Nombre" value="${escapeHtml(m.nombre || '')}">
+      </div>
+      <div class="ats-cell-q-dni">
+        <input class="ats-cell-input ats-cuad-dni" placeholder="N° Documento / Legajo" value="${escapeHtml(m.dni || '')}">
+      </div>
+      <div class="ats-cell-q-sign ats-cuad-sign-cell"></div>
+      <div class="ats-cell-q-act">
+        ${idx > 0 ? `<button type="button" class="ats-btn-del-cuadrilla" title="Quitar fila">🗑️</button>` : ''}
+      </div>
     </div>
   `).join('');
 
-  container.querySelectorAll('.ats-cuadrilla-del').forEach(btn => {
+  container.querySelectorAll('.ats-cuadrilla-row-item').forEach(row => {
+    actualizarFirmaRowCuadrilla(row);
+  });
+
+  container.querySelectorAll('.ats-btn-del-cuadrilla').forEach(btn => {
     btn.onclick = () => {
-      const row = btn.closest('.ats-cuadrilla-row');
+      const row = btn.closest('.ats-cuadrilla-row-item');
       if (row) row.remove();
       reindexarCuadrilla();
     };
@@ -7045,9 +7459,9 @@ function abrirModalATS(opciones = {}) {
 
   // Riesgos Potenciales
   const selRiesgos = (ats && Array.isArray(ats.riesgos)) ? ats.riesgos.map(Number) : [];
-  $$('.ats-riesgo-pill').forEach(pill => {
-    const n = parseInt(pill.dataset.n);
-    pill.classList.toggle('selected', selRiesgos.includes(n));
+  $$('.ats-doc-risk-item').forEach(item => {
+    const n = parseInt(item.dataset.n);
+    item.classList.toggle('selected', selRiesgos.includes(n));
   });
 
   // Tipo de Tareas
@@ -7094,17 +7508,24 @@ function abrirModalATS(opciones = {}) {
   // Personal de Cuadrilla
   renderCuadrillaRows(ats ? ats.cuadrilla : null);
 
-  // Firmas
+  // Firmas de Autoridades
   const fj = $('#atsFirmaJefe');
-  if (fj) fj.value = ats ? (ats.firmaJefe || '') : (State.user ? `${State.user.nombre} (Leg. ${State.user.legajo})` : '');
+  if (fj) fj.value = ats ? (ats.firmaJefe || '') : (State.user ? `${State.user.nombre} (Leg. ${State.user.legajo || State.user.dni || ''})` : '');
   const fs = $('#atsFirmaSupervisor');
   if (fs) fs.value = ats ? (ats.firmaSupervisor || '') : '';
   const fh = $('#atsFirmaHigiene');
   if (fh) fh.value = ats ? (ats.firmaHigiene || '') : '';
 
-  // Botón Exportar PDF en footer
+  atsFirmaJefeData = (ats && ats.firmaJefeImg) ? ats.firmaJefeImg : null;
+  atsFirmaSupervisorData = (ats && ats.firmaSupervisorImg) ? ats.firmaSupervisorImg : null;
+  atsFirmaHigieneData = (ats && ats.firmaHigieneImg) ? ats.firmaHigieneImg : null;
+  actualizarVistaFirmasAutoridades();
+
+  // Botón Exportar PDF en footer y header
   const bExp = $('#btnAtsExportPDF');
   if (bExp) bExp.style.display = ats && ats.completado ? 'inline-block' : 'none';
+  const bExpTop = $('#btnAtsQuickPdfTop');
+  if (bExpTop) bExpTop.style.display = ats && ats.completado ? 'inline-block' : 'none';
 
   modal.classList.add('show');
   if (fOT && !fOT.value) fOT.focus();
@@ -7127,8 +7548,8 @@ function recolectarDatosATS() {
   const fTrab = $('#atsTrabajoAsignado');
 
   const riesgos = [];
-  $$('.ats-riesgo-pill.selected').forEach(pill => {
-    const n = parseInt(pill.dataset.n);
+  $$('.ats-doc-risk-item.selected').forEach(item => {
+    const n = parseInt(item.dataset.n);
     if (!isNaN(n)) riesgos.push(n);
   });
 
@@ -7148,11 +7569,16 @@ function recolectarDatosATS() {
   $$('input[name="atsCharla"]:checked').forEach(cb => charla.push(cb.value));
 
   const cuadrilla = [];
-  $$('#atsCuadrillaList .ats-cuadrilla-row').forEach(row => {
+  $$('#atsCuadrillaList .ats-cuadrilla-row-item').forEach(row => {
     const nom = row.querySelector('.ats-cuad-nom');
     const dni = row.querySelector('.ats-cuad-dni');
+    const firma = row.dataset.firma || '';
     if (nom && nom.value.trim()) {
-      cuadrilla.push({ nombre: nom.value.trim(), dni: dni ? dni.value.trim() : '' });
+      cuadrilla.push({
+        nombre: nom.value.trim(),
+        dni: dni ? dni.value.trim() : '',
+        firma
+      });
     }
   });
 
@@ -7182,6 +7608,9 @@ function recolectarDatosATS() {
     firmaJefe: $('#atsFirmaJefe') ? $('#atsFirmaJefe').value.trim() : '',
     firmaSupervisor: $('#atsFirmaSupervisor') ? $('#atsFirmaSupervisor').value.trim() : '',
     firmaHigiene: $('#atsFirmaHigiene') ? $('#atsFirmaHigiene').value.trim() : '',
+    firmaJefeImg: atsFirmaJefeData || '',
+    firmaSupervisorImg: atsFirmaSupervisorData || '',
+    firmaHigieneImg: atsFirmaHigieneData || '',
     completado: true,
     actualizadoEn: ahora()
   };
@@ -7214,6 +7643,8 @@ async function guardarATS(exportarDespues = false) {
 
   const bExp = $('#btnAtsExportPDF');
   if (bExp) bExp.style.display = 'inline-block';
+  const bExpTop = $('#btnAtsQuickPdfTop');
+  if (bExpTop) bExpTop.style.display = 'inline-block';
 
   cerrarModalATS();
 
@@ -7663,35 +8094,74 @@ async function exportarAtsPDF(ats, compartir = false) {
   }
   y += hCharlaRow * 7;
 
-  // 10. APELLIDO, NOMBRE Y NÚMERO DE DOCUMENTO
+  // 10. APELLIDO, NOMBRE Y NÚMERO DE DOCUMENTO (CUADRILLA Y FIRMAS)
   doc.setFillColor(232, 232, 232);
   doc.rect(left, y, w, 4.2, 'FD');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.8);
-  doc.text('Apellido, Nombre y Número de Documento (Datos obligatorios)', left + 2, y + 3);
+  doc.text('Apellido, Nombre y Número de Documento (Datos obligatorios y firmas del equipo)', left + 2, y + 3);
   y += 4.2;
 
   const cuadrilla = Array.isArray(ats.cuadrilla) ? ats.cuadrilla : [];
-  const filasCuadrilla = 4;
-  const hCuadRow = 4.2;
+  const filasCuadrilla = Math.max(4, cuadrilla.length);
+  const hCuadRow = 7.5; // Altura para firma digital legible
 
+  // Encabezado de la tabla cuadrilla
+  doc.rect(left, y, w, 3.8);
+  doc.line(left + 10, y, left + 10, y + 3.8);
+  doc.line(left + 80, y, left + 80, y + 3.8);
+  doc.line(left + 130, y, left + 130, y + 3.8);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5.8);
+  doc.text('N°', left + 5, y + 2.6, { align: 'center' });
+  doc.text('Apellido y Nombre', left + 12, y + 2.6);
+  doc.text('N° de Documento / Legajo', left + 82, y + 2.6);
+  doc.text('Firma del Integrante', left + 132, y + 2.6);
+  y += 3.8;
+
+  // Filas de la tabla
   doc.rect(left, y, w, hCuadRow * filasCuadrilla);
-  doc.line(left + 125, y, left + 125, y + hCuadRow * filasCuadrilla);
+  doc.line(left + 10, y, left + 10, y + hCuadRow * filasCuadrilla);
+  doc.line(left + 80, y, left + 80, y + hCuadRow * filasCuadrilla);
+  doc.line(left + 130, y, left + 130, y + hCuadRow * filasCuadrilla);
 
   for (let i = 0; i < filasCuadrilla; i++) {
     const cY = y + i * hCuadRow;
     if (i > 0) doc.line(left, cY, left + w, cY);
     const m = cuadrilla[i] || {};
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.2);
-    if (m.nombre) doc.text(String(m.nombre), left + 3, cY + 3);
-    if (m.dni) doc.text(String(m.dni), left + 128, cY + 3);
+    doc.setFontSize(6);
+    doc.text(String(i + 1), left + 5, cY + 4.8, { align: 'center' });
+    if (m.nombre) doc.text(String(m.nombre), left + 12, cY + 4.8);
+    if (m.dni) doc.text(String(m.dni), left + 82, cY + 4.8);
+
+    if (m.firma) {
+      try {
+        doc.addImage(m.firma, 'PNG', left + 132, cY + 0.8, 48, 5.8);
+      } catch (err) {
+        doc.setFontSize(5);
+        doc.text('(Firma digital registrada)', left + 133, cY + 4.8);
+      }
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.2);
+      doc.setTextColor(150);
+      doc.text('_____________________________', left + 132, cY + 4.8);
+      doc.setTextColor(20);
+    }
   }
   y += hCuadRow * filasCuadrilla;
 
-  // 11. FIRMAS Y ACLARACIONES (3 columnas)
+  // 11. FIRMAS Y ACLARACIONES (3 columnas con firmas digitales)
+  doc.setFillColor(232, 232, 232);
+  doc.rect(left, y, w, 4.2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.text('Firmas y Aclaraciones de Autoridades', left + 2, y + 3);
+  y += 4.2;
+
   const colFirma = w / 3;
-  const hFirma = 16;
+  const hFirma = 18;
   doc.rect(left, y, w, hFirma);
   doc.line(left + colFirma, y, left + colFirma, y + hFirma);
   doc.line(left + colFirma * 2, y, left + colFirma * 2, y + hFirma);
@@ -7699,32 +8169,47 @@ async function exportarAtsPDF(ats, compartir = false) {
   // Columna 1: Jefe de cuadrilla
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
-  doc.text('Jefe de cuadrilla', left + colFirma / 2, y + 3.5, { align: 'center' });
+  doc.text('Jefe de cuadrilla', left + colFirma / 2, y + 3.2, { align: 'center' });
+  if (ats.firmaJefeImg) {
+    try {
+      doc.addImage(ats.firmaJefeImg, 'PNG', left + (colFirma - 40) / 2, y + 4.5, 40, 7.5);
+    } catch (e) {}
+  }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  if (ats.firmaJefe) doc.text(String(ats.firmaJefe), left + colFirma / 2, y + 9.5, { align: 'center' });
-  doc.setFontSize(5.5);
-  doc.text('Firma y aclaración', left + colFirma / 2, y + 14.5, { align: 'center' });
+  if (ats.firmaJefe) doc.text(String(ats.firmaJefe), left + colFirma / 2, y + (ats.firmaJefeImg ? 13.8 : 9.5), { align: 'center' });
+  doc.setFontSize(5.2);
+  doc.text('Firma y aclaración', left + colFirma / 2, y + 16.8, { align: 'center' });
 
   // Columna 2: Supervisor
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
-  doc.text('Supervisor', left + colFirma + colFirma / 2, y + 3.5, { align: 'center' });
+  doc.text('Supervisor', left + colFirma + colFirma / 2, y + 3.2, { align: 'center' });
+  if (ats.firmaSupervisorImg) {
+    try {
+      doc.addImage(ats.firmaSupervisorImg, 'PNG', left + colFirma + (colFirma - 40) / 2, y + 4.5, 40, 7.5);
+    } catch (e) {}
+  }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  if (ats.firmaSupervisor) doc.text(String(ats.firmaSupervisor), left + colFirma + colFirma / 2, y + 9.5, { align: 'center' });
-  doc.setFontSize(5.5);
-  doc.text('Firma y aclaración', left + colFirma + colFirma / 2, y + 14.5, { align: 'center' });
+  if (ats.firmaSupervisor) doc.text(String(ats.firmaSupervisor), left + colFirma + colFirma / 2, y + (ats.firmaSupervisorImg ? 13.8 : 9.5), { align: 'center' });
+  doc.setFontSize(5.2);
+  doc.text('Firma y aclaración', left + colFirma + colFirma / 2, y + 16.8, { align: 'center' });
 
   // Columna 3: Dto. Higiene & Seguridad
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
-  doc.text('Dto. de Higiene & Seguridad', left + colFirma * 2 + colFirma / 2, y + 3.5, { align: 'center' });
+  doc.text('Dto. de Higiene & Seguridad', left + colFirma * 2 + colFirma / 2, y + 3.2, { align: 'center' });
+  if (ats.firmaHigieneImg) {
+    try {
+      doc.addImage(ats.firmaHigieneImg, 'PNG', left + colFirma * 2 + (colFirma - 40) / 2, y + 4.5, 40, 7.5);
+    } catch (e) {}
+  }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  if (ats.firmaHigiene) doc.text(String(ats.firmaHigiene), left + colFirma * 2 + colFirma / 2, y + 9.5, { align: 'center' });
-  doc.setFontSize(5.5);
-  doc.text('Firma y aclaración', left + colFirma * 2 + colFirma / 2, y + 14.5, { align: 'center' });
+  if (ats.firmaHigiene) doc.text(String(ats.firmaHigiene), left + colFirma * 2 + colFirma / 2, y + (ats.firmaHigieneImg ? 13.8 : 9.5), { align: 'center' });
+  doc.setFontSize(5.2);
+  doc.text('Firma y aclaración', left + colFirma * 2 + colFirma / 2, y + 16.8, { align: 'center' });
 
   const nombre = 'ATS_' + (ats.ot ? 'OT' + ats.ot + '_' : '') + (ats.fecha || hoy()) + '.pdf';
   if (compartir) {
