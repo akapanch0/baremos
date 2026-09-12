@@ -9,7 +9,7 @@
    persistente, recordatorio de backup, librerias locales con respaldo
    en CDN, cache de geocodificacion y limpieza del service worker.
    ============================================================ */
-const APP_VERSION = '5.9.45';
+const APP_VERSION = '5.9.48';
 
 /* Control de versión de Términos y Condiciones */
 const CURRENT_TERMS_VERSION = 1;
@@ -762,17 +762,49 @@ function showUpdateNotification(forzado) {
     try {
       // Queda registrada como version instalada: el usuario la acepto.
       guardarVersionInstalada(remota || APP_VERSION);
+      try { localStorage.removeItem(dismissKeyFor(remota)); } catch (e) {}
+
+      // Notificar al Service Worker que tome el control
       if (swRegistration && swRegistration.waiting) {
         swRegistration.waiting.postMessage('APLICAR_ACTUALIZACION');
+        swRegistration.waiting.postMessage('SKIP_WAITING');
       } else if (navigator.serviceWorker && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage('APLICAR_ACTUALIZACION');
+        navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
       }
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (let reg of regs) { await reg.unregister(); }
-      const keys = await caches.keys();
-      for (let key of keys) { await caches.delete(key); }
-    } catch (e) {}
-    window.location.href = window.location.pathname + '?updated=true&t=' + Date.now();
+
+      // Vaciar cachés locales de la app
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(
+          keys
+            .filter(k => /^baremos?[-_]/i.test(k))
+            .map(k => caches.delete(k).catch(() => false))
+        );
+      }
+
+      // Desregistrar service workers para garantizar descarga fresca de la nueva versión
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister().catch(() => false)));
+      }
+    } catch (e) {
+      console.warn('[Actualizar]', e);
+    }
+
+    // Breve pausa para asegurar sincronización en almacenamiento
+    await new Promise(r => setTimeout(r, 250));
+
+    // Recargar con bypass de caché HTTP
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('nocache', String(Date.now()));
+      u.searchParams.set('v', remota || APP_VERSION);
+      u.searchParams.set('updated', '1');
+      window.location.replace(u.toString());
+    } catch (e) {
+      window.location.reload();
+    }
   };
 }
 
@@ -791,6 +823,18 @@ function guardarVersionInstalada(v) {
 }
 
 function loadVersion() {
+  // Si la página viene de una actualización recién ejecutada (?updated=1 o ?v=...)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('updated') || (params.has('v') && params.get('v') === APP_VERSION)) {
+      guardarVersionInstalada(APP_VERSION);
+      State.currentVersion = APP_VERSION;
+      State.updateAvailable = false;
+      State.remoteVersion = null;
+      return;
+    }
+  } catch (e) {}
+
   const guardada = versionInstalada();
 
   // Primera vez: la version de los archivos pasa a ser la instalada.
@@ -807,7 +851,6 @@ function loadVersion() {
     State.updateAvailable = true;
     // v5.9.41 - queda anotada la version nueva que YA esta en el telefono, asi
     // el aviso de abajo puede salir solo aunque no haya conexion.
-    State.remoteVersion = APP_VERSION;
     State.remoteVersion = APP_VERSION;
     return;
   }
@@ -831,12 +874,10 @@ async function checkForUpdate(silent = false) {
       State.updateAvailable = true;
       State.remoteVersion = remoteData.version;
       showUpdateNotification(!silent);
-    } else if (State.updateAvailable && State.remoteVersion) {
-      // Ya se habia detectado una version nueva en los archivos locales.
-      showUpdateNotification(!silent);
     } else {
-      if (!silent) toast(`Ya tenés la última versión (${local})`, 'success');
       State.updateAvailable = false;
+      State.remoteVersion = null;
+      if (!silent) toast(`Ya tenés la última versión (${local})`, 'success');
     }
   } catch (e) {
     if (!silent) toast('Error al buscar actualizaciones', 'error');
@@ -999,6 +1040,21 @@ async function continuarInicio() {
       console.error('[Jornada Error]', e);
     }
     showApp();
+
+    // Si se abrió desde la notificación tocando "abrir_ats"
+    try {
+      if (window.location.search && window.location.search.includes('ats=1')) {
+        history.replaceState({}, '', window.location.pathname);
+        setTimeout(() => {
+          if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
+        }, 300);
+      }
+    } catch (e) {}
+
+    // Recordatorio local de ATS al abrir la aplicación si no se ha completado
+    setTimeout(() => {
+      try { revisarRecordatorioATSAlAbrir(); } catch (e) {}
+    }, 700);
   } else { 
     showLogin(); 
   }
@@ -1131,6 +1187,7 @@ function showLogin() {
 
 async function cerrarSesion() {
   if (!await confirmDialog('¿Cerrar sesión?\n\n⚠️ Deberás ingresar con NOMBRE y LEGAJO.\n\nTus datos se mantendrán.')) return;
+  try { await limpiarNotificacionATS(); } catch (e) {}
   await dbPut('config', { key: 'activeUser', value: '' });
   State.user = null; State.jornada = null; State.items = [];
   const h = $('#headerUser');
@@ -1281,7 +1338,7 @@ async function iniciarJornada() {
 
   // Notificación y apertura del formulario ATS obligatorio antes de la primera tarea
   setTimeout(() => {
-    toast('⚠️ Recordá rellenar el ATS antes de iniciar tu primera tarea', 'warn');
+    try { notificarAtsPendienteViaSW({ forzar: true }); } catch (e) {}
     if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
   }, 350);
 
@@ -1602,6 +1659,7 @@ async function cerrarJornada() {
   await saveJornada();
   limpiarRecordatorioDeCierre();
   limpiarAvisoDeJornada();
+  try { await limpiarNotificacionATS(); } catch (e) {}
 
   // se deja ver la animacion del boton antes de redibujar la botonera
   await esperar(560);
@@ -5704,6 +5762,11 @@ function iniciarRecordatorioDeCierre() {
         try { showView(ev.data.vista || 'Registro'); } catch (e) {
           try { showView('Registro'); } catch (e2) {}
         }
+        if (ev.data.accion === 'abrir_ats') {
+          setTimeout(() => {
+            if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
+          }, 200);
+        }
       }
     });
   }
@@ -6572,13 +6635,159 @@ function iniciarAvisosLocales() {
 
     // Al volver a la app se revisa en el momento.
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') revisarAvisosProgramados();
+      if (document.visibilityState === 'visible') {
+        revisarAvisosProgramados();
+        revisarRecordatorioATSAlAbrir();
+      }
     });
-    window.addEventListener('focus', revisarAvisosProgramados);
+    window.addEventListener('focus', () => {
+      revisarAvisosProgramados();
+      revisarRecordatorioATSAlAbrir();
+    });
 
     // Revision periodica mientras la app este abierta.
-    setInterval(revisarAvisosProgramados, 60 * 1000);
+    setInterval(() => {
+      revisarAvisosProgramados();
+      revisarRecordatorioATSAlAbrir();
+    }, 60 * 1000);
   } catch (e) {}
+}
+
+/* ============================================================
+   SERVICIO DE NOTIFICACIONES LOCALES VÍA SERVICE WORKER - ATS
+   ============================================================ */
+const TAG_ATS_RECORDATORIO = 'baremo-ats-recordatorio';
+let _ultimoAvisoAts = 0;
+
+async function notificarAtsPendienteViaSW(opciones = {}) {
+  const ahoraMs = Date.now();
+  if (!opciones.forzar && ahoraMs - _ultimoAvisoAts < 25 * 1000) {
+    return;
+  }
+  _ultimoAvisoAts = ahoraMs;
+
+  const titulo = '⚠️ ATS Pendiente - Seguridad en el Trabajo';
+  const cuerpo = 'Recordá completar el Análisis de Trabajo Seguro (ATS) obligatorio antes de iniciar las tareas del día.';
+
+  // Pedir permiso al sistema si aún no fue concedido ni bloqueado
+  try {
+    if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  } catch (e) {}
+
+  let notificadoPorSW = false;
+
+  // 1) Notificación nativa del sistema mediante el Service Worker
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      let reg = swRegistration;
+      if (!reg && navigator.serviceWorker) {
+        reg = await navigator.serviceWorker.getRegistration();
+      }
+      if (reg && reg.showNotification) {
+        await reg.showNotification(titulo, {
+          body: cuerpo,
+          tag: TAG_ATS_RECORDATORIO,
+          renotify: true,
+          requireInteraction: true,
+          silent: false,
+          icon: './icons/icon-192.png?v=' + APP_VERSION,
+          badge: './icons/icon-192.png?v=' + APP_VERSION,
+          vibrate: [300, 150, 300, 150, 300],
+          timestamp: ahoraMs,
+          data: { tipo: 'ats-recordatorio', accion: 'abrir_ats', vista: 'Registro' }
+        });
+        notificadoPorSW = true;
+      }
+    }
+  } catch (e) {
+    console.warn('[SW Notif ATS]', e);
+  }
+
+  // 2) Canal directo por postMessage al Service Worker (activo/controller)
+  try {
+    const swTarget = (swRegistration && swRegistration.active) || (navigator.serviceWorker && navigator.serviceWorker.controller);
+    if (swTarget && typeof swTarget.postMessage === 'function') {
+      swTarget.postMessage({
+        tipo: 'NOTIFICAR_ATS',
+        titulo: titulo,
+        cuerpo: cuerpo
+      });
+    }
+  } catch (e) {}
+
+  // 3) Respaldo si no hay Service Worker activo pero hay Notification tradicional
+  if (!notificadoPorSW) {
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(titulo, {
+          body: cuerpo,
+          tag: TAG_ATS_RECORDATORIO,
+          icon: './icons/icon-192.png?v=' + APP_VERSION
+        });
+      }
+    } catch (e) {}
+  }
+
+  // 4) Aviso complementario en pantalla si la app está visible
+  if (document.visibilityState === 'visible') {
+    try {
+      toast('⚠️ Recordá rellenar el ATS antes de iniciar tareas', 'warn');
+    } catch (e) {}
+  }
+}
+
+async function limpiarNotificacionATS() {
+  try {
+    let reg = swRegistration;
+    if (!reg && navigator.serviceWorker) {
+      reg = await navigator.serviceWorker.getRegistration();
+    }
+    if (reg && reg.getNotifications) {
+      const notifs = await reg.getNotifications({ tag: TAG_ATS_RECORDATORIO });
+      if (notifs && notifs.length) {
+        notifs.forEach(n => n.close());
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const swTarget = (swRegistration && swRegistration.active) || (navigator.serviceWorker && navigator.serviceWorker.controller);
+    if (swTarget && typeof swTarget.postMessage === 'function') {
+      swTarget.postMessage({ tipo: 'LIMPIAR_NOTIFICACION_ATS' });
+    }
+  } catch (e) {}
+}
+
+async function revisarRecordatorioATSAlAbrir(forzar = false) {
+  try {
+    if (!State.user) return;
+
+    // Caso A: Hay jornada activa abierta
+    if (State.jornada && !State.jornada.cerrada) {
+      if (State.jornada.ats && State.jornada.ats.completado) {
+        await limpiarNotificacionATS();
+        return;
+      }
+      // ATS pendiente en jornada abierta
+      await notificarAtsPendienteViaSW({ forzar });
+      return;
+    }
+
+    // Caso B: No hay jornada abierta, verificar si se completó el ATS hoy en alguna jornada previa
+    const jornadasHoy = await dbGetByIndex('jornadas', 'fechaLegajo', [hoy(), State.user.legajo]);
+    const completadoHoy = Array.isArray(jornadasHoy) && jornadasHoy.some(j => j.ats && j.ats.completado);
+
+    if (completadoHoy) {
+      await limpiarNotificacionATS();
+    } else {
+      // El usuario abrió la app y hoy todavía no tiene el ATS completado
+      await notificarAtsPendienteViaSW({ forzar });
+    }
+  } catch (e) {
+    console.warn('[revisarRecordatorioATSAlAbrir]', e);
+  }
 }
 
 /* ============================================================
@@ -7000,6 +7209,7 @@ async function guardarATS(exportarDespues = false) {
   await saveJornada();
 
   renderATSStatus();
+  try { await limpiarNotificacionATS(); } catch (e) {}
   toast('✅ Formulario ATS guardado correctamente', 'success');
 
   const bExp = $('#btnAtsExportPDF');

@@ -1,7 +1,12 @@
 {
-  "version": "5.9.46",
+  "version": "5.9.48",
   "fecha": "2026-09-11",
   "cambios": [
+    "Corrección crítica del flujo de actualización: sincronización de la constante interna de versión en app.js y recarga sin caché garantizada para reflejar cambios de inmediato",
+    "Limpieza efectiva del almacenamiento en caché antiguo y desregistro de Service Worker previo al aplicar la actualización para visualizar todos los cambios de forma inmediata",
+    "Servicio de notificaciones locales vía Service Worker: recordatorio automático en la barra del sistema al abrir la aplicación si el Análisis de Trabajo Seguro (ATS) aún no ha sido completado",
+    "Integración directa con el Service Worker: envío mediante showNotification y canal de mensajes postMessage con vibración de alerta y botón interactivo para abrir directamente el formulario ATS",
+    "Limpieza automática de la notificación en el Service Worker una vez guardado el formulario ATS o al cerrar la sesión",
     "Implementación del formulario oficial de Análisis de Trabajo Seguro (ATS) diario conforme al formato reglamentario (Código: PR SH 06 FOR 03, Rev. 2, Art. 208 Dec. 351/79 Ley 19587) sin logo institucional",
     "Flujo de obligatoriedad diario: al iniciar jornada se notifica y se abre el formulario ATS; se bloquea el inicio de la primera tarea y finalización hasta haber completado el formulario",
     "Banner interactivo en la pantalla principal con indicador de estado (Pendiente / Completado) y accesos directos para rellenar, ver y exportar",

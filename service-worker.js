@@ -36,7 +36,7 @@
    Se mantiene el control del usuario: el service worker nuevo espera y
    la cache vieja recien se reemplaza cuando se acepta actualizar.
    ------------------------------------------------------------ */
-const SHELL_CACHE = 'baremo-shell-5.9.46';
+const SHELL_CACHE = 'baremo-shell-5.9.48';
 
 // Se guardan las dos formas de cada pagina (con y sin .html) porque el
 // hosting puede entrar por cualquiera de las dos.
@@ -45,37 +45,37 @@ const PAGINAS = ['./', './index.html', './index', './landing.html', './landing']
 // Copias locales de las librerias (si estan en ./vendor). Si no existen, se
 // omiten en silencio y la app usa el CDN, que tambien queda cacheado.
 const VENDOR_ASSETS = [
-  './vendor/chart.umd.min.js?v=5.9.46',
-  './vendor/jspdf.umd.min.js?v=5.9.46',
-  './vendor/jspdf.plugin.autotable.min.js?v=5.9.46',
-  './vendor/xlsx.full.min.js?v=5.9.46'
+  './vendor/chart.umd.min.js?v=5.9.48',
+  './vendor/jspdf.umd.min.js?v=5.9.48',
+  './vendor/jspdf.plugin.autotable.min.js?v=5.9.48',
+  './vendor/xlsx.full.min.js?v=5.9.48'
 ];
 
 const ASSETS = [
-  './landing.css?v=5.9.46',
-  './styles.css?v=5.9.46',
-  './main.js?v=5.9.46',
-  './brand.js?v=5.9.46',
-  './app.js?v=5.9.46',
-  './db.js?v=5.9.46',
+  './landing.css?v=5.9.48',
+  './styles.css?v=5.9.48',
+  './main.js?v=5.9.48',
+  './brand.js?v=5.9.48',
+  './app.js?v=5.9.48',
+  './db.js?v=5.9.48',
   './baremo.json',
-  './manifest.json?v=5.9.46',
-  './icons/logo.png?v=5.9.46',
-  './icons/icon-192.png?v=5.9.46',
-  './icons/icon-512.png?v=5.9.46',
-  './icons/icon-any-192.png?v=5.9.45',
-  './icons/icon-any-512.png?v=5.9.45',
-  './icons/icon-maskable-192.png?v=5.9.45',
-  './icons/icon-maskable-512.png?v=5.9.45',
-  './icons/apple-touch-icon-180.png?v=5.9.45',
+  './manifest.json?v=5.9.48',
+  './icons/logo.png?v=5.9.48',
+  './icons/icon-192.png?v=5.9.48',
+  './icons/icon-512.png?v=5.9.48',
+  './icons/icon-any-192.png?v=5.9.48',
+  './icons/icon-any-512.png?v=5.9.48',
+  './icons/icon-maskable-192.png?v=5.9.48',
+  './icons/icon-maskable-512.png?v=5.9.48',
+  './icons/apple-touch-icon-180.png?v=5.9.48',
   './maps/trujui.png', './maps/cuartelv.png', './maps/moreno.png',
   './maps/gralrodriguez.png', './maps/tigre.png', './maps/sanmartin.png',
   './maps/olivos.png', './maps/pilarescobar.png',
-  './help/baremos-1.png?v=5.9.45',
-  './help/baremos-2.png?v=5.9.45',
-  './help/baremos-3.png?v=5.9.45',
-  './help/baremos-4.png?v=5.9.45',
-  './help/baremos-5.png?v=5.9.45'
+  './help/baremos-1.png?v=5.9.48',
+  './help/baremos-2.png?v=5.9.48',
+  './help/baremos-3.png?v=5.9.48',
+  './help/baremos-4.png?v=5.9.48',
+  './help/baremos-5.png?v=5.9.48'
 ];
 
 const CDN_ASSETS = [
@@ -110,7 +110,7 @@ function sirveParaNavegar(respuesta) {
 async function guardarSiFalta(cache, url) {
   try {
     if (await cache.match(url)) return;
-    const r = await fetch(url, { redirect: 'follow' });
+    const r = await fetch(url, { redirect: 'follow', cache: 'reload' });
     const limpia = await sanear(r);
     if (limpia) await cache.put(url, limpia);
   } catch (e) { /* si un archivo no esta, se sigue con el resto */ }
@@ -267,7 +267,14 @@ self.addEventListener('message', event => {
 
   if (data === 'SKIP_WAITING' || data === 'APLICAR_ACTUALIZACION') {
     event.waitUntil((async () => {
-      try { await caches.delete(SHELL_CACHE); } catch (e) {}
+      try {
+        const keys = await caches.keys();
+        await Promise.all(
+          keys
+            .filter(k => k !== SHELL_CACHE && /^baremos?[-_]/i.test(k))
+            .map(k => caches.delete(k).catch(() => false))
+        );
+      } catch (e) {}
       await self.skipWaiting();
     })());
     return;
@@ -275,6 +282,40 @@ self.addEventListener('message', event => {
 
   if (data === 'REVISAR_AVISOS') {
     event.waitUntil(revisarAvisosVencidos());
+    return;
+  }
+
+  // Servicio de notificación local para ATS pendiente
+  if (data && (data.tipo === 'NOTIFICAR_ATS' || data === 'NOTIFICAR_ATS')) {
+    event.waitUntil((async () => {
+      try {
+        if (!self.registration || !self.registration.showNotification) return;
+        await self.registration.showNotification(data.titulo || '⚠️ ATS Pendiente - Seguridad en el Trabajo', {
+          body: data.cuerpo || 'Recordá completar el Análisis de Trabajo Seguro (ATS) antes de iniciar las tareas del día.',
+          tag: 'baremo-ats-recordatorio',
+          renotify: true,
+          requireInteraction: true,
+          silent: false,
+          icon: './icons/icon-192.png',
+          badge: './icons/icon-192.png',
+          vibrate: [300, 150, 300, 150, 300],
+          timestamp: Date.now(),
+          data: { tipo: 'ats-recordatorio', accion: 'abrir_ats', vista: 'Registro' }
+        });
+      } catch (e) {}
+    })());
+    return;
+  }
+
+  if (data && (data.tipo === 'LIMPIAR_NOTIFICACION_ATS' || data === 'LIMPIAR_NOTIFICACION_ATS')) {
+    event.waitUntil((async () => {
+      try {
+        if (!self.registration || !self.registration.getNotifications) return;
+        const notifs = await self.registration.getNotifications({ tag: 'baremo-ats-recordatorio' });
+        for (const n of notifs) n.close();
+      } catch (e) {}
+    })());
+    return;
   }
 });
 
@@ -384,15 +425,17 @@ self.addEventListener('notificationclick', event => {
   event.notification.close();
   const datos = event.notification.data || {};
   const vista = datos.vista || 'Registro';
+  const accion = datos.accion || '';
 
   event.waitUntil((async () => {
     const clientes = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of clientes) {
       if ('focus' in c) {
-        try { c.postMessage({ tipo: 'IR_A_REGISTRO', vista: vista }); } catch (e) {}
+        try { c.postMessage({ tipo: 'IR_A_REGISTRO', vista: vista, accion: accion }); } catch (e) {}
         return c.focus();
       }
     }
-    return self.clients.openWindow('./index.html?app=1');
+    const url = './index.html?app=1' + (accion === 'abrir_ats' ? '&ats=1' : '');
+    return self.clients.openWindow(url);
   })());
 });
