@@ -2785,40 +2785,458 @@ html[data-theme="dark"] {
   .cierre-ok.ver .cok-tilde { animation: none; }
 }
 
-/* ===================== Firebase Cloud Sync UI ===================== */
-.app-header .cloud-chip {
-  background: rgba(255,255,255,.18);
-  padding: 5px 9px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  display: inline-flex;
+/* ===================== FORMULARIO ATS (Análisis de Trabajo Seguro) ===================== */
+.ats-banner {
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  margin-left: 6px;
+  justify-content: space-between;
+  gap: 12px;
   transition: all .2s ease;
+}
+.ats-banner.pending {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1.5px solid #f59e0b;
+}
+.ats-banner.completed {
+  background: rgba(16, 185, 129, 0.09);
+  border: 1.5px solid #10b981;
+}
+.ats-b-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.ats-b-ico {
+  font-size: 26px;
+  flex-shrink: 0;
+}
+.ats-b-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.25;
+}
+.ats-banner.pending .ats-b-title {
+  color: #d97706;
+}
+.ats-banner.completed .ats-b-title {
+  color: #059669;
+}
+.ats-b-desc {
+  font-size: 11.5px;
+  color: var(--text-soft);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+.ats-b-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.btn-warning-ats {
+  background: #f59e0b;
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+  transition: all .15s ease;
   white-space: nowrap;
 }
-.app-header .cloud-chip:hover {
-  background: rgba(255,255,255,.28);
+.btn-warning-ats:hover {
+  background: #d97706;
+  transform: translateY(-1px);
 }
-.app-header .cloud-chip.synced {
-  border: 1px solid rgba(72, 199, 142, 0.6);
-  background: rgba(72, 199, 142, 0.2);
+.btn-success-ats {
+  background: #10b981;
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
 }
-.app-header .cloud-chip.syncing {
-  opacity: .7;
+.btn-success-ats:hover {
+  background: #059669;
 }
 
-#btnGoogleLogin:hover {
-  background: rgba(0,0,0,.04);
+/* Modal ATS */
+.ats-modal {
+  max-width: 880px;
+  width: 96%;
+  max-height: 92vh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
 }
-[data-theme="dark"] #btnGoogleLogin {
-  border-color: rgba(255,255,255,.2);
-  color: #fff;
+.ats-header-modal {
+  padding: 14px 18px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
-[data-theme="dark"] #btnGoogleLogin:hover {
-  background: rgba(255,255,255,.08);
+.ats-badge-code {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+  background: rgba(11, 61, 145, 0.09);
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 3px;
+}
+.ats-modal-title {
+  font-size: 18px;
+  font-weight: 900;
+  margin: 0;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+.ats-modal-sub {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-top: 1px;
+}
+.ats-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-soft);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s ease;
+}
+.ats-close-btn:hover {
+  color: var(--text);
+  border-color: var(--text-soft);
+}
+.ats-form-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--bg);
+}
+.ats-card-sec {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.ats-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ats-sec-ico {
+  font-size: 18px;
+}
+.ats-sec-tit {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text);
+}
+.ats-sec-sub {
+  font-size: 11px;
+  color: var(--text-soft);
+  margin-top: 2px;
+}
+.ats-mini-action {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s ease;
+}
+.ats-mini-action:hover {
+  background: var(--card);
+  border-color: var(--primary);
+}
+.ats-grid-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.ats-fld {
+  display: flex;
+  flex-direction: column;
+}
+.ats-fld-span2 {
+  grid-column: span 2;
+}
+.ats-fld-full {
+  grid-column: 1 / -1;
+}
+.ats-fld label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-soft);
+  margin-bottom: 4px;
+}
+.ats-fld .req {
+  color: #ef4444;
+}
+.ats-input {
+  width: 100%;
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+.ats-textarea {
+  width: 100%;
+  font-size: 12.5px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+
+/* Riesgos Potenciales Grid */
+.ats-riesgos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 6px;
+}
+.ats-riesgo-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: all .15s ease;
+  user-select: none;
+}
+.ats-riesgo-pill:hover {
+  border-color: var(--primary);
+}
+.ats-riesgo-pill.selected {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+.ats-riesgo-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-soft);
+  flex-shrink: 0;
+  background: var(--card);
+  transition: all .15s ease;
+}
+.ats-riesgo-pill.selected .ats-riesgo-num {
+  border: 2px solid #ef4444;
+  color: #ef4444;
+  font-weight: 900;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+.ats-riesgo-txt {
+  font-size: 11.5px;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+/* Checkboxes grids */
+.ats-checks-grid, .ats-epp-grid, .ats-charla-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+.ats-check-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--text);
+  user-select: none;
+  transition: background .12s ease;
+}
+.ats-check-pill:hover {
+  border-color: var(--primary);
+}
+.ats-check-pill input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.ats-check-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+.ats-input-inline {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+.ats-legal-box {
+  margin-top: 10px;
+  padding: 9px 12px;
+  background: rgba(0,0,0,0.02);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text-soft);
+  font-style: italic;
+}
+.ats-cuadrilla-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.ats-cuadrilla-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-soft);
+  width: 18px;
+  text-align: center;
+}
+.ats-cuadrilla-del {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-soft);
+  padding: 4px;
+}
+.ats-cuadrilla-del:hover {
+  color: #ef4444;
+}
+.ats-firmas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.ats-firma-box {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--bg);
+  text-align: center;
+}
+.ats-firma-cargo {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.ats-firma-sub {
+  font-size: 10px;
+  color: var(--text-soft);
+  margin-top: 5px;
+}
+.ats-form-footer {
+  padding: 12px 18px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+.mini-btn.ats {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.mini-btn.ats:hover {
+  background: rgba(16, 185, 129, 0.28);
+}
+
+[data-theme="dark"] .ats-banner.pending {
+  background: rgba(245, 158, 11, 0.15);
+}
+[data-theme="dark"] .ats-banner.completed {
+  background: rgba(16, 185, 129, 0.15);
+}
+[data-theme="dark"] .ats-riesgo-pill.selected .ats-riesgo-num {
+  background: #1e293b;
+}
+
+@media (max-width: 600px) {
+  .ats-modal {
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  .ats-fld-span2 {
+    grid-column: 1 / -1;
+  }
+  .ats-grid-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ats-riesgos-grid {
+    grid-template-columns: 1fr;
+  }
+  .ats-checks-grid, .ats-epp-grid, .ats-charla-grid {
+    grid-template-columns: 1fr;
+  }
+  .ats-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ats-b-actions {
+    margin-top: 8px;
+    justify-content: flex-end;
+  }
 }
 

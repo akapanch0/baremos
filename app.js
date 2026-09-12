@@ -9,7 +9,7 @@
    persistente, recordatorio de backup, librerias locales con respaldo
    en CDN, cache de geocodificacion y limpieza del service worker.
    ============================================================ */
-const APP_VERSION = '5.9.44';
+const APP_VERSION = '5.9.45';
 
 /* Control de versión de Términos y Condiciones */
 const CURRENT_TERMS_VERSION = 1;
@@ -973,13 +973,6 @@ async function init() {
   // Recordatorio de backup (no bloquea nada, solo avisa).
   setTimeout(() => { revisarRecordatorioDeBackup(); }, 6000);
 
-  // Inicialización de la integración con Firebase Cloud
-  try {
-    initFirebaseUI();
-  } catch (errFirebase) {
-    console.warn('[Firebase Init Error]', errFirebase);
-  }
-
   try {
     await registerSW();
     // v5.9.41 - si al leer las versiones ya se vio que los archivos son mas
@@ -1111,245 +1104,10 @@ async function loadUser() {
   if (c?.value) State.user = await dbGet('usuarios', c.value);
 }
 
-/* ============================================================
-   INTEGRACIÓN FIREBASE CLOUD & SINCRONIZACIÓN
-   ============================================================ */
-function actualizarEstadoFirebase() {
-  const btnChip = $('#btnCloudSync');
-  const txtChip = $('#cloudSyncText');
-  const statusTxt = $('#firebaseStatusText');
-  const userEmail = $('#firebaseUserEmail');
-  const toggleBtn = $('#btnFirebaseToggleAuth');
-  const ajDesc = $('#ajFirebaseDesc');
-
-  if (!window.FirebaseSync) return;
-  const user = window.FirebaseSync.auth?.currentUser;
-  if (user) {
-    if (txtChip) txtChip.textContent = 'Conectado';
-    if (btnChip) {
-      btnChip.classList.add('synced');
-      btnChip.title = `Conectado a Firebase: ${user.email}`;
-    }
-    if (statusTxt) statusTxt.innerHTML = `<span style="color:#22c55e;font-weight:bold;">● Conectado a la nube</span>`;
-    if (userEmail) userEmail.textContent = `Cuenta: ${user.email} (${user.displayName || 'Usuario'})`;
-    if (toggleBtn) toggleBtn.textContent = 'Cerrar sesión de Google';
-    if (ajDesc) ajDesc.textContent = `Conectado como ${user.email}`;
-  } else {
-    if (txtChip) txtChip.textContent = 'Nube';
-    if (btnChip) {
-      btnChip.classList.remove('synced');
-      btnChip.title = 'Sincronización en la Nube (Firebase)';
-    }
-    if (statusTxt) statusTxt.innerHTML = `<span style="color:#eab308;font-weight:bold;">○ Modo local (sin sesión de Google)</span>`;
-    if (userEmail) userEmail.textContent = 'Iniciá sesión para respaldar tus jornadas en Firestore.';
-    if (toggleBtn) toggleBtn.textContent = 'Iniciar sesión con Google';
-    if (ajDesc) ajDesc.textContent = 'No conectado · tocá para activar';
-  }
-}
-
-function abrirModalFirebase() {
-  actualizarEstadoFirebase();
-  const m = $('#modalFirebase');
-  if (m) m.classList.add('show');
-}
-
-function cerrarModalFirebase() {
-  const m = $('#modalFirebase');
-  if (m) m.classList.remove('show');
-}
-
-async function procesarLoginGoogle(user) {
-  if (!user) return;
-  toast(`Sesión iniciada: ${user.displayName || user.email}`, 'success');
-  try {
-    const cloudProf = await window.FirebaseSync.getCloudUserProfile();
-    if (cloudProf && cloudProf.legajo) {
-      await dbPut('usuarios', { nombre: cloudProf.nombre, legajo: cloudProf.legajo, zona: cloudProf.zona, email: cloudProf.email, creado: cloudProf.creado });
-      await dbPut('config', { key: 'activeUser', value: cloudProf.legajo });
-      State.user = cloudProf;
-      $('#viewLogin')?.classList.remove('active');
-      await loadOrCreateJornada();
-      showApp();
-      actualizarEstadoFirebase();
-      window.FirebaseSync.syncFullCloudDatabase().catch(() => {});
-    } else {
-      if ($('#loginNombre')) $('#loginNombre').value = user.displayName || '';
-      toast('Ingresá tu legajo y zona para completar tu perfil', 'info');
-    }
-  } catch (err) {
-    console.warn('Error loading cloud profile:', err);
-  }
-}
-
-window.onGoogleLoginSuccess = procesarLoginGoogle;
-
-function initFirebaseUI() {
-  const btnChip = $('#btnCloudSync');
-  if (btnChip) btnChip.onclick = abrirModalFirebase;
-
-  const btnClose = $('#btnFirebaseClose');
-  if (btnClose) btnClose.onclick = cerrarModalFirebase;
-
-  const btnSyncNow = $('#btnFirebaseSyncNow');
-  if (btnSyncNow) {
-    btnSyncNow.onclick = async () => {
-      if (!window.FirebaseSync || !window.FirebaseSync.auth?.currentUser) {
-        toast('Iniciá sesión con Google para sincronizar', 'warn');
-        return;
-      }
-      btnSyncNow.disabled = true;
-      btnSyncNow.textContent = 'Sincronizando...';
-      const btnChip = $('#btnCloudSync');
-      if (btnChip) btnChip.classList.add('syncing');
-      try {
-        const res = await window.FirebaseSync.syncFullCloudDatabase();
-        if (res.synced) {
-          toast(`Sincronización completa (${res.count} registros)`, 'success');
-        } else {
-          toast('Error en sincronización', 'error');
-        }
-      } catch (e) {
-        toast('Error al sincronizar: ' + e.message, 'error');
-      } finally {
-        btnSyncNow.disabled = false;
-        btnSyncNow.textContent = '☁️ Sincronizar con la nube ahora';
-        if (btnChip) btnChip.classList.remove('syncing');
-      }
-    };
-  }
-
-  const btnToggle = $('#btnFirebaseToggleAuth');
-  if (btnToggle) {
-    btnToggle.onclick = async () => {
-      if (!window.FirebaseSync) return;
-      if (window.FirebaseSync.auth?.currentUser) {
-        await window.FirebaseSync.logoutUser();
-        toast('Sesión de Google cerrada', 'info');
-        actualizarEstadoFirebase();
-      } else {
-        try {
-          const u = await window.FirebaseSync.loginWithGoogle();
-          if (u) {
-            toast(`Conectado como ${u.email}`, 'success');
-            if (State.user) {
-              await window.FirebaseSync.saveCloudUserProfile(State.user);
-              window.FirebaseSync.syncFullCloudDatabase().catch(() => {});
-            }
-            actualizarEstadoFirebase();
-          }
-        } catch (e) {
-          if (e?.code === 'auth/popup-blocked') {
-            toast('Permití ventanas emergentes para conectar tu cuenta de Google.', 'warn');
-          } else if (e?.code !== 'auth/popup-closed-by-user') {
-            toast('Error al conectar Google: ' + (e?.message || 'Intente nuevamente'), 'error');
-          }
-        }
-      }
-    };
-  }
-
-  if (window.FirebaseSync?.onAuthStateChanged) {
-    window.FirebaseSync.onAuthStateChanged((u) => {
-      actualizarEstadoFirebase();
-    });
-  }
-
-  window.addEventListener('firebase-ready', () => {
-    actualizarEstadoFirebase();
-    setupGoogleLogin();
-  });
-  setupGoogleLogin();
-}
-
-async function asegurarFirebaseListo(timeoutMs = 3000) {
-  if (window.FirebaseSync?.auth && (window.FirebaseSync?.signInWithPopup || window.FirebaseSync?.loginWithGoogle)) {
-    return true;
-  }
-  const t0 = Date.now();
-  while (Date.now() - t0 < timeoutMs) {
-    await new Promise(r => setTimeout(r, 100));
-    if (window.FirebaseSync?.auth && (window.FirebaseSync?.signInWithPopup || window.FirebaseSync?.loginWithGoogle)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function setupGoogleLogin() {
-  const btnG = $('#btnGoogleLogin');
-  if (!btnG) return;
-
-  btnG.onclick = async () => {
-    if (btnG.dataset.busy === '1') return;
-
-    // Verificar si el SDK de Firebase está listo al momento del click
-    const listo = await asegurarFirebaseListo(3000);
-    if (!listo) {
-      toast('El servicio Firebase aún no está disponible. Verificá tu conexión a internet o recargá la página.', 'warn');
-      return;
-    }
-
-    const originalHTML = btnG.innerHTML;
-    try {
-      btnG.dataset.busy = '1';
-      btnG.disabled = true;
-      btnG.style.opacity = '0.65';
-      btnG.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;">⏳</span> <span>Conectando con Google...</span>';
-
-      const sync = window.FirebaseSync;
-      let user = null;
-
-      // Llamada explícita a signInWithPopup con auth y el proveedor de Google
-      if (typeof sync.signInWithPopup === 'function' && sync.auth && sync.googleProvider) {
-        const res = await sync.signInWithPopup(sync.auth, sync.googleProvider);
-        user = res?.user;
-      } else if (typeof sync.loginWithGoogle === 'function') {
-        user = await sync.loginWithGoogle();
-      } else {
-        throw new Error('Método de autenticación con Google no disponible');
-      }
-
-      if (user) {
-        await procesarLoginGoogle(user);
-      }
-    } catch (err) {
-      console.error('[Google Auth Error]:', err);
-      if (err?.code === 'auth/popup-blocked') {
-        toast('El navegador bloqueó la ventana emergente. Intentando acceder por redirección...', 'info');
-        try {
-          if (window.FirebaseSync?.signInWithRedirect && window.FirebaseSync?.auth && window.FirebaseSync?.googleProvider) {
-            await window.FirebaseSync.signInWithRedirect(window.FirebaseSync.auth, window.FirebaseSync.googleProvider);
-            return;
-          }
-        } catch (redirErr) {
-          console.error('[Redirect Auth Error]:', redirErr);
-        }
-      } else if (err?.code === 'auth/popup-closed-by-user') {
-        toast('Ventana de acceso con Google cerrada.', 'info');
-      } else if (err?.code === 'auth/cancelled-popup-request') {
-        // Ignorar solicitudes repetidas
-      } else if (err?.code === 'auth/network-request-failed') {
-        toast('Error de red al conectar con Google. Comprobá tu conexión.', 'error');
-      } else if (err?.code === 'auth/unauthorized-domain') {
-        toast('Dominio no autorizado en la consola de Firebase.', 'error');
-      } else {
-        toast('No se pudo conectar con Google: ' + (err?.message || 'Error'), 'error');
-      }
-    } finally {
-      btnG.disabled = false;
-      btnG.style.opacity = '1';
-      btnG.innerHTML = originalHTML;
-      btnG.dataset.busy = '0';
-    }
-  };
-}
-
 function showLogin() {
   $$('.view').forEach(v => v.classList.remove('active'));
   $$('.tab-btn').forEach(b => b.classList.remove('active'));
   $('#viewLogin')?.classList.add('active');
-
-  setupGoogleLogin();
 
   const f = $('#loginForm');
   if (f) {
@@ -1363,16 +1121,9 @@ function showLogin() {
       await dbPut('usuarios', { nombre: n, legajo: l, zona: z, creado: ahora() });
       await dbPut('config', { key: 'activeUser', value: l });
       State.user = { nombre: n, legajo: l, zona: z };
-      try {
-        if (window.FirebaseSync?.auth?.currentUser) {
-          await window.FirebaseSync.saveCloudUserProfile(State.user);
-          window.FirebaseSync.syncFullCloudDatabase().catch(() => {});
-        }
-      } catch (x) {}
       $('#viewLogin').classList.remove('active');
       await loadOrCreateJornada();
       showApp();
-      actualizarEstadoFirebase();
       toast(`¡Bienvenido ${n}!`, 'success');
     };
   }
@@ -1528,6 +1279,12 @@ async function iniciarJornada() {
   try { iniciarAvisosLocales(); } catch (e) {}
   try { pedirPermisoNotificaciones(); } catch (e) {}
 
+  // Notificación y apertura del formulario ATS obligatorio antes de la primera tarea
+  setTimeout(() => {
+    toast('⚠️ Recordá rellenar el ATS antes de iniciar tu primera tarea', 'warn');
+    if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
+  }, 350);
+
   const inp = $('#baremoInput');
   if (inp) inp.focus();
 }
@@ -1573,6 +1330,10 @@ function actualizarBotoneraJornada() {
 
   const wrap = $('#viewInicio');
   if (wrap) wrap.classList.toggle('sin-jornada', !abierta);
+
+  if (typeof renderATSStatus === 'function') {
+    renderATSStatus();
+  }
 }
 
 async function crearJornadaNueva() {
@@ -1583,11 +1344,6 @@ async function crearJornadaNueva() {
   const j = { fecha: hoy(), horaInicio: ahora(), ultimaMod: ahora(), legajo: State.user.legajo, usuario: State.user.nombre, zona: State.user.zona, items: [], tareas: [], cerrada: false, total: 0 };
   j.id = await dbAdd('jornadas', j);
   State.jornada = j; State.items = []; State.tareas = [];
-  try {
-    if (window.FirebaseSync?.auth?.currentUser) {
-      window.FirebaseSync.syncJornadaToCloud(j).catch(() => {});
-    }
-  } catch (x) {}
 }
 
 /* ============================================================
@@ -1819,11 +1575,6 @@ async function saveJornada() {
   State.jornada.totalEnCurso = t.totalEnCurso;
   State.jornada.baremosEnCurso = t.baremosEnCurso;
   await dbPut('jornadas', State.jornada);
-  try {
-    if (window.FirebaseSync?.auth?.currentUser) {
-      window.FirebaseSync.syncJornadaToCloud(State.jornada).catch(() => {});
-    }
-  } catch (x) {}
 }
 
 async function cerrarJornada() {
@@ -1937,6 +1688,14 @@ function setupRegistro() {
     if (!baremoSeleccionado) { toast('Seleccioná un baremo válido de la lista', 'warn'); input.focus(); return; }
     if (!State.jornada || State.jornada.cerrada) {
       toast('▶️ Primero tocá "Iniciar jornada"', 'warn');
+      return;
+    }
+
+    // Validación de ATS antes de iniciar la primera tarea del día
+    const cantTareasFinalizadas = (State.jornada.tareas || []).length;
+    if (cantTareasFinalizadas === 0 && (!State.jornada.ats || !State.jornada.ats.completado)) {
+      toast('⚠️ Debés completar el ATS antes de iniciar la primera tarea de la jornada', 'warn');
+      if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
       return;
     }
 
@@ -2303,6 +2062,7 @@ async function renderHistorial() {
           <div class="ji-actions">
             <div class="check-box ${is ? 'checked' : ''}" data-act="select" data-id="${j.id}"></div>
             <button class="mini-btn view" data-act="view" data-id="${j.id}" title="Ver detalle">👁️</button>
+            ${j.ats ? `<button class="mini-btn ats" data-act="ats-pdf" data-id="${j.id}" title="Exportar formulario ATS en PDF">🛡️</button>` : ''}
             ${j.cerrada ? `<button class="mini-btn export" data-act="export" data-id="${j.id}" title="Generar PDF">📄</button>` : ''}
             ${j.cerrada ? `<button class="mini-btn wa" data-act="wa" data-id="${j.id}" title="Generar PDF y enviar por WhatsApp">${iconoWhatsApp()}</button>` : ''}
           </div>
@@ -2322,6 +2082,18 @@ async function renderHistorial() {
   });
   lst.querySelectorAll('[data-act="view"]').forEach(el => {
     el.onclick = e => { e.stopPropagation(); openJornada(parseInt(el.dataset.id)); };
+  });
+  lst.querySelectorAll('[data-act="ats-pdf"]').forEach(el => {
+    el.onclick = async e => {
+      e.stopPropagation();
+      const id = parseInt(el.dataset.id);
+      const jor = await dbGet('jornadas', id);
+      if (jor && jor.ats) {
+        await exportarAtsPDF(jor.ats);
+      } else {
+        toast('Esta jornada no cuenta con formulario ATS registrado', 'info');
+      }
+    };
   });
   lst.querySelectorAll('[data-act="export"]').forEach(el => {
     el.onclick = async e => { e.stopPropagation(); await exportarJornadaPDF(parseInt(el.dataset.id)); };
@@ -3203,11 +2975,6 @@ function setupCombustible() {
 
     const ticketComb = { patente: p, monto: m, descontar: desc, fecha: hoy(), mes: mesActual(), legajo: State.user.legajo, creado: ahora() };
     ticketComb.id = await dbAdd('combustible', ticketComb);
-    try {
-      if (window.FirebaseSync?.auth?.currentUser) {
-        window.FirebaseSync.syncCombustibleToCloud(ticketComb).catch(() => {});
-      }
-    } catch(x) {}
     if (p !== anterior) await guardarPatente(p);
     // Solo se limpia el monto: la patente queda preregistrada.
     if ($('#combMonto')) $('#combMonto').value = '';
@@ -3490,11 +3257,6 @@ async function registrarQuincena(tipo) {
   try {
     const qData = { mes: mesReg, tipo, oficial1: o1, oficial2: o2, total: tot, fechaRegistro: hoy(), bloqueada: true, legajo: leg, creado: ahora() };
     qData.id = await dbAdd('quincenas', qData);
-    try {
-      if (window.FirebaseSync?.auth?.currentUser) {
-        window.FirebaseSync.syncQuincenaToCloud(qData).catch(() => {});
-      }
-    } catch(x) {}
     toast(`${tipo === 1 ? '1ra' : '2da'} Q registrada y bloqueada`, 'success');
     renderQuincenas();
   } catch(e) { toast(e.name === 'ConstraintError' ? 'Ya registrada' : 'Error', 'error'); }
@@ -3667,7 +3429,6 @@ function renderAjustes() {
   if (!lst) return;
   lst.innerHTML = `
     <div class="ajuste-item" data-act="update"><div class="aj-ico">🔄</div><div class="aj-text"><div class="aj-title">Actualizaciones</div><div class="aj-desc">Tenés la v${State.currentVersion || '?'} · tocá para buscar una nueva</div><button type="button" class="aj-sub" data-sub="forzar">🧹 ¿Quedó trabada? Forzar actualización</button></div><div class="aj-arrow">›</div></div>
-    <div class="ajuste-item" data-act="firebase"><div class="aj-ico">🔥</div><div class="aj-text"><div class="aj-title">Nube Firebase</div><div class="aj-desc" id="ajFirebaseDesc">Sincronización y respaldo en la nube</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="validar"><div class="aj-ico">🧮</div><div class="aj-text"><div class="aj-title">Validar totales del historial</div><div class="aj-desc">Recalcula jornadas que quedaron en $0</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="baremo"><div class="aj-ico">📥</div><div class="aj-text"><div class="aj-title">Cargar Baremos actualizados</div><div class="aj-desc">Archivo JSON, Excel o CSV</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="backup"><div class="aj-ico">💾</div><div class="aj-text"><div class="aj-title">Backup</div><div class="aj-desc">Guardá tus datos · te lo recordamos todos los lunes</div></div><div class="aj-arrow">›</div></div>
@@ -3694,7 +3455,6 @@ function renderAjustes() {
     item.onclick = () => {
       const a = item.dataset.act;
       if (a === 'update') checkForUpdate();
-      else if (a === 'firebase') abrirModalFirebase();
       else if (a === 'validar') {
         repararTotalesDeJornadas({ verboso: true }).then(() => { renderAll(); });
       }
@@ -5383,6 +5143,13 @@ async function finalizarTarea() {
   if (!State.jornada) { toast('▶️ Primero tocá "Iniciar jornada"', 'warn'); return; }
   if (State.jornada.cerrada) { toast('La jornada está cerrada', 'warn'); return; }
 
+  // Validación de ATS antes de finalizar la tarea
+  if (!State.jornada.ats || !State.jornada.ats.completado) {
+    toast('⚠️ Debés completar el ATS antes de registrar la tarea', 'warn');
+    if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
+    return;
+  }
+
   const pend = itemsPendientes();
   if (!pend.length) { toast('Agregá al menos un baremo para finalizar la tarea', 'warn'); return; }
 
@@ -6813,3 +6580,949 @@ function iniciarAvisosLocales() {
     setInterval(revisarAvisosProgramados, 60 * 1000);
   } catch (e) {}
 }
+
+/* ============================================================
+   FORMULARIO ATS (Análisis de Trabajo Seguro) - Oficial sin logo
+   Código: PR SH 06 FOR 03 · Revisión: 2 · Vigencia: 02/09/2020
+   ============================================================ */
+
+const ATS_RIESGOS = [
+  { n: 1,  t: 'Caída de personas a nivel' },
+  { n: 2,  t: 'Caída de personas de altura' },
+  { n: 3,  t: 'Caída de personas al agua' },
+  { n: 4,  t: 'Caída de objetos en altura' },
+  { n: 5,  t: 'Derrumbe de instalaciones' },
+  { n: 6,  t: 'Pisada sobre objetos' },
+  { n: 7,  t: 'Proyección de partículas' },
+  { n: 8,  t: 'Golpes por objetos' },
+  { n: 9,  t: 'Aprisionamiento' },
+  { n: 10, t: 'Esfuerzo físico excesivo' },
+  { n: 11, t: 'Heridas con objeto cortopunzante' },
+  { n: 12, t: 'Contacto con fuego' },
+  { n: 13, t: 'Contacto con electricidad' },
+  { n: 14, t: 'Incendio' },
+  { n: 15, t: 'Atropellamiento por animales' },
+  { n: 16, t: 'Mordeduras por animales' },
+  { n: 17, t: 'Atropellamiento por vehículos' },
+  { n: 18, t: 'Agresión con armas' },
+  { n: 19, t: 'Agresión por terceros' },
+  { n: 20, t: 'Poste podrido' },
+  { n: 21, t: 'Otras formas' }
+];
+
+function renderATSStatus() {
+  const banner = $('#atsBanner');
+  if (!banner) return;
+
+  const abierta = !!(State.jornada && !State.jornada.cerrada);
+  if (!abierta) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  banner.style.display = 'flex';
+  const ats = State.jornada.ats;
+  const completado = !!(ats && ats.completado);
+
+  const tIco = $('#atsBannerIco');
+  const tTit = $('#atsBannerTitle');
+  const tDesc = $('#atsBannerDesc');
+  const act = $('#atsBannerActions');
+
+  if (!completado) {
+    banner.className = 'ats-banner pending';
+    if (tIco) tIco.textContent = '⚠️';
+    if (tTit) tTit.textContent = 'ATS Obligatorio: Pendiente';
+    if (tDesc) tDesc.textContent = 'Debés completar el Análisis de Trabajo Seguro antes de iniciar la primera tarea del día.';
+    if (act) {
+      act.innerHTML = '<button class="btn btn-warning-ats" id="btnAtsBannerAction" type="button">📋 Rellenar ATS</button>';
+      const b = $('#btnAtsBannerAction');
+      if (b) b.onclick = () => abrirModalATS({ obligatorio: true });
+    }
+  } else {
+    banner.className = 'ats-banner completed';
+    if (tIco) tIco.textContent = '🛡️';
+    if (tTit) tTit.textContent = 'ATS Completado';
+    if (tDesc) {
+      const otTxt = ats.ot ? `OT: ${escapeHtml(ats.ot)}` : 'Sin OT';
+      const fechaTxt = ats.fecha ? `${fechaCorta(ats.fecha)} ${ats.hora || ''}` : '';
+      tDesc.textContent = `${otTxt} · ${fechaTxt} · ${escapeHtml(ats.trabajoAsignado || 'Trabajo registrado')}`;
+    }
+    if (act) {
+      act.innerHTML = `
+        <button class="btn btn-success-ats" id="btnAtsVer" type="button">👁️ Ver ATS</button>
+        <button class="btn btn-success-ats" id="btnAtsQuickPdf" type="button" title="Exportar PDF">📄 PDF</button>
+      `;
+      const bv = $('#btnAtsVer');
+      if (bv) bv.onclick = () => abrirModalATS();
+      const bp = $('#btnAtsQuickPdf');
+      if (bp) bp.onclick = () => exportarAtsPDF(ats);
+    }
+  }
+}
+
+function initATS() {
+  // 1. Grid interactivo de los 21 riesgos
+  const cont = $('#atsRiesgosGrid');
+  if (cont) {
+    cont.innerHTML = ATS_RIESGOS.map(r => `
+      <div class="ats-riesgo-pill" data-n="${r.n}">
+        <span class="ats-riesgo-num">${r.n}</span>
+        <span class="ats-riesgo-txt">${escapeHtml(r.t)}</span>
+      </div>
+    `).join('');
+    cont.querySelectorAll('.ats-riesgo-pill').forEach(pill => {
+      pill.onclick = () => {
+        pill.classList.toggle('selected');
+      };
+    });
+  }
+
+  // 2. Botones rápidos
+  const bEpp = $('#btnAtsEppEstandar');
+  if (bEpp) {
+    bEpp.onclick = () => {
+      const basicos = ['Casco', 'Botín de Seguridad', 'Guantes de prot Mec.', 'Protector Ocular'];
+      $$('input[name="atsEpp"]').forEach(cb => {
+        if (basicos.includes(cb.value)) cb.checked = true;
+      });
+      toast('EPP básico seleccionado', 'info');
+    };
+  }
+
+  const bReglas = $('#btnAts5Reglas');
+  if (bReglas) {
+    bReglas.onclick = () => {
+      $$('input[name="atsReglas"]').forEach(cb => { cb.checked = true; });
+      toast('5 Reglas de Oro marcadas', 'info');
+    };
+  }
+
+  const bCharla = $('#btnAtsCharlaTodo');
+  if (bCharla) {
+    bCharla.onclick = () => {
+      const habituales = [
+        '1.- Riesgos eléctricos',
+        '2.- Normas de seguridad',
+        '3.- Condiciones del lugar de trabajo',
+        '6.- Uso de Elementos de Protecion Personal.',
+        '7.- Uso equipos y herramientas aisladas',
+        '12.- Orden y limpieza'
+      ];
+      $$('input[name="atsCharla"]').forEach(cb => {
+        if (habituales.includes(cb.value)) cb.checked = true;
+      });
+      toast('Temas habituales de charla marcados', 'info');
+    };
+  }
+
+  const bAddCuad = $('#btnAtsAddCuadrilla');
+  if (bAddCuad) {
+    bAddCuad.onclick = () => {
+      const container = $('#atsCuadrillaList');
+      if (!container) return;
+      const cant = container.querySelectorAll('.ats-cuadrilla-row').length;
+      const div = document.createElement('div');
+      div.className = 'ats-cuadrilla-row';
+      div.dataset.idx = cant;
+      div.innerHTML = `
+        <span class="ats-cuadrilla-num">${cant + 1}</span>
+        <input class="input ats-input ats-cuad-nom" placeholder="Apellido y Nombre">
+        <input class="input ats-input ats-cuad-dni" placeholder="N° Documento" style="max-width:180px">
+        <button type="button" class="ats-cuadrilla-del" title="Quitar">🗑️</button>
+      `;
+      div.querySelector('.ats-cuadrilla-del').onclick = () => {
+        div.remove();
+        reindexarCuadrilla();
+      };
+      container.appendChild(div);
+      const inp = div.querySelector('.ats-cuad-nom');
+      if (inp) inp.focus();
+    };
+  }
+
+  // 3. Cerrar modal
+  const bClose = $('#btnAtsClose');
+  if (bClose) bClose.onclick = cerrarModalATS;
+  const bCancel = $('#btnAtsCancel');
+  if (bCancel) bCancel.onclick = cerrarModalATS;
+
+  // 4. Exportar PDF desde el modal
+  const bExp = $('#btnAtsExportPDF');
+  if (bExp) {
+    bExp.onclick = async () => {
+      const data = recolectarDatosATS();
+      await exportarAtsPDF(data);
+    };
+  }
+
+  // 5. Guardar ATS
+  const form = $('#formATS');
+  if (form) {
+    form.onsubmit = async e => {
+      e.preventDefault();
+      await guardarATS();
+    };
+  }
+
+  // Render inicial del banner
+  renderATSStatus();
+}
+
+function reindexarCuadrilla() {
+  const container = $('#atsCuadrillaList');
+  if (!container) return;
+  container.querySelectorAll('.ats-cuadrilla-row').forEach((row, idx) => {
+    const num = row.querySelector('.ats-cuadrilla-num');
+    if (num) num.textContent = idx + 1;
+  });
+}
+
+function renderCuadrillaRows(lista) {
+  const container = $('#atsCuadrillaList');
+  if (!container) return;
+  if (!lista || !lista.length) {
+    lista = [{
+      nombre: State.user ? State.user.nombre : '',
+      dni: State.user ? State.user.legajo : ''
+    }];
+  }
+  container.innerHTML = lista.map((m, idx) => `
+    <div class="ats-cuadrilla-row" data-idx="${idx}">
+      <span class="ats-cuadrilla-num">${idx + 1}</span>
+      <input class="input ats-input ats-cuad-nom" placeholder="Apellido y Nombre" value="${escapeHtml(m.nombre || '')}">
+      <input class="input ats-input ats-cuad-dni" placeholder="N° Documento" value="${escapeHtml(m.dni || '')}" style="max-width:180px">
+      ${idx > 0 ? `<button type="button" class="ats-cuadrilla-del" title="Quitar">🗑️</button>` : '<span style="width:24px"></span>'}
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.ats-cuadrilla-del').forEach(btn => {
+    btn.onclick = () => {
+      const row = btn.closest('.ats-cuadrilla-row');
+      if (row) row.remove();
+      reindexarCuadrilla();
+    };
+  });
+}
+
+function abrirModalATS(opciones = {}) {
+  const modal = $('#modalATS');
+  if (!modal) return;
+
+  const ats = (State.jornada && State.jornada.ats) ? State.jornada.ats : null;
+  const hoyStr = (State.jornada && State.jornada.fecha) ? State.jornada.fecha : hoy();
+  const horaActual = horaCorta();
+
+  // Datos Generales
+  const fOT = $('#atsOT');
+  const fObra = $('#atsObra');
+  const fPedido = $('#atsPedido');
+  const fSector = $('#atsSector');
+  const fFecha = $('#atsFecha');
+  const fHora = $('#atsHora');
+  const fDir = $('#atsDireccion');
+  const fLoc = $('#atsLocalidad');
+  const fTrab = $('#atsTrabajoAsignado');
+
+  if (fOT) fOT.value = ats ? (ats.ot || '') : '';
+  if (fObra) fObra.value = ats ? (ats.obra || '') : '';
+  if (fPedido) fPedido.value = ats ? (ats.pedido || '') : '';
+  if (fSector) fSector.value = ats ? (ats.sector || '') : 'Distribución';
+  if (fFecha) fFecha.value = ats ? (ats.fecha || hoyStr) : hoyStr;
+  if (fHora) fHora.value = ats ? (ats.hora || horaActual) : horaActual;
+  if (fDir) fDir.value = ats ? (ats.direccion || '') : '';
+  if (fLoc) fLoc.value = ats ? (ats.localidad || '') : (State.user ? State.user.zona || '' : '');
+  if (fTrab) fTrab.value = ats ? (ats.trabajoAsignado || '') : '';
+
+  // Riesgos Potenciales
+  const selRiesgos = (ats && Array.isArray(ats.riesgos)) ? ats.riesgos.map(Number) : [];
+  $$('.ats-riesgo-pill').forEach(pill => {
+    const n = parseInt(pill.dataset.n);
+    pill.classList.toggle('selected', selRiesgos.includes(n));
+  });
+
+  // Tipo de Tareas
+  const selTipos = (ats && Array.isArray(ats.tipos)) ? ats.tipos : [];
+  $$('input[name="atsTipo"]').forEach(cb => {
+    cb.checked = selTipos.includes(cb.value);
+  });
+  const tCivil = $('#atsTipoObraCivil'); if (tCivil) tCivil.value = ats ? (ats.tipoObraCivil || '') : '';
+  const tPoda = $('#atsTipoPoda'); if (tPoda) tPoda.value = ats ? (ats.tipoPoda || '') : '';
+  const tCanal = $('#atsTipoCanalizacion'); if (tCanal) tCanal.value = ats ? (ats.tipoCanalizacion || '') : '';
+
+  // Situación del Entorno
+  const selEnt = (ats && Array.isArray(ats.entorno)) ? ats.entorno : ['Normal'];
+  $$('input[name="atsEntorno"]').forEach(cb => {
+    cb.checked = selEnt.includes(cb.value);
+  });
+  const entAnorm = $('#atsEntornoAnormal'); if (entAnorm) entAnorm.value = ats ? (ats.entornoAnormal || '') : '';
+  const fObs = $('#atsObservacion'); if (fObs) fObs.value = ats ? (ats.observacion || '') : '';
+
+  // EPP
+  const selEpp = (ats && Array.isArray(ats.epp)) ? ats.epp : ['Casco', 'Botín de Seguridad', 'Guantes de prot Mec.', 'Protector Ocular'];
+  $$('input[name="atsEpp"]').forEach(cb => {
+    cb.checked = selEpp.includes(cb.value);
+  });
+  const eppOtros = $('#atsEppOtros'); if (eppOtros) eppOtros.value = ats ? (ats.eppOtros || '') : '';
+
+  // 5 Reglas de Oro
+  const selReglas = (ats && Array.isArray(ats.reglas)) ? ats.reglas : [];
+  $$('input[name="atsReglas"]').forEach(cb => {
+    cb.checked = selReglas.includes(cb.value);
+  });
+
+  // Charla 5 Minutos
+  const selCharla = (ats && Array.isArray(ats.charla)) ? ats.charla : [
+    '1.- Riesgos eléctricos',
+    '2.- Normas de seguridad',
+    '3.- Condiciones del lugar de trabajo',
+    '6.- Uso de Elementos de Protecion Personal.'
+  ];
+  $$('input[name="atsCharla"]').forEach(cb => {
+    cb.checked = selCharla.includes(cb.value);
+  });
+
+  // Personal de Cuadrilla
+  renderCuadrillaRows(ats ? ats.cuadrilla : null);
+
+  // Firmas
+  const fj = $('#atsFirmaJefe');
+  if (fj) fj.value = ats ? (ats.firmaJefe || '') : (State.user ? `${State.user.nombre} (Leg. ${State.user.legajo})` : '');
+  const fs = $('#atsFirmaSupervisor');
+  if (fs) fs.value = ats ? (ats.firmaSupervisor || '') : '';
+  const fh = $('#atsFirmaHigiene');
+  if (fh) fh.value = ats ? (ats.firmaHigiene || '') : '';
+
+  // Botón Exportar PDF en footer
+  const bExp = $('#btnAtsExportPDF');
+  if (bExp) bExp.style.display = ats && ats.completado ? 'inline-block' : 'none';
+
+  modal.classList.add('show');
+  if (fOT && !fOT.value) fOT.focus();
+}
+
+function cerrarModalATS() {
+  const modal = $('#modalATS');
+  if (modal) modal.classList.remove('show');
+}
+
+function recolectarDatosATS() {
+  const fOT = $('#atsOT');
+  const fObra = $('#atsObra');
+  const fPedido = $('#atsPedido');
+  const fSector = $('#atsSector');
+  const fFecha = $('#atsFecha');
+  const fHora = $('#atsHora');
+  const fDir = $('#atsDireccion');
+  const fLoc = $('#atsLocalidad');
+  const fTrab = $('#atsTrabajoAsignado');
+
+  const riesgos = [];
+  $$('.ats-riesgo-pill.selected').forEach(pill => {
+    const n = parseInt(pill.dataset.n);
+    if (!isNaN(n)) riesgos.push(n);
+  });
+
+  const tipos = [];
+  $$('input[name="atsTipo"]:checked').forEach(cb => tipos.push(cb.value));
+
+  const entorno = [];
+  $$('input[name="atsEntorno"]:checked').forEach(cb => entorno.push(cb.value));
+
+  const epp = [];
+  $$('input[name="atsEpp"]:checked').forEach(cb => epp.push(cb.value));
+
+  const reglas = [];
+  $$('input[name="atsReglas"]:checked').forEach(cb => reglas.push(cb.value));
+
+  const charla = [];
+  $$('input[name="atsCharla"]:checked').forEach(cb => charla.push(cb.value));
+
+  const cuadrilla = [];
+  $$('#atsCuadrillaList .ats-cuadrilla-row').forEach(row => {
+    const nom = row.querySelector('.ats-cuad-nom');
+    const dni = row.querySelector('.ats-cuad-dni');
+    if (nom && nom.value.trim()) {
+      cuadrilla.push({ nombre: nom.value.trim(), dni: dni ? dni.value.trim() : '' });
+    }
+  });
+
+  return {
+    ot: fOT ? fOT.value.trim() : '',
+    obra: fObra ? fObra.value.trim() : '',
+    pedido: fPedido ? fPedido.value.trim() : '',
+    sector: fSector ? fSector.value.trim() : '',
+    fecha: fFecha ? fFecha.value : hoy(),
+    hora: fHora ? fHora.value : horaCorta(),
+    direccion: fDir ? fDir.value.trim() : '',
+    localidad: fLoc ? fLoc.value.trim() : '',
+    trabajoAsignado: fTrab ? fTrab.value.trim() : '',
+    riesgos,
+    tipos,
+    tipoObraCivil: $('#atsTipoObraCivil') ? $('#atsTipoObraCivil').value.trim() : '',
+    tipoPoda: $('#atsTipoPoda') ? $('#atsTipoPoda').value.trim() : '',
+    tipoCanalizacion: $('#atsTipoCanalizacion') ? $('#atsTipoCanalizacion').value.trim() : '',
+    entorno,
+    entornoAnormal: $('#atsEntornoAnormal') ? $('#atsEntornoAnormal').value.trim() : '',
+    observacion: $('#atsObservacion') ? $('#atsObservacion').value.trim() : '',
+    epp,
+    eppOtros: $('#atsEppOtros') ? $('#atsEppOtros').value.trim() : '',
+    reglas,
+    charla,
+    cuadrilla,
+    firmaJefe: $('#atsFirmaJefe') ? $('#atsFirmaJefe').value.trim() : '',
+    firmaSupervisor: $('#atsFirmaSupervisor') ? $('#atsFirmaSupervisor').value.trim() : '',
+    firmaHigiene: $('#atsFirmaHigiene') ? $('#atsFirmaHigiene').value.trim() : '',
+    completado: true,
+    actualizadoEn: ahora()
+  };
+}
+
+async function guardarATS(exportarDespues = false) {
+  if (!State.jornada) {
+    toast('Debés iniciar la jornada para guardar el ATS', 'warn');
+    return;
+  }
+
+  const ats = recolectarDatosATS();
+  if (!ats.ot) {
+    toast('El número de OT es obligatorio', 'warn');
+    const fOT = $('#atsOT'); if (fOT) fOT.focus();
+    return;
+  }
+  if (!ats.trabajoAsignado) {
+    toast('El trabajo asignado es obligatorio', 'warn');
+    const fT = $('#atsTrabajoAsignado'); if (fT) fT.focus();
+    return;
+  }
+
+  State.jornada.ats = ats;
+  await saveJornada();
+
+  renderATSStatus();
+  toast('✅ Formulario ATS guardado correctamente', 'success');
+
+  const bExp = $('#btnAtsExportPDF');
+  if (bExp) bExp.style.display = 'inline-block';
+
+  cerrarModalATS();
+
+  if (exportarDespues) {
+    await exportarAtsPDF(ats);
+  }
+}
+
+async function exportarAtsPDF(ats, compartir = false) {
+  if (!ats) {
+    toast('No hay datos de ATS para exportar', 'warn');
+    return;
+  }
+  if (!window.jspdf) {
+    toast('Librería PDF no disponible en este momento', 'error');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const left = 10;
+  const w = 190;
+  let y = 10;
+
+  // 1. ENCABEZADO (h = 15mm) - FORMATO SIN LOGO COMO FUE SOLICITADO
+  doc.setDrawColor(40);
+  doc.setLineWidth(0.35);
+  doc.rect(left, y, w, 15);
+
+  // Columna 1 (izquierda, vacía sin logo): 42mm
+  doc.line(left + 42, y, left + 42, y + 15);
+
+  // Columna 2 (centro): 102mm
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(20);
+  doc.text('FORMULARIO', left + 42 + 51, y + 5.5, { align: 'center' });
+  doc.setFontSize(11);
+  doc.text('Análisis de trabajo seguro (ATS)', left + 42 + 51, y + 11.5, { align: 'center' });
+
+  // Columna 3 (derecha): 46mm
+  doc.line(left + 144, y, left + 144, y + 15);
+  const rh = 15 / 4; // 3.75mm por fila
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(30);
+  doc.line(left + 144, y + rh, left + w, y + rh);
+  doc.line(left + 144, y + rh * 2, left + w, y + rh * 2);
+  doc.line(left + 144, y + rh * 3, left + w, y + rh * 3);
+  doc.text('Código: PR SH 06 FOR 03', left + 146, y + 2.7);
+  doc.text('Vigencia:02/09/2020', left + 146, y + rh + 2.7);
+  doc.text('Revisión: 2', left + 146, y + rh * 2 + 2.7);
+  doc.text('Página: 1 de 1', left + 146, y + rh * 3 + 2.7);
+
+  y += 15;
+
+  // 2. DATOS GENERALES (3 filas)
+  // Fila 1: N° OT (35mm) | Obra (40mm) | Pedido (35mm) | Sector (42mm) | Fecha (38mm)
+  doc.rect(left, y, w, 5.8);
+  doc.line(left + 35, y, left + 35, y + 5.8);
+  doc.line(left + 75, y, left + 75, y + 5.8);
+  doc.line(left + 110, y, left + 110, y + 5.8);
+  doc.line(left + 152, y, left + 152, y + 5.8);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.text('N° OT:', left + 1.5, y + 4);
+  doc.text('Obra:', left + 36.5, y + 4);
+  doc.text('Pedido:', left + 76.5, y + 4);
+  doc.text('Sector:', left + 111.5, y + 4);
+  doc.text('Fecha:', left + 153.5, y + 4);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(String(ats.ot || ''), left + 12, y + 4);
+  doc.text(String(ats.obra || ''), left + 46, y + 4);
+  doc.text(String(ats.pedido || ''), left + 88, y + 4);
+  doc.text(String(ats.sector || ''), left + 122, y + 4);
+  doc.text(String(ats.fecha || ''), left + 164, y + 4);
+
+  y += 5.8;
+
+  // Fila 2: Dirección (92mm) | Localidad (60mm) | Hora (38mm)
+  doc.rect(left, y, w, 5.8);
+  doc.line(left + 92, y, left + 92, y + 5.8);
+  doc.line(left + 152, y, left + 152, y + 5.8);
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Dirección:', left + 1.5, y + 4);
+  doc.text('Localidad:', left + 93.5, y + 4);
+  doc.text('Hora:', left + 153.5, y + 4);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(String(ats.direccion || ''), left + 16, y + 4);
+  doc.text(String(ats.localidad || ''), left + 108, y + 4);
+  doc.text(String(ats.hora || ''), left + 163, y + 4);
+
+  y += 5.8;
+
+  // Fila 3: Trabajo Asignado
+  doc.rect(left, y, w, 5.8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Trabajo Asignado:', left + 1.5, y + 4);
+  doc.setFont('helvetica', 'normal');
+  doc.text(String(ats.trabajoAsignado || ''), left + 27, y + 4);
+
+  y += 5.8;
+
+  // 3. RIESGOS POTENCIALES (realizar un circulo alrededor del número)
+  doc.setFillColor(232, 232, 232);
+  doc.rect(left, y, w, 4.5, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.2);
+  doc.text('Riesgos potenciales (realizar un circulo alrededor del número)', left + w / 2, y + 3.2, { align: 'center' });
+  y += 4.5;
+
+  const colW = w / 3;
+  const rH = 3.6;
+  const riesgosCols = [
+    [
+      { n: 1,  t: 'Caída de personas a nivel' },
+      { n: 2,  t: 'Caída de personas de altura' },
+      { n: 3,  t: 'Caída de personas al agua' },
+      { n: 4,  t: 'Caída de objetos en altura' },
+      { n: 5,  t: 'Derrumbe de instalaciones' },
+      { n: 6,  t: 'Pisada sobre objetos' },
+      { n: 7,  t: 'Proyección de partículas' }
+    ],
+    [
+      { n: 8,  t: 'Golpes por objetos' },
+      { n: 9,  t: 'Aprisionamiento' },
+      { n: 10, t: 'Esfuerzo físico excesivo' },
+      { n: 11, t: 'Heridas con objeto cortopunzante' },
+      { n: 12, t: 'Contacto con fuego' },
+      { n: 13, t: 'Contacto con electricidad' },
+      { n: 14, t: 'Incendio' }
+    ],
+    [
+      { n: 15, t: 'Atropellamiento por animales' },
+      { n: 16, t: 'Mordeduras por animales' },
+      { n: 17, t: 'Atropellamiento por vehículos' },
+      { n: 18, t: 'Agresión con armas' },
+      { n: 19, t: 'Agresión por terceros' },
+      { n: 20, t: 'Poste podrido' },
+      { n: 21, t: 'Otras formas' }
+    ]
+  ];
+
+  doc.rect(left, y, w, rH * 7);
+  doc.line(left + colW, y, left + colW, y + rH * 7);
+  doc.line(left + colW * 2, y, left + colW * 2, y + rH * 7);
+
+  const riesgosSel = Array.isArray(ats.riesgos) ? ats.riesgos.map(Number) : [];
+
+  for (let c = 0; c < 3; c++) {
+    const colList = riesgosCols[c];
+    for (let r = 0; r < 7; r++) {
+      const item = colList[r];
+      const itemY = y + r * rH;
+      if (r > 0) {
+        doc.line(left + c * colW, itemY, left + (c + 1) * colW, itemY);
+      }
+      const boxX = left + c * colW + 1;
+      const numX = boxX + 2.8;
+      const numY = itemY + 2.6;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.2);
+      doc.text(String(item.n), numX, numY, { align: 'center' });
+
+      // Círculo alrededor del número si está seleccionado
+      if (riesgosSel.includes(item.n)) {
+        doc.setDrawColor(220, 38, 38);
+        doc.setLineWidth(0.45);
+        doc.circle(numX, numY - 0.7, 2.2);
+        doc.setDrawColor(40);
+        doc.setLineWidth(0.35);
+      }
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.8);
+      doc.text(item.t, boxX + 6.5, numY);
+    }
+  }
+  y += rH * 7;
+
+  // 4. TIPO DE TAREAS
+  doc.setFillColor(232, 232, 232);
+  doc.rect(left, y, w, 4.2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.2);
+  doc.text('Tipo de Tareas:', left + 2, y + 3);
+  y += 4.2;
+
+  const tiposSel = Array.isArray(ats.tipos) ? ats.tipos : [];
+
+  function drawBoxCheck(x, yPos, isChecked, size = 3) {
+    doc.rect(x, yPos, size, size);
+    if (isChecked) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.text('X', x + size / 2, yPos + size - 0.6, { align: 'center' });
+    }
+  }
+
+  // Fila 1: Aéreas de MT/BT | Montaje de Estructuras... | Obra Civil
+  doc.rect(left, y, w, 5.2);
+  doc.line(left + 55, y, left + 55, y + 5.2);
+  doc.line(left + 130, y, left + 130, y + 5.2);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.8);
+  doc.text('Aéreas de MT/BT', left + 1.5, y + 3.4);
+  drawBoxCheck(left + 49, y + 1.1, tiposSel.includes('Aéreas de MT/BT'));
+
+  doc.text('Montaje de Estructuras, LAMT, LABT Y TRANSFORMADORES', left + 56.5, y + 3.4);
+  drawBoxCheck(left + 124, y + 1.1, tiposSel.includes('Montaje de Estructuras, LAMT, LABT Y TRANSFORMADORES'));
+
+  const hasCivil = tiposSel.includes('Obra Civil') || !!ats.tipoObraCivil;
+  doc.text('Obra Civil: ' + (ats.tipoObraCivil || ''), left + 131.5, y + 3.4);
+  drawBoxCheck(left + 184, y + 1.1, hasCivil);
+
+  y += 5.2;
+
+  // Fila 2: Montaje de Postes | Poda | Canalización/Zanjeo | Medidores
+  doc.rect(left, y, w, 5.2);
+  doc.line(left + 55, y, left + 55, y + 5.2);
+  doc.line(left + 97, y, left + 97, y + 5.2);
+  doc.line(left + 145, y, left + 145, y + 5.2);
+
+  doc.text('Montaje de Postes y Columnas y Bases', left + 1.5, y + 3.4);
+  drawBoxCheck(left + 49, y + 1.1, tiposSel.includes('Montaje de Postes y Columnas y Bases'));
+
+  const hasPoda = tiposSel.includes('Poda') || !!ats.tipoPoda;
+  doc.text('Poda: ' + (ats.tipoPoda || ''), left + 56.5, y + 3.4);
+  drawBoxCheck(left + 91, y + 1.1, hasPoda);
+
+  const hasCanal = tiposSel.includes('Canalización / Zanjeo') || !!ats.tipoCanalizacion;
+  doc.text('Canalización / Zanjeo: ' + (ats.tipoCanalizacion || ''), left + 98.5, y + 3.4);
+  drawBoxCheck(left + 139, y + 1.1, hasCanal);
+
+  doc.text('Medidores', left + 146.5, y + 3.4);
+  drawBoxCheck(left + 184, y + 1.1, tiposSel.includes('Medidores'));
+
+  y += 5.2;
+
+  // 5. SITUACIÓN DEL ENTORNO
+  doc.setFillColor(232, 232, 232);
+  doc.rect(left, y, w, 4.2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.text('Situación del Entorno (Planificar la Tarea) Marcar con una X', left + 2, y + 3);
+  y += 4.2;
+
+  const entornoSel = Array.isArray(ats.entorno) ? ats.entorno : [];
+  const colEnt = w / 3;
+
+  // Fila 1 entorno
+  doc.rect(left, y, w, 4.8);
+  doc.line(left + colEnt, y, left + colEnt, y + 4.8);
+  doc.line(left + colEnt * 2, y, left + colEnt * 2, y + 4.8);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.8);
+  doc.text('Normal', left + 1.5, y + 3.4);
+  drawBoxCheck(left + colEnt - 6, y + 0.9, entornoSel.includes('Normal'));
+
+  doc.text('Poste Roto', left + colEnt + 1.5, y + 3.4);
+  drawBoxCheck(left + colEnt * 2 - 6, y + 0.9, entornoSel.includes('Poste Roto'));
+
+  doc.text('Distancias de Seguridad', left + colEnt * 2 + 1.5, y + 3.4);
+  drawBoxCheck(left + w - 6, y + 0.9, entornoSel.includes('Distancias de Seguridad'));
+
+  y += 4.8;
+
+  // Fila 2 entorno
+  doc.rect(left, y, w, 4.8);
+  doc.line(left + colEnt, y, left + colEnt, y + 4.8);
+  doc.line(left + colEnt * 2, y, left + colEnt * 2, y + 4.8);
+
+  const hasAnorm = entornoSel.includes('Anormal') || !!ats.entornoAnormal;
+  doc.text('Anormal (Indicar): ' + (ats.entornoAnormal || ''), left + 1.5, y + 3.4);
+  drawBoxCheck(left + colEnt - 6, y + 0.9, hasAnorm);
+
+  doc.text('Instalaciones defectuosas', left + colEnt + 1.5, y + 3.4);
+  drawBoxCheck(left + colEnt * 2 - 6, y + 0.9, entornoSel.includes('Instalaciones defectuosas'));
+
+  doc.text('Orden y Limpieza', left + colEnt * 2 + 1.5, y + 3.4);
+  drawBoxCheck(left + w - 6, y + 0.9, entornoSel.includes('Orden y Limpieza'));
+
+  y += 4.8;
+
+  // Fila 3 entorno: Observación
+  doc.rect(left, y, w, 5);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.2);
+  doc.text('Observación:', left + 1.5, y + 3.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text(String(ats.observacion || ''), left + 20, y + 3.5);
+
+  y += 5;
+
+  // 6. EPP Y ESC A UTILIZAR
+  doc.setFillColor(232, 232, 232);
+  doc.rect(left, y, w, 4.2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.text('EPP y ESC a Utilizar (marcar con una X el que corresponda según la tarea a realizar)', left + 2, y + 3);
+  y += 4.2;
+
+  const eppSel = Array.isArray(ats.epp) ? ats.epp : [];
+  const colEpp = w / 3;
+  const eppRows = [
+    [
+      { t: 'Casco', val: 'Casco' },
+      { t: 'Botín de Seguridad', val: 'Botín de Seguridad' },
+      { t: 'Guantes de prot Mec.', val: 'Guantes de prot Mec.' },
+      { t: 'Guantes Dieléctricos', val: 'Guantes Dieléctricos' },
+      { t: 'Mascara Antideflagracion', val: 'Mascara Antideflagracion' },
+      { t: 'Protector Ocular', val: 'Protector Ocular' }
+    ],
+    [
+      { t: 'Arnés anticaida y Acc.', val: 'Arnés anticaida y Acc.' },
+      { t: 'Alfombra y/o Manta', val: 'Alfombra y/o Manta' },
+      { t: 'Botiquín 1° Auxilios', val: 'Botiquín 1° Auxilios' },
+      { t: 'Matafuego', val: 'Matafuego' },
+      { t: 'Herramientas Aisladas', val: 'Herramientas Aisladas' },
+      { t: 'Manopla Extrac Fusible', val: 'Manopla Extrac Fusible' }
+    ],
+    [
+      { t: 'Escaleras Dieléctricas', val: 'Escaleras Dieléctricas' },
+      { t: 'Elementos de Señalizacion', val: 'Elementos de Señalizacion' },
+      { t: 'Trepadores', val: 'Trepadores' },
+      { t: 'Soga de servicio', val: 'Soga de servicio' },
+      { t: 'Otros (Indicar): ' + (ats.eppOtros || ''), val: 'Otros' },
+      { t: '', val: null }
+    ]
+  ];
+
+  const hEppRow = 3.6;
+  doc.rect(left, y, w, hEppRow * 6);
+  doc.line(left + colEpp, y, left + colEpp, y + hEppRow * 6);
+  doc.line(left + colEpp * 2, y, left + colEpp * 2, y + hEppRow * 6);
+
+  for (let c = 0; c < 3; c++) {
+    for (let r = 0; r < 6; r++) {
+      const it = eppRows[c][r];
+      const rY = y + r * hEppRow;
+      if (r > 0) doc.line(left + c * colEpp, rY, left + (c + 1) * colEpp, rY);
+      if (it.val) {
+        const isChecked = eppSel.includes(it.val) || (it.val === 'Otros' && !!ats.eppOtros);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5.8);
+        doc.text(it.t, left + c * colEpp + 1.5, rY + 2.5);
+        drawBoxCheck(left + (c + 1) * colEpp - 5.5, rY + 0.4, isChecked, 2.7);
+      }
+    }
+  }
+  y += hEppRow * 6;
+
+  // 7. MEDIDAS DE SEGURIDAD (5 REGLAS DE ORO)
+  doc.setFillColor(232, 232, 232);
+  doc.rect(left, y, w, 4.2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.text('Medidas de Seguridad (5 Reglas de Oro) si corresponde a la tarea, Marcar con una X', left + 2, y + 3);
+  y += 4.2;
+
+  const reglasSel = Array.isArray(ats.reglas) ? ats.reglas : [];
+  const reglasList = [
+    { t: 'Corte de Alimentación', val: 'Corte de Alimentación' },
+    { t: 'Bloqueo', val: 'Bloqueo' },
+    { t: 'Verificación de Tensión', val: 'Verificación de Tensión' },
+    { t: 'Puesta a Tierra y CC.', val: 'Puesta a Tierra y CC.' },
+    { t: 'Delimitación de la zona de Trabajo', val: 'Delimitación de la zona de Trabajo' }
+  ];
+
+  const colRegla = w / 5;
+  doc.rect(left, y, w, 5.2);
+  for (let i = 0; i < 5; i++) {
+    if (i > 0) doc.line(left + i * colRegla, y, left + i * colRegla, y + 5.2);
+    const reg = reglasList[i];
+    const isChecked = reglasSel.includes(reg.val);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.2);
+    doc.text(reg.t, left + i * colRegla + 1, y + 3.4);
+    drawBoxCheck(left + (i + 1) * colRegla - 5, y + 1.2, isChecked, 2.8);
+  }
+  y += 5.2;
+
+  // 8. TEXTO LEGAL
+  doc.rect(left, y, w, 7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(4.7);
+  doc.setTextColor(50);
+  const legalText = 'El objetivo de la NOTIFICACION DE RIESGOS es dar cumplimiento al Art. 208 del Dec. 351/79 "capacitar en... En prevención de enfermedades profesionales y de accidentes del trabajo", siendo parte, la presente notificación, de un conjunto de acciones y registros tendientes a cumplimentar todo el capítulo 21 del citado Dec. que reglamenta la Ley 19587.';
+  doc.text(doc.splitTextToSize(legalText, w - 4), left + 2, y + 2.7);
+  doc.setTextColor(20);
+  y += 7.5;
+
+  // 9. CHARLA DE 5 MINUTOS
+  doc.setFillColor(232, 232, 232);
+  doc.rect(left, y, w, 4.2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.text('CHARLA DE 5 MINUTOS (marque con una X los temas que mencionaron)', left + 2, y + 3);
+  y += 4.2;
+
+  const charlaSel = Array.isArray(ats.charla) ? ats.charla : [];
+  const colCharla = w / 2;
+  const charlaCols = [
+    [
+      '1.- Riesgos eléctricos',
+      '2.- Normas de seguridad',
+      '3.- Condiciones del lugar de trabajo',
+      '4.- Riesgo de trabajo en altura',
+      '5.- Prevción y combate de incendios',
+      '6.- Uso de Elementos de Protecion Personal.',
+      '7.- Uso equipos y herramientas aisladas'
+    ],
+    [
+      '8.- Manejo y almacenamiento de materiales',
+      '09.- Señalización en vía pública',
+      '10.- Superficies de trabajo',
+      '11.- Normas de higiene y aseo',
+      '12.- Orden y limpieza',
+      '13.- Riesgos específicos',
+      '14.- Respuestas ante emergencias'
+    ]
+  ];
+
+  const hCharlaRow = 3.5;
+  doc.rect(left, y, w, hCharlaRow * 7);
+  doc.line(left + colCharla, y, left + colCharla, y + hCharlaRow * 7);
+
+  for (let c = 0; c < 2; c++) {
+    for (let r = 0; r < 7; r++) {
+      const tema = charlaCols[c][r];
+      const rY = y + r * hCharlaRow;
+      if (r > 0) doc.line(left + c * colCharla, rY, left + (c + 1) * colCharla, rY);
+      const isChecked = charlaSel.includes(tema);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.8);
+      doc.text(tema, left + c * colCharla + 1.5, rY + 2.5);
+      drawBoxCheck(left + (c + 1) * colCharla - 5.5, rY + 0.4, isChecked, 2.7);
+    }
+  }
+  y += hCharlaRow * 7;
+
+  // 10. APELLIDO, NOMBRE Y NÚMERO DE DOCUMENTO
+  doc.setFillColor(232, 232, 232);
+  doc.rect(left, y, w, 4.2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.text('Apellido, Nombre y Número de Documento (Datos obligatorios)', left + 2, y + 3);
+  y += 4.2;
+
+  const cuadrilla = Array.isArray(ats.cuadrilla) ? ats.cuadrilla : [];
+  const filasCuadrilla = 4;
+  const hCuadRow = 4.2;
+
+  doc.rect(left, y, w, hCuadRow * filasCuadrilla);
+  doc.line(left + 125, y, left + 125, y + hCuadRow * filasCuadrilla);
+
+  for (let i = 0; i < filasCuadrilla; i++) {
+    const cY = y + i * hCuadRow;
+    if (i > 0) doc.line(left, cY, left + w, cY);
+    const m = cuadrilla[i] || {};
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.2);
+    if (m.nombre) doc.text(String(m.nombre), left + 3, cY + 3);
+    if (m.dni) doc.text(String(m.dni), left + 128, cY + 3);
+  }
+  y += hCuadRow * filasCuadrilla;
+
+  // 11. FIRMAS Y ACLARACIONES (3 columnas)
+  const colFirma = w / 3;
+  const hFirma = 16;
+  doc.rect(left, y, w, hFirma);
+  doc.line(left + colFirma, y, left + colFirma, y + hFirma);
+  doc.line(left + colFirma * 2, y, left + colFirma * 2, y + hFirma);
+
+  // Columna 1: Jefe de cuadrilla
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('Jefe de cuadrilla', left + colFirma / 2, y + 3.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  if (ats.firmaJefe) doc.text(String(ats.firmaJefe), left + colFirma / 2, y + 9.5, { align: 'center' });
+  doc.setFontSize(5.5);
+  doc.text('Firma y aclaración', left + colFirma / 2, y + 14.5, { align: 'center' });
+
+  // Columna 2: Supervisor
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('Supervisor', left + colFirma + colFirma / 2, y + 3.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  if (ats.firmaSupervisor) doc.text(String(ats.firmaSupervisor), left + colFirma + colFirma / 2, y + 9.5, { align: 'center' });
+  doc.setFontSize(5.5);
+  doc.text('Firma y aclaración', left + colFirma + colFirma / 2, y + 14.5, { align: 'center' });
+
+  // Columna 3: Dto. Higiene & Seguridad
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('Dto. de Higiene & Seguridad', left + colFirma * 2 + colFirma / 2, y + 3.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  if (ats.firmaHigiene) doc.text(String(ats.firmaHigiene), left + colFirma * 2 + colFirma / 2, y + 9.5, { align: 'center' });
+  doc.setFontSize(5.5);
+  doc.text('Firma y aclaración', left + colFirma * 2 + colFirma / 2, y + 14.5, { align: 'center' });
+
+  const nombre = 'ATS_' + (ats.ot ? 'OT' + ats.ot + '_' : '') + (ats.fecha || hoy()) + '.pdf';
+  if (compartir) {
+    await compartirPDFWhatsApp(doc, nombre, 'Formulario ATS - OT ' + (ats.ot || 'S/N') + ' - Fecha: ' + (ats.fecha || hoy()));
+    return;
+  }
+  doc.save(nombre);
+  toast('📄 Formulario ATS exportado correctamente en PDF', 'success');
+}
+
+document.addEventListener('DOMContentLoaded', initATS);

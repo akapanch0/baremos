@@ -1,8 +1,13 @@
 {
-  "version": "5.9.44",
-  "fecha": "2026-09-10",
+  "version": "5.9.46",
+  "fecha": "2026-09-11",
   "cambios": [
-    "Integración completa con Firebase Firestore y autenticación con Google corregida: bundle compatible y soporte de ventanas emergentes y redirección segura para sincronización en la nube",
+    "Implementación del formulario oficial de Análisis de Trabajo Seguro (ATS) diario conforme al formato reglamentario (Código: PR SH 06 FOR 03, Rev. 2, Art. 208 Dec. 351/79 Ley 19587) sin logo institucional",
+    "Flujo de obligatoriedad diario: al iniciar jornada se notifica y se abre el formulario ATS; se bloquea el inicio de la primera tarea y finalización hasta haber completado el formulario",
+    "Banner interactivo en la pantalla principal con indicador de estado (Pendiente / Completado) y accesos directos para rellenar, ver y exportar",
+    "Formulario completo interactivo: datos de obra/OT, 21 riesgos potenciales seleccionables, tipos de tareas, situación del entorno, EPP/ESC con atajos rápidos, 5 reglas de oro, charla de 5 minutos, cuadrilla con DNI y firmas",
+    "Exportación de alta fidelidad a PDF tamaño A4 en formato oficial sin logo, con números de riesgos encerrados en círculo y casillas marcadas, listo para descargar o compartir por WhatsApp",
+    "Eliminación completa de la integración con Firebase: la aplicación vuelve a operar de manera 100% local, ligera, privada e independiente con IndexedDB y almacenamiento persistente en el dispositivo",
     "El logo cuadrado que mostraba Android al lanzar la app ya no lleva la placa azul: el icono del sistema pasa a ser el escudo redondo con la B y el rayo sobre fondo transparente, y el color de fondo del arranque quedo igual al de la app, asi ese primer cuadro se funde con la animacion en lugar de cortarla",
     "La presentacion se rediseño y se reparo: el logo volvio ADENTRO del escenario de la animacion, que era la causa de los espacios vacios y del logo descolgado. La secuencia del rayo y de la B no se toco",
     "Presentacion mas compacta: marca, titulo y descripcion forman un solo bloque sin aire muerto, las seis funciones pasan a fichas de vidrio en dos columnas, el boton Instalar ocupa todo el ancho con una nota corta debajo y los creditos quedan en una sola linea",
