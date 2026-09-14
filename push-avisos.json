@@ -1,23 +1,36 @@
 [
   {
-    "id": "aviso-1789344685752",
-    "titulo": "Alerta de Prueba",
-    "cuerpo": "Mensaje de prueba para cuadrilla",
+    "id": "aviso-1789348250161",
+    "titulo": "Prueba Supervisión Remota",
+    "cuerpo": "Notificación enviada desde cualquier celular",
     "prioridad": "alta",
     "categoria": "Seguridad",
-    "autor": "Supervisión Test",
+    "autor": "Administración",
     "fecha": "2026-09-14",
-    "creadoEn": "2026-09-14T00:11:25.752Z"
+    "creadoEn": "2026-09-14T01:10:50.161Z",
+    "destinatario": "todos"
   },
   {
-    "id": "aviso-init-1",
-    "titulo": "⚠️ Alerta de Seguridad: EPP y Arnés Obligatorio",
-    "cuerpo": "Todo el personal en trabajos de altura o poda debe utilizar arnés con doble cabo de vida y verificar ausencia de tensión en líneas MT/BT.",
+    "id": "aviso-1789347405748",
+    "titulo": "📢 Comunicado Oficial de la Empresa",
+    "cuerpo": "Vamos a cerrar la jornada ahora chicos",
+    "prioridad": "media",
+    "categoria": "General",
+    "autor": "Administración",
+    "fecha": "2026-09-14",
+    "creadoEn": "2026-09-14T00:56:45.748Z",
+    "destinatario": "todos"
+  },
+  {
+    "id": "aviso-1789347324794",
+    "titulo": "📋 Análisis de Trabajo Seguro (ATS) Obligatorio",
+    "cuerpo": "Recordá completar y firmar el ATS con todo el equipo antes de iniciar cualquier tarea en la vía pública.",
     "prioridad": "alta",
-    "categoria": "Seguridad",
-    "autor": "Dpto. de Higiene & Seguridad",
-    "fecha": "2026-09-13",
-    "leido": false
+    "categoria": "Procedimiento",
+    "autor": "Administración",
+    "fecha": "2026-09-14",
+    "creadoEn": "2026-09-14T00:55:24.794Z",
+    "destinatario": "todos"
   },
   {
     "id": "aviso-init-2",
@@ -37,16 +50,6 @@
     "categoria": "Operaciones",
     "autor": "Administración BAREMO",
     "fecha": "2026-09-11",
-    "leido": false
-  },
-  {
-    "id": "aviso-init-4",
-    "titulo": "⛈️ Protocolo de Tormenta Eléctrica",
-    "cuerpo": "Ante relámpagos o alerta meteorológica en la zona de trabajo, interrumpir inmediatamente las tareas en postes o grúas y guarecerse.",
-    "prioridad": "media",
-    "categoria": "Seguridad",
-    "autor": "Coordinación Central",
-    "fecha": "2026-09-10",
     "leido": false
   }
 ]

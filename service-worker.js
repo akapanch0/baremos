@@ -491,7 +491,26 @@ self.addEventListener('push', event => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(titulo, options)
+    Promise.all([
+      self.registration.showNotification(titulo, options),
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            tipo: 'PUSH_RECIBIDO',
+            payload: {
+              id: data.id || tag,
+              titulo,
+              cuerpo,
+              prioridad: data.prioridad,
+              categoria: data.categoria || 'General',
+              autor: data.autor || 'Supervisión',
+              tipo: tipo,
+              datos: options.data
+            }
+          });
+        });
+      })
+    ])
   );
 });
 

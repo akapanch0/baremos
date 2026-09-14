@@ -1,0 +1,14 @@
+[
+  {
+    "id": "aviso-1789348250161",
+    "tipo": "aviso_empresa",
+    "titulo": "Prueba Supervisión Remota",
+    "cuerpo": "Notificación enviada desde cualquier celular",
+    "prioridad": "alta",
+    "categoria": "Seguridad",
+    "autor": "Administración",
+    "destinatario": "todos",
+    "creadoEn": "2026-09-14T01:10:50.161Z",
+    "timestamp": 1789348250161
+  }
+]

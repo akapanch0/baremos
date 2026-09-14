@@ -484,6 +484,21 @@ html.piel-grafito { background: #1f2937; }</style>
       </div>
     </div>
 
+    <!-- Banner interactivo para que cada cuadrilla active las alertas Push en su celular -->
+    <div class="jornada-pendiente-banner push-activar-banner" id="pushActivarBanner" style="display:none;background:linear-gradient(135deg, rgba(234, 88, 12, 0.12), rgba(249, 115, 22, 0.05));border:1.5px solid #ea580c;border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+      <div class="jpb-left" style="align-items:center;">
+        <div class="jpb-ico" style="font-size:24px;background:#ea580c;color:#fff;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;">🔔</div>
+        <div class="jpb-info">
+          <div class="jpb-title" style="color:#ea580c;font-weight:700;font-size:13.5px;">Alertas de Supervisión en este Celular</div>
+          <div class="jpb-desc" style="font-size:12px;color:var(--text);margin-top:2px;">Activá las notificaciones para recibir al instante comunicados de cuadrilla, alertas meteorológicas y avisos de seguridad enviados por el supervisor.</div>
+        </div>
+      </div>
+      <div class="jpb-actions" style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-sm btn-primary" id="btnActivarPushBanner" type="button" style="background:#ea580c;border-color:#ea580c;font-weight:700;padding:6px 14px;">📲 Activar Alertas en este Celular</button>
+        <button class="btn btn-sm btn-ghost" id="btnDescartarPushBanner" type="button" title="Ocultar por ahora">✕</button>
+      </div>
+    </div>
+
     <!-- Banner de notificación de ATS obligatorio -->
     <div class="ats-banner" id="atsBanner" style="display:none">
       <div class="ats-b-left">
@@ -926,42 +941,72 @@ html.piel-grafito { background: #1f2937; }</style>
           </div>
         </div>
 
-        <div class="card" style="margin-bottom:14px">
-          <div class="card-title">📦 Consolidación de Datos</div>
-          <p style="font-size:11px;color:var(--text-soft);margin-bottom:10px">Para ver datos de todos los usuarios, cada usuario debe exportar sus datos y el admin importarlos aquí.</p>
-          <div class="admin-actions">
-            <button class="btn btn-ghost btn-sm" id="btnExportAllData">📤 Exportar mis datos</button>
-            <button class="btn btn-primary btn-sm" id="btnImportData">📥 Importar datos</button>
+        <div class="card" style="margin-bottom:14px;border:1.5px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="card-title" style="margin:0;display:flex;align-items:center;gap:6px;">
+              <span>☁️</span> Descarga Remota de Reportes de Cuadrillas
+            </div>
+            <button class="btn btn-ghost btn-sm" id="btnRefrescarDatosNube" style="padding:4px 8px;font-size:11px;" title="Actualizar datos sincronizados desde la nube">
+              🔄 Actualizar Nube
+            </button>
           </div>
-        </div>
-        <div class="card-title" style="padding:0 0 8px">📋 Tipo de reporte</div>
-        <div class="admin-report-type" id="adminReportType">
-          <button class="active" data-type="diario">📅 Diario</button>
-          <button data-type="semanal">📆 Semanal</button>
-          <button data-type="mensual">🗓️ Mensual</button>
-        </div>
-        <div class="admin-filters">
-          <div class="field">
-            <label>Usuario</label>
-            <select class="select" id="adminUsuario">
-              <option value="todos">👥 Todos los usuarios</option>
-            </select>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:12px;font-size:12px;">
+            <span id="adminSyncStatusBadge" style="background:#e0f2fe;color:#0369a1;font-weight:700;padding:2px 8px;border-radius:12px;font-size:11px;">☁️ Conectando...</span>
+            <span id="adminSyncInfo" style="color:var(--text-soft);font-size:11px;flex:1;">Cargando cuadrillas sincronizadas...</span>
+            <button class="btn btn-ghost btn-sm" id="btnSincronizarAhora" style="padding:2px 8px;font-size:11px;" title="Sincronizar jornadas locales a la nube">☁️ Subir Mis Datos</button>
           </div>
-          <div class="field">
-            <label id="adminFechaLabel">Fecha</label>
-            <input class="input" id="adminFecha" type="date">
+
+          <div class="card-title" style="padding:0 0 6px;font-size:13px;">📋 Período del reporte</div>
+          <div class="admin-report-type" id="adminReportType">
+            <button class="active" data-type="diario">📅 Diario</button>
+            <button data-type="semanal">📆 Semanal</button>
+            <button data-type="quincenal">💰 Quincenal</button>
+            <button data-type="mensual">🗓️ Mensual</button>
+            <button data-type="todos">🗂️ Todos</button>
           </div>
-        </div>
-        <div class="admin-summary" id="adminSummary" style="display:none">
-          <div class="as-title">📊 Resumen del reporte</div>
-          <div id="adminSummaryContent"></div>
-        </div>
-        <div class="admin-actions">
-          <button class="btn btn-primary btn-sm" id="btnAdminPreview">👁️ Vista previa</button>
-          <button class="btn btn-success btn-sm" id="btnAdminPDF">📄 Descargar PDF</button>
-        </div>
-        <div class="admin-actions" style="margin-top:8px">
-          <button class="btn btn-ghost btn-sm" id="btnAdminExcel">📊 Descargar Excel</button>
+
+          <div class="admin-filters" style="margin-top:10px;">
+            <div class="field">
+              <label>Cuadrilla / Operario</label>
+              <select class="select" id="adminUsuario">
+                <option value="todos">👥 Todas las cuadrillas (Reporte Consolidado)</option>
+              </select>
+            </div>
+            <div class="field" id="adminCampoFecha">
+              <label id="adminFechaLabel">Fecha de Referencia</label>
+              <input class="input" id="adminFecha" type="date">
+            </div>
+            <div class="field" id="adminCampoQuincena" style="display:none;">
+              <label>Quincena</label>
+              <select class="select" id="adminQuincenaSel">
+                <option value="1">1ª Quincena (Días 1 al 15)</option>
+                <option value="2">2ª Quincena (Días 16 al fin de mes)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="admin-summary" id="adminSummary" style="display:none;margin-top:12px;">
+            <div class="as-title" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>📊 Resumen del Reporte Remoto</span>
+              <span id="adminSummaryPeriodoBadge" style="font-size:11px;color:var(--text-soft);font-weight:normal;"></span>
+            </div>
+            <div id="adminSummaryContent"></div>
+          </div>
+
+          <div class="admin-actions" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="btnAdminPreview" style="flex:1;min-width:120px;">👁️ Vista previa</button>
+            <button class="btn btn-success btn-sm" id="btnAdminPDF" style="flex:1;min-width:120px;">📄 Descargar PDF</button>
+            <button class="btn btn-ghost btn-sm" id="btnAdminExcel" style="flex:1;min-width:120px;border:1px solid var(--border);">📊 Descargar Excel</button>
+          </div>
+
+          <details style="margin-top:14px;padding-top:10px;border-top:1px dashed var(--border);">
+            <summary style="font-size:11.5px;color:var(--text-soft);cursor:pointer;user-select:none;">📦 Respaldo Manual y Consolidación Local (Opcional)</summary>
+            <p style="font-size:11px;color:var(--text-soft);margin:8px 0;">Opciones de contingencia para exportar o importar archivos de backup cuando no se dispone de conexión a internet.</p>
+            <div class="admin-actions">
+              <button class="btn btn-ghost btn-sm" id="btnExportAllData">📤 Exportar mis datos</button>
+              <button class="btn btn-primary btn-sm" id="btnImportData">📥 Importar datos</button>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -1460,7 +1505,9 @@ html.piel-grafito { background: #1f2937; }</style>
     </div>
     <div class="avisos-modal-foot">
       <button type="button" class="btn btn-ghost btn-sm" id="btnAvisosMarcarLeidos">✓ Marcar leídos</button>
-      <button type="button" class="btn btn-primary btn-sm" id="btnAbrirPublicarAviso">➕ Publicar Aviso (Supervisión)</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btnAbrirPublicarAviso" style="color:var(--text-soft);border:1px dashed var(--border);font-size:12px;">
+        <span>🔐</span> Publicar Aviso (Requiere Clave Maestra)
+      </button>
     </div>
   </div>
 </div>
@@ -1548,6 +1595,31 @@ html.piel-grafito { background: #1f2937; }</style>
     </div>
     <div class="modal-foot" style="margin-top:16px; text-align:right;">
       <button type="button" class="btn btn-primary btn-sm" id="btnPushConfigAceptar">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Emergente de Alerta en Vivo de Supervisión -->
+<div class="modal-backdrop" id="modalAlertaSupervisor" style="z-index: 99999; display:none;">
+  <div class="modal" style="border: 2px solid #ea580c; max-width: 440px; box-shadow: 0 10px 40px rgba(0,0,0,0.35);">
+    <div style="display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:12px;">
+      <div style="font-size:28px; background:rgba(234,88,12,0.15); width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;">🚨</div>
+      <div>
+        <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:#ea580c;" id="alertaSupervisorBadge">ALERTA URGENTE DE SUPERVISIÓN</div>
+        <div style="font-size:15px; font-weight:800; color:var(--text);" id="alertaSupervisorTitulo">Título de la Alerta</div>
+      </div>
+    </div>
+    <div style="font-size:13.5px; line-height:1.5; color:var(--text); margin-bottom:16px; white-space:pre-line; max-height:220px; overflow-y:auto; padding:8px 12px; background:var(--bg); border-radius:8px;" id="alertaSupervisorCuerpo">
+      Mensaje de la alerta...
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:var(--text-soft); margin-bottom:14px;">
+      <span id="alertaSupervisorEmisor">Emitido por: Supervisión Central</span>
+      <span id="alertaSupervisorFecha">Hoy</span>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button type="button" class="btn btn-primary" id="btnAlertaSupervisorAceptar" style="flex:1; padding:12px; font-weight:700; font-size:13.5px; background:#ea580c; border-color:#ea580c;">
+        ✓ Entendido y Recibido
+      </button>
     </div>
   </div>
 </div>

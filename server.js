@@ -22,6 +22,9 @@ const VAPID_FILE = path.join(__dirname, 'push-vapid.json');
 const SUBS_FILE = path.join(__dirname, 'push-subscriptions.json');
 const AVISOS_FILE = path.join(__dirname, 'push-avisos.json');
 const ADMIN_AUTH_FILE = path.join(__dirname, 'admin-auth.json');
+const LIVE_ALERTS_FILE = path.join(__dirname, 'push-live-alerts.json');
+const JORNADAS_REMOTAS_FILE = path.join(__dirname, 'jornadas-remotas.json');
+const USUARIOS_REMOTOS_FILE = path.join(__dirname, 'usuarios-remotos.json');
 
 // ============================================================
 // GESTIÓN REMOTA DE CLAVE MAESTRA DE ADMINISTRADOR
@@ -245,6 +248,82 @@ function guardarAvisosEmpresa(avisos) {
   }
 }
 
+// Helpers para alertas en vivo y sincronización remota de reportes
+function leerLiveAlerts() {
+  try {
+    if (fs.existsSync(LIVE_ALERTS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(LIVE_ALERTS_FILE, 'utf8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (e) {}
+  return [];
+}
+
+function guardarLiveAlerts(alerts) {
+  try {
+    const limpios = Array.isArray(alerts) ? alerts.slice(0, 100) : [];
+    fs.writeFileSync(LIVE_ALERTS_FILE, JSON.stringify(limpios, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('[Live Alerts] Error guardando alertas:', e.message);
+  }
+}
+
+function registrarLiveAlert(alertObj) {
+  try {
+    const alerts = leerLiveAlerts();
+    const itemConTimestamp = {
+      ...alertObj,
+      timestamp: Number(alertObj.timestamp) || Date.now(),
+      creadoEn: alertObj.creadoEn || new Date().toISOString()
+    };
+    const existe = alerts.findIndex(a => a.id === itemConTimestamp.id);
+    if (existe >= 0) {
+      alerts[existe] = { ...alerts[existe], ...itemConTimestamp };
+    } else {
+      alerts.unshift(itemConTimestamp);
+    }
+    guardarLiveAlerts(alerts);
+  } catch (e) {
+    console.warn('[Live Alerts] Error registrando alerta:', e.message);
+  }
+}
+
+function leerJornadasRemotas() {
+  try {
+    if (fs.existsSync(JORNADAS_REMOTAS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(JORNADAS_REMOTAS_FILE, 'utf8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (e) {}
+  return [];
+}
+
+function guardarJornadasRemotas(jornadas) {
+  try {
+    fs.writeFileSync(JORNADAS_REMOTAS_FILE, JSON.stringify(jornadas, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[Sync] Error guardando jornadas remotas:', e.message);
+  }
+}
+
+function leerUsuariosRemotos() {
+  try {
+    if (fs.existsSync(USUARIOS_REMOTOS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(USUARIOS_REMOTOS_FILE, 'utf8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (e) {}
+  return [];
+}
+
+function guardarUsuariosRemotos(usuarios) {
+  try {
+    fs.writeFileSync(USUARIOS_REMOTOS_FILE, JSON.stringify(usuarios, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[Sync] Error guardando usuarios remotos:', e.message);
+  }
+}
+
 // ============================================================
 // ENDPOINTS DE NOTIFICACIONES PUSH
 // ============================================================
@@ -335,9 +414,22 @@ app.post('/api/push/send', async (req, res) => {
       datos = {}
     } = req.body || {};
 
+    const alertId = tag || `push-${Date.now()}`;
+    registrarLiveAlert({
+      id: alertId,
+      tipo,
+      titulo,
+      cuerpo,
+      prioridad,
+      categoria: 'General',
+      autor: 'Supervisión',
+      destinatario: legajo ? String(legajo) : 'todos',
+      creadoEn: new Date().toISOString()
+    });
+
     const subs = leerSuscripciones();
     if (subs.length === 0) {
-      return res.json({ ok: true, enviados: 0, mensaje: 'No hay dispositivos suscritos aún' });
+      return res.json({ ok: true, enviados: 0, mensaje: 'Alerta registrada en vivo. No hay dispositivos suscritos por Push aún' });
     }
 
     // Filtrar por legajo si se especifica, o enviar a todos
@@ -346,7 +438,7 @@ app.post('/api/push/send', async (req, res) => {
       : subs;
 
     if (destinatarios.length === 0) {
-      return res.json({ ok: true, enviados: 0, mensaje: 'No se encontraron dispositivos para el legajo especificado' });
+      return res.json({ ok: true, enviados: 0, mensaje: 'Alerta registrada en vivo. No se encontraron dispositivos Push para el legajo especificado' });
     }
 
     const payloadObj = {
@@ -414,8 +506,8 @@ app.get('/api/push/avisos', (req, res) => {
   res.json({ avisos });
 });
 
-// 7. Crear nuevo Aviso de la Empresa y enviarlo por Push
-app.post('/api/push/avisos', async (req, res) => {
+// 7. Crear nuevo Aviso de la Empresa (SOLO SUPERVISIÓN / ADMINISTRADOR)
+app.post('/api/push/avisos', requireAdminAuth, async (req, res) => {
   try {
     const { titulo, cuerpo, prioridad = 'alta', categoria = 'Seguridad', autor = 'Supervisión' } = req.body || {};
 
@@ -433,11 +525,25 @@ app.post('/api/push/avisos', async (req, res) => {
       categoria,
       autor: autor.trim() || 'Supervisión',
       fecha: hoyStr,
-      creadoEn: new Date().toISOString()
+      creadoEn: new Date().toISOString(),
+      destinatario: 'todos'
     };
 
     avisos.unshift(nuevoAviso);
     guardarAvisosEmpresa(avisos);
+
+    // Registrar también en live alerts para recepción inmediata
+    registrarLiveAlert({
+      id: nuevoAviso.id,
+      tipo: 'aviso_empresa',
+      titulo: nuevoAviso.titulo,
+      cuerpo: nuevoAviso.cuerpo,
+      prioridad: nuevoAviso.prioridad,
+      categoria: nuevoAviso.categoria,
+      autor: nuevoAviso.autor,
+      destinatario: 'todos',
+      creadoEn: nuevoAviso.creadoEn
+    });
 
     // Enviar Push a todos los suscriptores conectados
     const subs = leerSuscripciones();
@@ -480,6 +586,32 @@ app.post('/api/push/avisos', async (req, res) => {
     res.json({ ok: true, aviso: nuevoAviso, pushEnviados: enviados });
   } catch (err) {
     console.error('[Push] Error creando aviso de la empresa:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 8. Eventos y Alertas en vivo para todos los celulares y cuadrillas conectadas
+app.get('/api/push/live-events', (req, res) => {
+  try {
+    const { desde = 0, since = 0, legajo = '' } = req.query || {};
+    const desdeTime = Number(desde || since || 0);
+    const legajoStr = String(legajo || '').trim();
+
+    const alerts = leerLiveAlerts();
+    const pendientes = alerts.filter(a => {
+      const t = Number(a.timestamp) || new Date(a.creadoEn || a.fecha || 0).getTime();
+      const esPosterior = t > desdeTime;
+      const esParaMi = !a.destinatario || a.destinatario === 'todos' || (legajoStr && String(a.destinatario) === legajoStr);
+      return esPosterior && esParaMi;
+    });
+
+    res.json({
+      ok: true,
+      timestamp: Date.now(),
+      alerts: pendientes,
+      events: pendientes
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -621,6 +753,19 @@ app.post('/api/admin/push/send', requireAdminAuth, async (req, res) => {
       guardarAvisosEmpresa(avisos);
     }
 
+    // Registrar en live-alerts para que cualquier cuadrilla conectada reciba la alerta al instante
+    registrarLiveAlert({
+      id: nuevoAviso ? nuevoAviso.id : ('push-' + Date.now()),
+      tipo,
+      titulo: titulo.trim(),
+      cuerpo: cuerpo.trim(),
+      prioridad,
+      categoria,
+      autor: autor.trim() || 'Administración',
+      destinatario: destinatario !== 'todos' ? String(destinatario) : 'todos',
+      creadoEn: new Date().toISOString()
+    });
+
     let enviados = 0;
     let fallidos = 0;
     const subs = leerSuscripciones();
@@ -693,6 +838,237 @@ app.delete('/api/admin/avisos/:id', requireAdminAuth, (req, res) => {
     guardarAvisosEmpresa(avisos);
     res.json({ ok: true, eliminados: antes - avisos.length });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// ENDPOINTS DE SINCRONIZACIÓN REMOTA Y REPORTES DE CUADRILLAS
+// ============================================================
+
+// S1. Sincronizar jornadas de un usuario/cuadrilla desde cualquier celular
+app.post('/api/sync/jornadas', (req, res) => {
+  try {
+    const { usuario, jornadas } = req.body || {};
+    if (!usuario || !usuario.legajo) {
+      return res.status(400).json({ error: 'Datos de usuario y legajo son requeridos' });
+    }
+
+    const legajo = String(usuario.legajo).trim();
+    const nombre = String(usuario.nombre || 'Operador').trim();
+    const zona = String(usuario.zona || '').trim();
+    const ahora = new Date().toISOString();
+
+    // Actualizar usuarios remotos
+    const usuarios = leerUsuariosRemotos();
+    let idxU = usuarios.findIndex(u => String(u.legajo) === legajo);
+    const uData = {
+      legajo,
+      nombre,
+      zona,
+      ultimaConexion: ahora,
+      totalJornadas: 0,
+      totalProduccion: 0
+    };
+
+    if (idxU >= 0) {
+      usuarios[idxU] = { ...usuarios[idxU], ...uData };
+    } else {
+      usuarios.push(uData);
+      idxU = usuarios.length - 1;
+    }
+
+    // Actualizar jornadas remotas
+    let recibidas = 0;
+    if (Array.isArray(jornadas) && jornadas.length > 0) {
+      const dbJornadas = leerJornadasRemotas();
+      const jornadaMap = new Map();
+      dbJornadas.forEach(j => {
+        const k = j.id || `${j.legajo}_${j.fecha}`;
+        jornadaMap.set(k, j);
+      });
+
+      jornadas.forEach(j => {
+        if (!j || !j.fecha) return;
+        const jNorm = {
+          ...j,
+          legajo,
+          nombreUsuario: nombre,
+          zona: zona || j.zona || '',
+          cerrada: j.cerrada !== false,
+          sincronizadoEn: ahora
+        };
+        const k = j.id || `${legajo}_${j.fecha}`;
+        jornadaMap.set(k, jNorm);
+        recibidas++;
+      });
+
+      const todasJornadas = Array.from(jornadaMap.values());
+      guardarJornadasRemotas(todasJornadas);
+
+      // Calcular métricas actualizadas del usuario
+      const userJornadas = todasJornadas.filter(j => String(j.legajo) === legajo);
+      usuarios[idxU].totalJornadas = userJornadas.length;
+      usuarios[idxU].totalProduccion = userJornadas.reduce((a, b) => a + (Number(b.total) || 0), 0);
+    }
+    guardarUsuariosRemotos(usuarios);
+
+    res.json({
+      ok: true,
+      recibidas,
+      totalUsuario: usuarios[idxU].totalJornadas,
+      mensaje: `Sincronización remota exitosa: ${recibidas} jornada(s)`
+    });
+  } catch (err) {
+    console.error('[Sync] Error en /api/sync/jornadas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// S2. Estado de sincronización remota
+app.get('/api/sync/estado', (req, res) => {
+  try {
+    const usuarios = leerUsuariosRemotos();
+    const jornadas = leerJornadasRemotas();
+    res.json({
+      ok: true,
+      totalUsuarios: usuarios.length,
+      totalJornadas: jornadas.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// R1. Obtener lista de usuarios/cuadrillas para reportes (Solo Admin)
+app.get('/api/admin/reportes/usuarios', requireAdminAuth, (req, res) => {
+  try {
+    const usuarios = leerUsuariosRemotos();
+    const jornadas = leerJornadasRemotas();
+
+    const lista = usuarios.map(u => {
+      const userJornadas = jornadas.filter(j => String(j.legajo) === String(u.legajo));
+      return {
+        legajo: u.legajo,
+        nombre: u.nombre,
+        zona: u.zona,
+        ultimaConexion: u.ultimaConexion,
+        totalJornadas: userJornadas.length,
+        totalProduccion: userJornadas.reduce((a, b) => a + (Number(b.total) || 0), 0)
+      };
+    });
+
+    res.json({ ok: true, usuarios: lista, totalJornadas: jornadas.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// R2. Obtener datos de reporte consolidados o individuales de cualquier cuadrilla (Solo Admin)
+app.get('/api/admin/reportes/datos', requireAdminAuth, (req, res) => {
+  try {
+    const {
+      legajo = 'todos',
+      tipo = 'diario',
+      fecha,
+      desde,
+      hasta,
+      quincena = '1'
+    } = req.query || {};
+
+    const todasJornadas = leerJornadasRemotas();
+    const usuarios = leerUsuariosRemotos();
+
+    let fechaDesde = desde;
+    let fechaHasta = hasta;
+    let periodoLabel = '';
+    const fechaRef = fecha || new Date().toISOString().split('T')[0];
+
+    if (!fechaDesde || !fechaHasta) {
+      if (tipo === 'diario') {
+        fechaDesde = fechaRef;
+        fechaHasta = fechaRef;
+        periodoLabel = `Reporte Diario - ${fechaRef}`;
+      } else if (tipo === 'semanal') {
+        const d = new Date(fechaRef + 'T12:00:00Z');
+        const day = d.getUTCDay();
+        const diffToMonday = day === 0 ? -6 : 1 - day;
+        const lunes = new Date(d);
+        lunes.setUTCDate(d.getUTCDate() + diffToMonday);
+        const domingo = new Date(lunes);
+        domingo.setUTCDate(lunes.getUTCDate() + 6);
+        fechaDesde = lunes.toISOString().split('T')[0];
+        fechaHasta = domingo.toISOString().split('T')[0];
+        periodoLabel = `Reporte Semanal - ${fechaDesde} al ${fechaHasta}`;
+      } else if (tipo === 'quincenal') {
+        const parts = fechaRef.split('-');
+        const y = parts[0];
+        const m = parts[1];
+        if (String(quincena) === '2') {
+          const ultimoDia = new Date(y, Number(m), 0).getDate();
+          fechaDesde = `${y}-${m}-16`;
+          fechaHasta = `${y}-${m}-${String(ultimoDia).padStart(2, '0')}`;
+          periodoLabel = `2ª Quincena - ${m}/${y} (${fechaDesde} al ${fechaHasta})`;
+        } else {
+          fechaDesde = `${y}-${m}-01`;
+          fechaHasta = `${y}-${m}-15`;
+          periodoLabel = `1ª Quincena - ${m}/${y} (${fechaDesde} al ${fechaHasta})`;
+        }
+      } else if (tipo === 'mensual') {
+        const parts = fechaRef.split('-');
+        const y = parts[0];
+        const m = parts[1];
+        const ultimoDia = new Date(y, Number(m), 0).getDate();
+        fechaDesde = `${y}-${m}-01`;
+        fechaHasta = `${y}-${m}-${String(ultimoDia).padStart(2, '0')}`;
+        periodoLabel = `Reporte Mensual - ${m}/${y}`;
+      } else {
+        fechaDesde = '2000-01-01';
+        fechaHasta = '2099-12-31';
+        periodoLabel = 'Reporte Histórico Completo';
+      }
+    }
+
+    let filtradas = todasJornadas.filter(j => {
+      const f = j.fecha;
+      return f >= fechaDesde && f <= fechaHasta;
+    });
+
+    if (legajo && legajo !== 'todos') {
+      filtradas = filtradas.filter(j => String(j.legajo) === String(legajo));
+    }
+
+    filtradas.sort((a, b) => a.fecha.localeCompare(b.fecha) || String(a.legajo).localeCompare(String(b.legajo)));
+
+    const datos = filtradas.map(j => {
+      const u = usuarios.find(usr => String(usr.legajo) === String(j.legajo));
+      return {
+        ...j,
+        nombreUsuario: u?.nombre || j.nombreUsuario || 'Operador',
+        zona: u?.zona || j.zona || '-'
+      };
+    });
+
+    const totalProduccion = datos.reduce((a, d) => a + (Number(d.total) || 0), 0);
+    const totalItems = datos.reduce((a, d) => a + (Number(d.cantidadItems) || 0), 0);
+    const usuariosUnicos = [...new Set(datos.map(d => d.legajo))].length;
+
+    res.json({
+      ok: true,
+      datos,
+      usuarios,
+      periodoLabel,
+      fechaDesde,
+      fechaHasta,
+      tipo,
+      legajo,
+      totalProduccion,
+      totalItems,
+      totalJornadas: datos.length,
+      usuariosUnicos
+    });
+  } catch (err) {
+    console.error('[Admin Reportes] Error en datos:', err);
     res.status(500).json({ error: err.message });
   }
 });

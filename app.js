@@ -1107,6 +1107,8 @@ async function continuarInicio() {
       try { if (typeof inicializarPushNotifications === 'function') inicializarPushNotifications(); } catch (e) {}
       try { if (typeof verificarJornadasPendientes === 'function') verificarJornadasPendientes(); } catch (e) {}
       try { if (typeof cargarAvisosEmpresa === 'function') cargarAvisosEmpresa(); } catch (e) {}
+      try { if (typeof sincronizarJornadasAlServidor === 'function') sincronizarJornadasAlServidor(); } catch (e) {}
+      try { if (typeof iniciarLiveAlertsPoller === 'function') iniciarLiveAlertsPoller(); } catch (e) {}
     }, 850);
   } else { 
     showLogin(); 
@@ -1723,6 +1725,13 @@ async function cerrarJornada() {
   // trabajando, se toca "Iniciar jornada" y la hora de inicio queda real.
   actualizarBotoneraJornada();
   renderAll();
+
+  // Sincronización remota al servidor central para que el supervisor pueda descargar reportes
+  try {
+    if (typeof sincronizarJornadasAlServidor === 'function') {
+      sincronizarJornadasAlServidor();
+    }
+  } catch (e) {}
 }
 
 /* ============================================================
@@ -3700,38 +3709,49 @@ function restoreInput() {
 }
 
 async function renderAdmin() {
-  const usuarios = await dbGetAll('usuarios');
-  const sel = $('#adminUsuario');
-  if (sel && sel.options.length <= 1) {
-    for (const u of usuarios) {
-      const opt = document.createElement('option');
-      opt.value = u.legajo;
-      opt.textContent = `${u.nombre} (${u.legajo})`;
-      sel.appendChild(opt);
-    }
-  }
+  await cargarUsuariosReporteAdmin();
+
   const fechaInput = $('#adminFecha');
   if (fechaInput && !fechaInput.value) fechaInput.value = hoy();
   actualizarLabelFecha();
 
   // Cargar estado en tiempo real del emisor push y comunicados remotos
   await cargarPanelAdminPush();
+  await actualizarEstadoSyncNube();
 }
 function actualizarLabelFecha() {
   const label = $('#adminFechaLabel');
   const fechaInput = $('#adminFecha');
+  const campoFecha = $('#adminCampoFecha');
+  const campoQuincena = $('#adminCampoQuincena');
   if (!label || !fechaInput) return;
+
   if (State.adminReportType === 'diario') {
+    if (campoFecha) campoFecha.style.display = 'block';
+    if (campoQuincena) campoQuincena.style.display = 'none';
     label.textContent = '📅 Fecha del reporte';
     fechaInput.type = 'date';
   } else if (State.adminReportType === 'semanal') {
-    label.textContent = '📆 Fecha (se toma la semana Lun-Dom)';
+    if (campoFecha) campoFecha.style.display = 'block';
+    if (campoQuincena) campoQuincena.style.display = 'none';
+    label.textContent = '📆 Fecha de la semana';
     fechaInput.type = 'date';
-  } else {
+  } else if (State.adminReportType === 'quincenal') {
+    if (campoFecha) campoFecha.style.display = 'block';
+    if (campoQuincena) campoQuincena.style.display = 'block';
+    label.textContent = '🗓️ Mes de la quincena';
+    fechaInput.type = 'month';
+    if (fechaInput.value && fechaInput.value.length === 10) fechaInput.value = fechaInput.value.slice(0, 7);
+  } else if (State.adminReportType === 'mensual') {
+    if (campoFecha) campoFecha.style.display = 'block';
+    if (campoQuincena) campoQuincena.style.display = 'none';
     label.textContent = '🗓️ Mes del reporte';
     fechaInput.type = 'month';
     if (fechaInput.value && fechaInput.value.length === 10) fechaInput.value = fechaInput.value.slice(0, 7);
-    else if (!fechaInput.value) fechaInput.value = mesActual();
+  } else {
+    // 'todos' / histórico
+    if (campoFecha) campoFecha.style.display = 'none';
+    if (campoQuincena) campoQuincena.style.display = 'none';
   }
 }
 
@@ -3766,6 +3786,7 @@ function setupAdmin() {
         if (!await confirmDialog('No hay contraseña de administrador en este equipo.\n\n¿Querés usar la que acabas de escribir como contraseña definitiva?')) return;
         await guardarCredencialAdmin(pass, false);
         State.adminLoggedIn = true;
+        sessionStorage.setItem('baremo_admin_pass', pass);
         $('#adminLogin').style.display = 'none';
         $('#adminPanel').style.display = 'block';
         $('#adminPassword').value = '';
@@ -3777,6 +3798,7 @@ function setupAdmin() {
       if (!r.ok) { toast('❌ Contraseña incorrecta', 'error'); return; }
 
       State.adminLoggedIn = true;
+      sessionStorage.setItem('baremo_admin_pass', pass);
       $('#adminLogin').style.display = 'none';
       $('#adminPanel').style.display = 'block';
       $('#adminPassword').value = '';
@@ -3800,6 +3822,7 @@ function setupAdmin() {
     btnLogout.onclick = () => {
       State.adminLoggedIn = false;
       sessionStorage.removeItem('baremo_admin_token');
+      sessionStorage.removeItem('baremo_admin_pass');
       $('#adminLogin').style.display = 'block';
       $('#adminPanel').style.display = 'none';
       $('#adminPassword').value = '';
@@ -3828,6 +3851,51 @@ function setupAdmin() {
       $('#adminSummary').style.display = 'none';
     };
   });
+
+  const btnRefrescarNube = $('#btnRefrescarDatosNube');
+  if (btnRefrescarNube) {
+    btnRefrescarNube.onclick = async () => {
+      btnRefrescarNube.disabled = true;
+      btnRefrescarNube.textContent = '🔄 Consultando...';
+      try {
+        await cargarUsuariosReporteAdmin();
+        await actualizarEstadoSyncNube();
+        toast('☁️ Lista de cuadrillas y datos sincronizados actualizados', 'success');
+      } catch (err) {
+        toast('Error al consultar nube: ' + err.message, 'error');
+      } finally {
+        btnRefrescarNube.disabled = false;
+        btnRefrescarNube.textContent = '🔄 Actualizar Nube';
+      }
+    };
+  }
+
+  const btnSyncAhora = $('#btnSincronizarAhora');
+  if (btnSyncAhora) {
+    btnSyncAhora.onclick = async () => {
+      btnSyncAhora.disabled = true;
+      btnSyncAhora.textContent = '☁️ Subiendo...';
+      try {
+        await sincronizarJornadasAlServidor();
+        await cargarUsuariosReporteAdmin();
+        await actualizarEstadoSyncNube();
+        toast('☁️ Tus jornadas cerradas se subieron con éxito a la nube', 'success');
+      } catch (err) {
+        toast('Error al subir: ' + err.message, 'error');
+      } finally {
+        btnSyncAhora.disabled = false;
+        btnSyncAhora.textContent = '☁️ Subir Mis Datos';
+      }
+    };
+  }
+
+  const selAdminUser = $('#adminUsuario');
+  if (selAdminUser) selAdminUser.onchange = () => { $('#adminSummary').style.display = 'none'; };
+  const selAdminFecha = $('#adminFecha');
+  if (selAdminFecha) selAdminFecha.onchange = () => { $('#adminSummary').style.display = 'none'; };
+  const selAdminQuincena = $('#adminQuincenaSel');
+  if (selAdminQuincena) selAdminQuincena.onchange = () => { $('#adminSummary').style.display = 'none'; };
+
   $('#btnExportAllData').onclick = async () => {
     const legajo = State.user.legajo;
     const nombre = State.user.nombre;
@@ -3896,23 +3964,90 @@ function setupAdmin() {
     const { datos, periodoLabel } = await obtenerDatosReporteAdmin();
     const summary = $('#adminSummary');
     const content = $('#adminSummaryContent');
+    const badge = $('#adminSummaryPeriodoBadge');
+    if (badge) badge.textContent = periodoLabel;
+
     if (!datos.length) {
       summary.style.display = 'block';
-      content.innerHTML = '<div style="color:var(--text-soft);text-align:center;padding:10px">📭 Sin datos para el período seleccionado</div>';
+      content.innerHTML = '<div style="color:var(--text-soft);text-align:center;padding:16px;">📭 Sin jornadas registradas en la nube ni localmente para el período seleccionado.</div>';
       return;
     }
-    const totalProduccion = datos.reduce((a, d) => a + (d.total || 0), 0);
-    const totalItems = datos.reduce((a, d) => a + (d.cantidadItems || 0), 0);
-    const usuariosUnicos = [...new Set(datos.map(d => d.legajo))].length;
+
+    const totalProduccion = datos.reduce((a, d) => a + (Number(d.total) || 0), 0);
+    const totalItems = datos.reduce((a, d) => a + (Number(d.cantidadItems) || 0), 0);
+    const usuariosUnicos = [...new Set(datos.map(d => d.legajo))];
+
+    // Desglose por usuario
+    const porUsuario = {};
+    datos.forEach(d => {
+      const leg = d.legajo || 'Sin Legajo';
+      if (!porUsuario[leg]) {
+        porUsuario[leg] = {
+          nombre: d.nombreUsuario || 'Desconocido',
+          zona: d.zona || '-',
+          jornadas: 0,
+          items: 0,
+          total: 0
+        };
+      }
+      porUsuario[leg].jornadas += 1;
+      porUsuario[leg].items += (Number(d.cantidadItems) || 0);
+      porUsuario[leg].total += (Number(d.total) || 0);
+    });
+
+    let tablaUsuariosHtml = `
+      <div style="margin-top:12px;overflow-x:auto;">
+        <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
+          <thead>
+            <tr style="background:var(--card);border-bottom:1.5px solid var(--border);text-align:left;">
+              <th style="padding:6px 8px;">Cuadrilla / Operario</th>
+              <th style="padding:6px 8px;text-align:center;">Jornadas</th>
+              <th style="padding:6px 8px;text-align:center;">Ítems</th>
+              <th style="padding:6px 8px;text-align:right;">Producción</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    for (const [leg, uInfo] of Object.entries(porUsuario)) {
+      tablaUsuariosHtml += `
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:6px 8px;">
+            <strong>${escapeHTML(uInfo.nombre)}</strong>
+            <div style="font-size:10px;color:var(--text-soft);">Legajo ${escapeHTML(leg)} · ${escapeHTML(uInfo.zona)}</div>
+          </td>
+          <td style="padding:6px 8px;text-align:center;">${uInfo.jornadas}</td>
+          <td style="padding:6px 8px;text-align:center;">${uInfo.items}</td>
+          <td style="padding:6px 8px;text-align:right;font-weight:700;color:var(--primary);">${fmt(uInfo.total)}</td>
+        </tr>
+      `;
+    }
+    tablaUsuariosHtml += `</tbody></table></div>`;
+
     summary.style.display = 'block';
     content.innerHTML = `
-      <div style="font-weight:700;margin-bottom:8px;color:var(--primary)">${periodoLabel}</div>
-      <div class="as-line"><span>📋 Jornadas:</span><span>${fmtNum(datos.length)}</span></div>
-      <div class="as-line"><span>👥 Usuarios:</span><span>${fmtNum(usuariosUnicos)}</span></div>
-      <div class="as-line"><span>🛠️ Ítems totales:</span><span>${fmtNum(totalItems)}</span></div>
-      <div class="as-line total"><span>💰 Producción total:</span><span>${fmt(totalProduccion)}</span></div>
+      <div style="font-weight:700;margin-bottom:8px;color:var(--primary);font-size:13px;">${periodoLabel}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:10px;">
+        <div style="background:var(--bg);padding:8px 10px;border-radius:6px;">
+          <div style="font-size:10.5px;color:var(--text-soft);">Total Jornadas</div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);">${fmtNum(datos.length)}</div>
+        </div>
+        <div style="background:var(--bg);padding:8px 10px;border-radius:6px;">
+          <div style="font-size:10.5px;color:var(--text-soft);">Cuadrillas Activas</div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);">${fmtNum(usuariosUnicos.length)}</div>
+        </div>
+        <div style="background:var(--bg);padding:8px 10px;border-radius:6px;">
+          <div style="font-size:10.5px;color:var(--text-soft);">Ítems de Baremo</div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);">${fmtNum(totalItems)}</div>
+        </div>
+        <div style="background:var(--bg);padding:8px 10px;border-radius:6px;">
+          <div style="font-size:10.5px;color:var(--text-soft);">Producción Total</div>
+          <div style="font-size:16px;font-weight:800;color:#16a34a;">${fmt(totalProduccion)}</div>
+        </div>
+      </div>
+      ${tablaUsuariosHtml}
     `;
-    toast('Vista previa generada', 'success');
+    toast('✓ Vista previa de datos remotos generada', 'success');
   };
   $('#btnAdminPDF').onclick = async () => {
     if (!window.jspdf) { toast('jsPDF no disponible', 'error'); return; }
@@ -4051,6 +4186,118 @@ function escapeHTML(str) {
     .replace(/'/g, '&#039;');
 }
 
+/* Helper universal para peticiones al servidor que requieren privilegios de Administrador / Supervisión */
+async function fetchAdminAPI(url, options = {}) {
+  const token = sessionStorage.getItem('baremo_admin_token') || '';
+  const pass = sessionStorage.getItem('baremo_admin_pass') || '';
+  const headers = Object.assign({}, options.headers || {}, {
+    'x-admin-token': token,
+    'x-admin-password': pass
+  });
+  return fetch(url, Object.assign({}, options, { headers }));
+}
+
+/* Carga las cuadrillas y usuarios disponibles para reportes remotos y locales */
+async function cargarUsuariosReporteAdmin() {
+  const sel = $('#adminUsuario');
+  if (!sel) return;
+
+  const prevVal = sel.value || 'todos';
+
+  // 1. Obtener usuarios locales
+  const usuariosLocales = await dbGetAll('usuarios');
+  const mapaUsuarios = new Map();
+  usuariosLocales.forEach(u => {
+    if (u && u.legajo) {
+      mapaUsuarios.set(String(u.legajo), {
+        legajo: String(u.legajo),
+        nombre: u.nombre || 'Operario',
+        zona: u.zona || '',
+        origen: 'local'
+      });
+    }
+  });
+
+  // 2. Obtener cuadrillas registradas en el servidor remoto
+  try {
+    const res = await fetchAdminAPI('/api/admin/reportes/usuarios');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.usuarios)) {
+        data.usuarios.forEach(u => {
+          if (u && u.legajo) {
+            const key = String(u.legajo);
+            const ya = mapaUsuarios.get(key);
+            mapaUsuarios.set(key, {
+              legajo: key,
+              nombre: u.nombre || ya?.nombre || 'Operario Remoto',
+              zona: u.zona || ya?.zona || '',
+              totalJornadas: u.totalJornadas || 0,
+              origen: ya ? 'sincronizado' : 'nube'
+            });
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[Admin Reportes] No se pudo consultar usuarios remotos:', err);
+  }
+
+  // 3. Reconstruir el selector
+  sel.innerHTML = '<option value="todos">👥 Todos los usuarios (Consolidado)</option>';
+  const listaOrdenada = Array.from(mapaUsuarios.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  for (const u of listaOrdenada) {
+    const opt = document.createElement('option');
+    opt.value = u.legajo;
+    const extra = u.zona ? ` · ${u.zona}` : '';
+    opt.textContent = `${u.nombre} (${u.legajo})${extra}`;
+    sel.appendChild(opt);
+  }
+
+  // Restaurar valor previo si existe
+  if (Array.from(sel.options).some(o => o.value === prevVal)) {
+    sel.value = prevVal;
+  } else {
+    sel.value = 'todos';
+  }
+}
+
+/* Actualiza las etiquetas de sincronización en la nube en el panel de reporte */
+async function actualizarEstadoSyncNube() {
+  const badge = $('#adminSyncEstadoBadge');
+  const countSpan = $('#adminSyncTotalJornadas');
+  const lastSyncSpan = $('#adminSyncUltimaHora');
+
+  try {
+    const res = await fetch('/api/sync/estado');
+    if (res.ok) {
+      const d = await res.json();
+      if (d.ok) {
+        if (badge) {
+          badge.textContent = `☁️ ${d.totalUsuarios} Cuadrillas en Servidor Central`;
+          badge.style.background = 'rgba(22, 163, 74, 0.15)';
+          badge.style.color = '#16a34a';
+        }
+        if (countSpan) countSpan.textContent = `${d.totalJornadas} jornadas sincronizadas`;
+        if (lastSyncSpan) {
+          const ahoraHora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          lastSyncSpan.textContent = `Actualizado ${ahoraHora}`;
+        }
+        return;
+      }
+    }
+  } catch (e) {
+    // offline
+  }
+
+  if (badge) {
+    badge.textContent = '☁️ Nube local / sin conexión';
+    badge.style.background = 'rgba(100, 116, 139, 0.15)';
+    badge.style.color = 'var(--text-soft)';
+  }
+}
+
 async function cargarPanelAdminPush() {
   const badge = $('#adminPushSubscribersBadge');
   const trayCount = $('#trayDispositivosCount');
@@ -4059,12 +4306,8 @@ async function cargarPanelAdminPush() {
   const avisosList = $('#adminAvisosList');
   const selDest = $('#adminPushDestinatario');
 
-  const token = sessionStorage.getItem('baremo_admin_token') || '';
-
   try {
-    const res = await fetch('/api/admin/push/stats', {
-      headers: { 'x-admin-token': token }
-    });
+    const res = await fetchAdminAPI('/api/admin/push/stats');
 
     if (!res.ok) {
       if (res.status === 401) {
@@ -4442,37 +4685,104 @@ async function eliminarAvisoRemoto(id) {
 }
 
 async function obtenerDatosReporteAdmin() {
-  const tipo = State.adminReportType;
-  const usuarioSel = $('#adminUsuario').value;
-  const fechaSel = $('#adminFecha').value;
-  const todasJornadas = await dbGetAll('jornadas');
-  const usuarios = await dbGetAll('usuarios');
-  let jornadasFiltradas = todasJornadas.filter(j => j.cerrada);
-  if (usuarioSel !== 'todos') jornadasFiltradas = jornadasFiltradas.filter(j => j.legajo === usuarioSel);
+  const tipo = State.adminReportType || 'diario';
+  const usuarioSel = $('#adminUsuario')?.value || 'todos';
+  const fechaInputVal = $('#adminFecha')?.value || hoy();
+  const quincenaSel = $('#adminQuincenaSel')?.value || '1';
+
   let fechaDesde, fechaHasta, periodoLabel;
+
   if (tipo === 'diario') {
-    fechaDesde = fechaSel;
-    fechaHasta = fechaSel;
-    periodoLabel = `Reporte Diario - ${fechaCorta(fechaSel)}`;
+    fechaDesde = fechaInputVal;
+    fechaHasta = fechaInputVal;
+    periodoLabel = `Reporte Diario - ${fechaCorta(fechaDesde)}`;
   } else if (tipo === 'semanal') {
-    const semana = obtenerSemanaDeFecha(fechaSel);
+    const semana = obtenerSemanaDeFecha(fechaInputVal);
     fechaDesde = semana.lunes;
     fechaHasta = semana.domingo;
     periodoLabel = `Reporte Semanal - ${fechaCorta(semana.lunes)} al ${fechaCorta(semana.domingo)}`;
+  } else if (tipo === 'quincenal') {
+    const mesRef = fechaInputVal.length >= 7 ? fechaInputVal.slice(0, 7) : mesActual();
+    const [y, m] = mesRef.split('-');
+    if (quincenaSel === '1') {
+      fechaDesde = `${y}-${m}-01`;
+      fechaHasta = `${y}-${m}-15`;
+      periodoLabel = `Reporte 1ª Quincena - ${nombreMes(mesRef)} (01 al 15)`;
+    } else {
+      const ultDia = diasDelMes(mesRef);
+      fechaDesde = `${y}-${m}-16`;
+      fechaHasta = `${y}-${m}-${String(ultDia).padStart(2, '0')}`;
+      periodoLabel = `Reporte 2ª Quincena - ${nombreMes(mesRef)} (16 al ${ultDia})`;
+    }
+  } else if (tipo === 'mensual') {
+    const mesRef = fechaInputVal.length >= 7 ? fechaInputVal.slice(0, 7) : mesActual();
+    const [y, m] = mesRef.split('-');
+    const ultDia = diasDelMes(mesRef);
+    fechaDesde = `${y}-${m}-01`;
+    fechaHasta = `${y}-${m}-${String(ultDia).padStart(2, '0')}`;
+    periodoLabel = `Reporte Mensual - ${nombreMes(mesRef)}`;
   } else {
-    const mes = fechaSel;
-    const [y, m] = split('-');
-    fechaDesde = `${y}-${String(m).padStart(2, '0')}-01`;
-    const ultimoDia = diasDelMes(mes);
-    fechaHasta = `${y}-${String(m).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
-    periodoLabel = `Reporte Mensual - ${nombreMes(mes)}`;
+    // 'todos' / consolidado completo
+    fechaDesde = '2020-01-01';
+    fechaHasta = '2099-12-31';
+    periodoLabel = 'Reporte Histórico Consolidado (Todas las fechas)';
   }
-  jornadasFiltradas = jornadasFiltradas.filter(j => j.fecha >= fechaDesde && j.fecha <= fechaHasta);
-  jornadasFiltradas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.legajo.localeCompare(b.legajo));
-  const datos = jornadasFiltradas.map(j => {
-    const u = usuarios.find(u => u.legajo === j.legajo);
-    return { ...j, nombreUsuario: u?.nombre || 'Desconocido', zona: u?.zona || j.zona || '-' };
+
+  // 1. Obtener datos remotos de la nube
+  let datosRemotos = null;
+  try {
+    const qParams = new URLSearchParams({
+      legajo: usuarioSel,
+      tipo,
+      fecha: fechaInputVal,
+      desde: fechaDesde,
+      hasta: fechaHasta,
+      quincena: quincenaSel
+    });
+    const res = await fetchAdminAPI(`/api/admin/reportes/datos?${qParams.toString()}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.ok && Array.isArray(json.datos)) {
+        datosRemotos = json.datos;
+      }
+    }
+  } catch (errRemoto) {
+    console.warn('[Admin Reportes] Servidor no respondió, usando datos locales:', errRemoto.message);
+  }
+
+  // 2. Unificar con datos de IndexedDB local sin duplicar
+  const todasJornadasLocales = await dbGetAll('jornadas');
+  const usuariosLocales = await dbGetAll('usuarios');
+  const jornadasMap = new Map();
+
+  if (Array.isArray(datosRemotos)) {
+    datosRemotos.forEach(j => {
+      const key = String(j.id || `${j.legajo}_${j.fecha}_${j.horaInicio}`);
+      jornadasMap.set(key, j);
+    });
+  }
+
+  let localesFiltradas = todasJornadasLocales.filter(j => j.cerrada);
+  if (usuarioSel !== 'todos') {
+    localesFiltradas = localesFiltradas.filter(j => String(j.legajo) === String(usuarioSel));
+  }
+  localesFiltradas = localesFiltradas.filter(j => j.fecha >= fechaDesde && j.fecha <= fechaHasta);
+
+  localesFiltradas.forEach(j => {
+    const key = String(j.id || `${j.legajo}_${j.fecha}_${j.horaInicio}`);
+    if (!jornadasMap.has(key)) {
+      const u = usuariosLocales.find(u => String(u.legajo) === String(j.legajo));
+      jornadasMap.set(key, {
+        ...j,
+        nombreUsuario: u?.nombre || j.nombreUsuario || 'Operador',
+        zona: u?.zona || j.zona || '-'
+      });
+    }
   });
+
+  const datos = Array.from(jornadasMap.values());
+  datos.sort((a, b) => a.fecha.localeCompare(b.fecha) || String(a.legajo).localeCompare(String(b.legajo)));
+
   return { datos, periodoLabel, fechaDesde, fechaHasta, tipo };
 }
 
@@ -6255,6 +6565,12 @@ function iniciarRecordatorioDeCierre() {
   // Si el usuario toca la notificacion, se lo lleva a la vista correspondiente.
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', ev => {
+      if (ev.data && ev.data.tipo === 'PUSH_RECIBIDO') {
+        if (typeof mostrarAlertaSupervisorEnVivo === 'function') {
+          mostrarAlertaSupervisorEnVivo(ev.data.payload);
+        }
+        return;
+      }
       if (ev.data && (ev.data.tipo === 'IR_A_REGISTRO' || ev.data.tipo === 'IR_A_VISTA')) {
         const vista = ev.data.vista || 'Registro';
         try { showView(vista); } catch (e) {
@@ -9367,13 +9683,30 @@ function marcarTodosAvisosLeidos() {
 }
 
 function abrirModalPublicarAviso() {
-  const m = $('#modalPublicarAviso');
-  if (!m) return;
-  const autorInput = $('#pubAvisoAutor');
-  if (autorInput && !autorInput.value) {
-    autorInput.value = State.user ? `${State.user.nombre} (${State.user.legajo})` : 'Supervisión';
+  // Directiva estricta: Solo el Supervisor con Clave Maestra tiene acceso a emitir avisos a las cuadrillas.
+  if (!State.adminLoggedIn) {
+    cerrarModalAvisosEmpresa();
+    showView('Admin');
+    toast('🔐 Solo el Supervisor con Clave Maestra puede emitir comunicados a las cuadrillas', 'warn');
+    setTimeout(() => {
+      const p = $('#adminPassword');
+      if (p) {
+        p.focus();
+        p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 350);
+    return;
   }
-  m.classList.add('show');
+
+  // Si ya es supervisor autenticado, redirigir al panel de administración enfocado en el emisor de comunicados
+  cerrarModalAvisosEmpresa();
+  showView('Admin');
+  setTimeout(() => {
+    const el = $('#adminPushCard') || $('#adminAvisosCard');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const t = $('#adminPushTitulo');
+    if (t) t.focus();
+  }, 250);
 }
 
 function cerrarModalPublicarAviso() {
@@ -9397,12 +9730,14 @@ async function actualizarUIPushConfig() {
   const txtSub = $('#pscSubTxt');
   const icon = $('#pscIcon');
   const btn = $('#btnTogglePushSub');
+  const bannerOptIn = $('#pushActivarBanner');
 
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     if (txtStatus) txtStatus.textContent = 'Push no disponible';
     if (txtSub) txtSub.textContent = 'Este navegador no soporta el estándar PushManager de Service Workers.';
     if (icon) icon.textContent = '❌';
     if (btn) { btn.disabled = true; btn.textContent = 'No soportado'; }
+    if (bannerOptIn) bannerOptIn.style.display = 'none';
     return;
   }
 
@@ -9419,6 +9754,7 @@ async function actualizarUIPushConfig() {
       btn.className = 'btn btn-ghost';
       btn.textContent = '🔕 Desactivar Notificaciones Push';
     }
+    if (bannerOptIn) bannerOptIn.style.display = 'none';
   } else {
     State.pushSubscribed = false;
     const perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
@@ -9427,6 +9763,7 @@ async function actualizarUIPushConfig() {
       if (txtSub) txtSub.textContent = 'Las notificaciones fueron bloqueadas en la configuración del navegador.';
       if (icon) icon.textContent = '🚫';
       if (btn) { btn.disabled = true; btn.textContent = 'Desbloquear en Ajustes'; }
+      if (bannerOptIn) bannerOptIn.style.display = 'none';
     } else {
       if (txtStatus) txtStatus.textContent = 'Push Inactivo';
       if (txtSub) txtSub.textContent = 'Activá las notificaciones para recibir avisos de jornadas sin cerrar y comunicados urgentes.';
@@ -9436,7 +9773,150 @@ async function actualizarUIPushConfig() {
         btn.className = 'btn btn-primary';
         btn.textContent = '🔔 Activar Notificaciones Push';
       }
+      if (bannerOptIn && !sessionStorage.getItem('push_banner_dismissed')) {
+        bannerOptIn.style.display = 'flex';
+      }
     }
+  }
+}
+
+/* ============================================================
+   SISTEMA DE ALERTA EN VIVO DE SUPERVISIÓN & SINCRONIZACIÓN
+   ============================================================ */
+
+function reproducirChimeAlerta() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.14);
+    osc.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.28);
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.85);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.9);
+  } catch (e) {}
+}
+
+function mostrarAlertaSupervisorEnVivo(alerta) {
+  if (!alerta) return;
+
+  // 1. Vibración de alerta en dispositivos móviles
+  try {
+    if ('vibrate' in navigator) {
+      navigator.vibrate([400, 150, 400]);
+    }
+  } catch (e) {}
+
+  // 2. Chime acústico
+  reproducirChimeAlerta();
+
+  // 3. Poblar modal de alerta de supervisión
+  const m = $('#modalAlertaSupervisor');
+  const tit = $('#alertaSupervisorTitulo');
+  const cue = $('#alertaSupervisorCuerpo');
+  const emi = $('#alertaSupervisorEmisor');
+  const fec = $('#alertaSupervisorFecha');
+  const bdg = $('#alertaSupervisorBadge');
+
+  if (tit) tit.textContent = alerta.titulo || 'Comunicado de Supervisión';
+  if (cue) cue.textContent = alerta.cuerpo || alerta.mensaje || '';
+  if (emi) emi.textContent = 'Emitido por: ' + (alerta.autor || 'Supervisión Central');
+  if (fec) fec.textContent = fechaLegible(alerta.fecha || hoy());
+  if (bdg) {
+    bdg.textContent = (alerta.prioridad === 'alta') ? '🚨 ALERTA URGENTE DE SUPERVISIÓN' : '📢 COMUNICADO DE SUPERVISIÓN';
+  }
+
+  if (m) {
+    m.style.display = 'flex';
+    m.classList.add('show');
+  }
+
+  // 4. Actualizar comunicados y carrusel de avisos
+  if (typeof cargarAvisosEmpresa === 'function') {
+    cargarAvisosEmpresa();
+  }
+}
+
+let _liveAlertsTimer = null;
+let _ultimoLiveAlertTimestamp = parseInt(localStorage.getItem('baremo_last_alert_ts') || '0', 10);
+let _alertasVistasIds = new Set(JSON.parse(localStorage.getItem('baremo_alertas_vistas') || '[]'));
+
+function iniciarLiveAlertsPoller() {
+  if (_liveAlertsTimer) clearInterval(_liveAlertsTimer);
+  chequearLiveAlerts();
+  _liveAlertsTimer = setInterval(() => {
+    if (!document.hidden && navigator.onLine) {
+      chequearLiveAlerts();
+    }
+  }, 10000);
+}
+
+async function chequearLiveAlerts() {
+  try {
+    const url = `/api/push/live-events?since=${_ultimoLiveAlertTimestamp}`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.ok || !Array.isArray(data.events) || data.events.length === 0) return;
+
+    for (const ev of data.events) {
+      _ultimoLiveAlertTimestamp = Math.max(_ultimoLiveAlertTimestamp, ev.timestamp || 0);
+      localStorage.setItem('baremo_last_alert_ts', String(_ultimoLiveAlertTimestamp));
+
+      if (ev.id && !_alertasVistasIds.has(ev.id)) {
+        _alertasVistasIds.add(ev.id);
+        localStorage.setItem('baremo_alertas_vistas', JSON.stringify(Array.from(_alertasVistasIds).slice(-100)));
+        mostrarAlertaSupervisorEnVivo(ev);
+      }
+    }
+  } catch (e) {
+    // Modo sin conexión momentáneo
+  }
+}
+
+let _sincronizandoRemoto = false;
+async function sincronizarJornadasAlServidor() {
+  if (_sincronizandoRemoto || !navigator.onLine) return;
+  if (!State.user || !State.user.legajo) return;
+
+  _sincronizandoRemoto = true;
+  try {
+    const todas = await dbGetAll('jornadas');
+    const miLegajo = String(State.user.legajo);
+    const misJornadas = todas.filter(j => String(j.legajo) === miLegajo && j.cerrada);
+
+    const res = await fetch('/api/sync/jornadas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario: {
+          legajo: State.user.legajo,
+          nombre: State.user.nombre,
+          zona: State.user.zona || '',
+          email: State.user.email || ''
+        },
+        jornadas: misJornadas
+      })
+    });
+
+    if (res.ok) {
+      const d = await res.json();
+      console.log('[Sync] Jornadas sincronizadas en el servidor central:', d);
+      if (typeof actualizarEstadoSyncNube === 'function') {
+        actualizarEstadoSyncNube();
+      }
+    }
+  } catch (err) {
+    console.warn('[Sync] Sincronización en segundo plano diferida:', err.message);
+  } finally {
+    _sincronizandoRemoto = false;
   }
 }
 
@@ -9467,6 +9947,36 @@ function inicializarEventosPushYAvisos() {
   const btnRefrescarPush = $('#btnRefrescarPushStatus');
   if (btnRefrescarPush) btnRefrescarPush.onclick = actualizarUIPushConfig;
 
+  // Banner superior para activar Notificaciones Push
+  const btnActivarBanner = $('#btnActivarPushBanner');
+  if (btnActivarBanner) {
+    btnActivarBanner.onclick = async () => {
+      await alternarSuscripcionPush();
+      const b = $('#pushActivarBanner');
+      if (b) b.style.display = 'none';
+    };
+  }
+  const btnCerrarBanner = $('#btnCerrarPushBanner');
+  if (btnCerrarBanner) {
+    btnCerrarBanner.onclick = () => {
+      const b = $('#pushActivarBanner');
+      if (b) b.style.display = 'none';
+      sessionStorage.setItem('push_banner_dismissed', '1');
+    };
+  }
+
+  // Modal Alerta Supervisor
+  const btnAlertaSupervisorAceptar = $('#btnAlertaSupervisorAceptar');
+  if (btnAlertaSupervisorAceptar) {
+    btnAlertaSupervisorAceptar.onclick = () => {
+      const m = $('#modalAlertaSupervisor');
+      if (m) {
+        m.classList.remove('show');
+        m.style.display = 'none';
+      }
+    };
+  }
+
   // Pruebas de push
   const btnTestJ = $('#btnTestPushJornada');
   if (btnTestJ) btnTestJ.onclick = () => enviarPushTest('jornada_pendiente');
@@ -9491,7 +10001,7 @@ function inicializarEventosPushYAvisos() {
   const btnMarcarLeidos = $('#btnAvisosMarcarLeidos');
   if (btnMarcarLeidos) btnMarcarLeidos.onclick = marcarTodosAvisosLeidos;
 
-  // Publicar aviso
+  // Publicar aviso: restringido exclusivamente a Supervisor con Clave Maestra
   const btnAbrirPub = $('#btnAbrirPublicarAviso');
   if (btnAbrirPub) btnAbrirPub.onclick = abrirModalPublicarAviso;
 
@@ -9506,6 +10016,14 @@ function inicializarEventosPushYAvisos() {
   if (formPub) {
     formPub.onsubmit = async (e) => {
       e.preventDefault();
+
+      if (!State.adminLoggedIn) {
+        toast('🔐 Solo el Supervisor con Clave Maestra puede emitir comunicados a las cuadrillas', 'error');
+        cerrarModalPublicarAviso();
+        showView('Admin');
+        return;
+      }
+
       const titulo = ($('#pubAvisoTitulo')?.value || '').trim();
       const cuerpo = ($('#pubAvisoCuerpo')?.value || '').trim();
       const categoria = $('#pubAvisoCategoria')?.value || 'General';
@@ -9522,7 +10040,7 @@ function inicializarEventosPushYAvisos() {
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Emitiendo...'; }
 
       try {
-        const res = await fetch('/api/push/avisos', {
+        const res = await fetchAdminAPI('/api/push/avisos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
