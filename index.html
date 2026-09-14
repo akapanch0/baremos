@@ -571,6 +571,15 @@ html.piel-grafito { background: #1f2937; }</style>
       <div class="card-title">🔍 Buscar</div>
       <input class="input" id="histSearch" placeholder="Fecha, usuario, código...">
     </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding:4px 8px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+      <span style="font-size:11.5px;color:var(--text-soft);font-weight:600;display:flex;align-items:center;gap:4px;">
+        <span>👥</span> Dispositivo / Cuadrilla:
+      </span>
+      <select class="select" id="histCuadrillaFilter" style="flex:1;max-width:240px;font-size:12px;padding:4px 8px;height:32px;">
+        <option value="mi_usuario">👤 Mis Registros Locales</option>
+        <option value="todas_nube">🌐 Todas las Cuadrillas (Nube)</option>
+      </select>
+    </div>
     <div class="hist-filtros">
       <button class="hist-filtro-btn active" data-filter="hoy">📅 Hoy</button>
       <button class="hist-filtro-btn" data-filter="mes">📆 Este mes</button>
@@ -936,27 +945,32 @@ html.piel-grafito { background: #1f2937; }</style>
         </div>
 
         <div class="card" style="margin-bottom:14px;border:1.5px solid var(--border);">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
             <div class="card-title" style="margin:0;display:flex;align-items:center;gap:6px;">
-              <span>☁️</span> Descarga Remota de Reportes de Cuadrillas
+              <span>☁️</span> Reportes Centrales de Todos los Dispositivos
             </div>
-            <button class="btn btn-ghost btn-sm" id="btnRefrescarDatosNube" style="padding:4px 8px;font-size:11px;" title="Actualizar datos sincronizados desde la nube">
-              🔄 Actualizar Nube
-            </button>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" id="btnDescargarNubeLocal" style="padding:4px 10px;font-size:11px;background:rgba(14,165,233,0.1);color:#0284c7;border:1px solid rgba(14,165,233,0.3);" title="Descargar todas las jornadas de todos los teléfonos para verlas offline">
+                📥 Traer Nube a Este Equipo
+              </button>
+              <button class="btn btn-ghost btn-sm" id="btnRefrescarDatosNube" style="padding:4px 8px;font-size:11px;" title="Actualizar datos sincronizados desde la nube">
+                🔄 Actualizar Nube
+              </button>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:12px;font-size:12px;">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:12px;font-size:12px;flex-wrap:wrap;">
             <span id="adminSyncStatusBadge" style="background:#e0f2fe;color:#0369a1;font-weight:700;padding:2px 8px;border-radius:12px;font-size:11px;">☁️ Conectando...</span>
             <span id="adminSyncInfo" style="color:var(--text-soft);font-size:11px;flex:1;">Cargando cuadrillas sincronizadas...</span>
-            <button class="btn btn-ghost btn-sm" id="btnSincronizarAhora" style="padding:2px 8px;font-size:11px;" title="Sincronizar jornadas locales a la nube">☁️ Subir Mis Datos</button>
+            <button class="btn btn-ghost btn-sm" id="btnSincronizarAhora" style="padding:2px 8px;font-size:11px;" title="Sincronizar jornadas locales de este equipo a la nube">☁️ Subir Mis Datos</button>
           </div>
 
           <div class="card-title" style="padding:0 0 6px;font-size:13px;">📋 Período del reporte</div>
           <div class="admin-report-type" id="adminReportType">
-            <button class="active" data-type="diario">📅 Diario</button>
+            <button data-type="diario">📅 Diario</button>
             <button data-type="semanal">📆 Semanal</button>
             <button data-type="quincenal">💰 Quincenal</button>
             <button data-type="mensual">🗓️ Mensual</button>
-            <button data-type="todos">🗂️ Todos</button>
+            <button class="active" data-type="todos">🗂️ Todos (Histórico)</button>
           </div>
 
           <div class="admin-filters" style="margin-top:10px;">
@@ -966,7 +980,15 @@ html.piel-grafito { background: #1f2937; }</style>
                 <option value="todos">👥 Todas las cuadrillas (Reporte Consolidado)</option>
               </select>
             </div>
-            <div class="field" id="adminCampoFecha">
+            <div class="field">
+              <label>Estado de Jornada</label>
+              <select class="select" id="adminEstadoJornada">
+                <option value="todos">🌐 Todas (Cerradas y En Curso)</option>
+                <option value="cerradas">🟢 Solo Cerradas (Finalizadas)</option>
+                <option value="abiertas">🟡 Solo En Curso (Hoy)</option>
+              </select>
+            </div>
+            <div class="field" id="adminCampoFecha" style="display:none;">
               <label id="adminFechaLabel">Fecha de Referencia</label>
               <input class="input" id="adminFecha" type="date">
             </div>
@@ -979,17 +1001,21 @@ html.piel-grafito { background: #1f2937; }</style>
             </div>
           </div>
 
-          <div class="admin-summary" id="adminSummary" style="display:none;margin-top:12px;">
+          <div class="admin-summary" id="adminSummary" style="display:block;margin-top:12px;">
             <div class="as-title" style="display:flex;justify-content:space-between;align-items:center;">
-              <span>📊 Resumen del Reporte Remoto</span>
+              <span id="adminSummaryTitulo">📊 Reporte de Cuadrillas en Servidor</span>
               <span id="adminSummaryPeriodoBadge" style="font-size:11px;color:var(--text-soft);font-weight:normal;"></span>
             </div>
-            <div id="adminSummaryContent"></div>
+            <div id="adminSummaryContent">
+              <div style="text-align:center;padding:16px;color:var(--text-soft);font-size:12px;">
+                🔄 Consultando datos de todos los dispositivos en el servidor central...
+              </div>
+            </div>
           </div>
 
           <div class="admin-actions" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary btn-sm" id="btnAdminPreview" style="flex:1;min-width:120px;">👁️ Vista previa</button>
-            <button class="btn btn-success btn-sm" id="btnAdminPDF" style="flex:1;min-width:120px;">📄 Descargar PDF</button>
+            <button class="btn btn-primary btn-sm" id="btnAdminPreview" style="flex:1;min-width:120px;">👁️ Refrescar Vista</button>
+            <button class="btn btn-success btn-sm" id="btnAdminPDF" style="flex:1;min-width:120px;">📄 Descargar PDF Oficial</button>
             <button class="btn btn-ghost btn-sm" id="btnAdminExcel" style="flex:1;min-width:120px;border:1px solid var(--border);">📊 Descargar Excel</button>
           </div>
 

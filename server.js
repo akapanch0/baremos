@@ -97,15 +97,49 @@ function verificarClaveMaestra(passwordIngresada) {
   return { ok: false };
 }
 
-const activeAdminTokens = new Map();
+const TOKENS_FILE = path.join(__dirname, 'push-admin-tokens.json');
+
+function leerTokensPersistentes() {
+  try {
+    if (fs.existsSync(TOKENS_FILE)) {
+      const arr = JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8'));
+      if (Array.isArray(arr)) {
+        const map = new Map();
+        const now = Date.now();
+        arr.forEach(item => {
+          if (item && item[0] && item[1] && item[1].expiresAt > now) {
+            map.set(item[0], item[1]);
+          }
+        });
+        return map;
+      }
+    }
+  } catch (e) {
+    console.warn('[Admin] Error leyendo tokens persistentes:', e.message);
+  }
+  return new Map();
+}
+
+function guardarTokensPersistentes(map) {
+  try {
+    const now = Date.now();
+    const arr = Array.from(map.entries()).filter(item => item[1] && item[1].expiresAt > now);
+    fs.writeFileSync(TOKENS_FILE, JSON.stringify(arr, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('[Admin] Error guardando tokens persistentes:', e.message);
+  }
+}
+
+const activeAdminTokens = leerTokensPersistentes();
 
 function generarTokenAdmin() {
   const token = crypto.randomBytes(32).toString('hex');
   const now = Date.now();
   activeAdminTokens.set(token, {
     createdAt: now,
-    expiresAt: now + (48 * 60 * 60 * 1000) // 48 horas
+    expiresAt: now + (7 * 24 * 60 * 60 * 1000) // 7 días de sesión
   });
+  guardarTokensPersistentes(activeAdminTokens);
   return token;
 }
 
@@ -115,6 +149,7 @@ function validarTokenAdmin(token) {
   if (!info) return false;
   if (Date.now() > info.expiresAt) {
     activeAdminTokens.delete(token);
+    guardarTokensPersistentes(activeAdminTokens);
     return false;
   }
   return true;
@@ -846,10 +881,17 @@ app.delete('/api/admin/avisos/:id', requireAdminAuth, (req, res) => {
 // ENDPOINTS DE SINCRONIZACIÓN REMOTA Y REPORTES DE CUADRILLAS
 // ============================================================
 
+function normalizarClaveJornada(j, fallbackLegajo) {
+  const leg = String(j.legajo || fallbackLegajo || 'sin_legajo').trim();
+  const fecha = String(j.fecha || 'sin_fecha').trim();
+  const subId = String(j.remoteId || j.syncId || j.idLocal || j.localId || j.id || j.horaInicio || '1').trim();
+  return `jornada__${leg}__${fecha}__${subId}`;
+}
+
 // S1. Sincronizar jornadas de un usuario/cuadrilla desde cualquier celular
 app.post('/api/sync/jornadas', (req, res) => {
   try {
-    const { usuario, jornadas } = req.body || {};
+    const { usuario, usuarios: usuariosArr = [], jornadas = [] } = req.body || {};
     if (!usuario || !usuario.legajo) {
       return res.status(400).json({ error: 'Datos de usuario y legajo son requeridos' });
     }
@@ -861,44 +903,74 @@ app.post('/api/sync/jornadas', (req, res) => {
 
     // Actualizar usuarios remotos
     const usuarios = leerUsuariosRemotos();
-    let idxU = usuarios.findIndex(u => String(u.legajo) === legajo);
-    const uData = {
-      legajo,
-      nombre,
-      zona,
-      ultimaConexion: ahora,
-      totalJornadas: 0,
-      totalProduccion: 0
+    
+    // Registrar o actualizar usuario principal
+    const registrarOActualizarUser = (l, n, z) => {
+      const lStr = String(l).trim();
+      let idx = usuarios.findIndex(u => String(u.legajo) === lStr);
+      const uData = {
+        legajo: lStr,
+        nombre: String(n || 'Operario').trim(),
+        zona: String(z || '').trim(),
+        ultimaConexion: ahora,
+        totalJornadas: 0,
+        totalProduccion: 0
+      };
+      if (idx >= 0) {
+        usuarios[idx] = { ...usuarios[idx], ...uData };
+      } else {
+        usuarios.push(uData);
+      }
     };
 
-    if (idxU >= 0) {
-      usuarios[idxU] = { ...usuarios[idxU], ...uData };
-    } else {
-      usuarios.push(uData);
-      idxU = usuarios.length - 1;
+    registrarOActualizarUser(legajo, nombre, zona);
+
+    // Registrar otros usuarios locales reportados por este dispositivo
+    if (Array.isArray(usuariosArr)) {
+      usuariosArr.forEach(u => {
+        if (u && u.legajo) {
+          registrarOActualizarUser(u.legajo, u.nombre, u.zona);
+        }
+      });
     }
 
-    // Actualizar jornadas remotas
+    // Actualizar jornadas remotas sin colisiones entre dispositivos
     let recibidas = 0;
     if (Array.isArray(jornadas) && jornadas.length > 0) {
       const dbJornadas = leerJornadasRemotas();
       const jornadaMap = new Map();
+
+      // Cargar existentes preservando claves únicas
       dbJornadas.forEach(j => {
-        const k = j.id || `${j.legajo}_${j.fecha}`;
+        const k = j.syncId || normalizarClaveJornada(j, j.legajo);
         jornadaMap.set(k, j);
       });
 
       jornadas.forEach(j => {
         if (!j || !j.fecha) return;
+        const jLegajo = String(j.legajo || legajo).trim();
+        const jNombre = String(j.usuario || j.nombreUsuario || (jLegajo === legajo ? nombre : 'Operador')).trim();
+        const jZona = String(j.zona || (jLegajo === legajo ? zona : '')).trim();
+        const k = normalizarClaveJornada(j, jLegajo);
+
         const jNorm = {
           ...j,
-          legajo,
-          nombreUsuario: nombre,
-          zona: zona || j.zona || '',
-          cerrada: j.cerrada !== false,
+          syncId: k,
+          id: k,
+          localId: j.id,
+          legajo: jLegajo,
+          nombreUsuario: jNombre,
+          zona: jZona,
+          cerrada: Boolean(j.cerrada),
+          total: Number(j.total) || 0,
+          cantidadItems: Number(j.cantidadItems) || (Array.isArray(j.items) ? j.items.length : 0),
+          cantidadRegistros: Number(j.cantidadRegistros) || (Array.isArray(j.tareas) ? j.tareas.length : 0),
+          items: Array.isArray(j.items) ? j.items : [],
+          tareas: Array.isArray(j.tareas) ? j.tareas : [],
+          ats: j.ats || null,
           sincronizadoEn: ahora
         };
-        const k = j.id || `${legajo}_${j.fecha}`;
+
         jornadaMap.set(k, jNorm);
         recibidas++;
       });
@@ -906,17 +978,25 @@ app.post('/api/sync/jornadas', (req, res) => {
       const todasJornadas = Array.from(jornadaMap.values());
       guardarJornadasRemotas(todasJornadas);
 
-      // Calcular métricas actualizadas del usuario
-      const userJornadas = todasJornadas.filter(j => String(j.legajo) === legajo);
-      usuarios[idxU].totalJornadas = userJornadas.length;
-      usuarios[idxU].totalProduccion = userJornadas.reduce((a, b) => a + (Number(b.total) || 0), 0);
+      // Calcular métricas actualizadas de cada usuario registrado
+      usuarios.forEach(u => {
+        const userJorns = todasJornadas.filter(j => String(j.legajo) === String(u.legajo));
+        u.totalJornadas = userJorns.length;
+        u.jornadasCerradas = userJorns.filter(j => j.cerrada).length;
+        u.jornadasAbiertas = userJorns.filter(j => !j.cerrada).length;
+        u.totalProduccion = userJorns
+          .filter(j => j.cerrada)
+          .reduce((a, b) => a + (Number(b.total) || 0), 0);
+      });
     }
+
     guardarUsuariosRemotos(usuarios);
 
     res.json({
       ok: true,
       recibidas,
-      totalUsuario: usuarios[idxU].totalJornadas,
+      totalJornadasServidor: leerJornadasRemotas().length,
+      totalUsuariosServidor: usuarios.length,
       mensaje: `Sincronización remota exitosa: ${recibidas} jornada(s)`
     });
   } catch (err) {
@@ -930,13 +1010,38 @@ app.get('/api/sync/estado', (req, res) => {
   try {
     const usuarios = leerUsuariosRemotos();
     const jornadas = leerJornadasRemotas();
+    const cerradas = jornadas.filter(j => j.cerrada).length;
+    const abiertas = jornadas.length - cerradas;
+    const totalProd = jornadas.filter(j => j.cerrada).reduce((a, b) => a + (Number(b.total) || 0), 0);
+
     res.json({
       ok: true,
       totalUsuarios: usuarios.length,
-      totalJornadas: jornadas.length
+      totalJornadas: jornadas.length,
+      totalCerradas: cerradas,
+      totalAbiertas: abiertas,
+      totalProduccion: totalProd,
+      servidorHora: new Date().toISOString()
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// S3. Descargar todas las jornadas de la nube (para supervisión offline o copia espejo)
+app.get('/api/sync/descargar-todas', (req, res) => {
+  try {
+    const usuarios = leerUsuariosRemotos();
+    const jornadas = leerJornadasRemotas();
+    res.json({
+      ok: true,
+      totalUsuarios: usuarios.length,
+      totalJornadas: jornadas.length,
+      usuarios,
+      jornadas
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
@@ -954,7 +1059,9 @@ app.get('/api/admin/reportes/usuarios', requireAdminAuth, (req, res) => {
         zona: u.zona,
         ultimaConexion: u.ultimaConexion,
         totalJornadas: userJornadas.length,
-        totalProduccion: userJornadas.reduce((a, b) => a + (Number(b.total) || 0), 0)
+        jornadasCerradas: userJornadas.filter(j => j.cerrada).length,
+        jornadasAbiertas: userJornadas.filter(j => !j.cerrada).length,
+        totalProduccion: userJornadas.filter(j => j.cerrada).reduce((a, b) => a + (Number(b.total) || 0), 0)
       };
     });
 
@@ -969,11 +1076,12 @@ app.get('/api/admin/reportes/datos', requireAdminAuth, (req, res) => {
   try {
     const {
       legajo = 'todos',
-      tipo = 'diario',
+      tipo = 'todos',
       fecha,
       desde,
       hasta,
-      quincena = '1'
+      quincena = '1',
+      estado = 'todos' // 'todos' | 'cerradas' | 'abiertas'
     } = req.query || {};
 
     const todasJornadas = leerJornadasRemotas();
@@ -1023,9 +1131,10 @@ app.get('/api/admin/reportes/datos', requireAdminAuth, (req, res) => {
         fechaHasta = `${y}-${m}-${String(ultimoDia).padStart(2, '0')}`;
         periodoLabel = `Reporte Mensual - ${m}/${y}`;
       } else {
+        // 'todos' / histórico
         fechaDesde = '2000-01-01';
         fechaHasta = '2099-12-31';
-        periodoLabel = 'Reporte Histórico Completo';
+        periodoLabel = 'Reporte Histórico Consolidado (Todos los dispositivos)';
       }
     }
 
@@ -1038,19 +1147,30 @@ app.get('/api/admin/reportes/datos', requireAdminAuth, (req, res) => {
       filtradas = filtradas.filter(j => String(j.legajo) === String(legajo));
     }
 
-    filtradas.sort((a, b) => a.fecha.localeCompare(b.fecha) || String(a.legajo).localeCompare(String(b.legajo)));
+    if (estado === 'cerradas') {
+      filtradas = filtradas.filter(j => j.cerrada);
+    } else if (estado === 'abiertas') {
+      filtradas = filtradas.filter(j => !j.cerrada);
+    }
+
+    // Ordenar por fecha descendente (más recientes primero)
+    filtradas.sort((a, b) => b.fecha.localeCompare(a.fecha) || String(a.legajo).localeCompare(String(b.legajo)));
 
     const datos = filtradas.map(j => {
       const u = usuarios.find(usr => String(usr.legajo) === String(j.legajo));
       return {
         ...j,
-        nombreUsuario: u?.nombre || j.nombreUsuario || 'Operador',
+        nombreUsuario: u?.nombre || j.nombreUsuario || j.usuario || 'Operador',
         zona: u?.zona || j.zona || '-'
       };
     });
 
-    const totalProduccion = datos.reduce((a, d) => a + (Number(d.total) || 0), 0);
+    const totalProduccion = datos.filter(d => d.cerrada).reduce((a, d) => a + (Number(d.total) || 0), 0);
+    const totalProduccionEnCurso = datos.filter(d => !d.cerrada).reduce((a, d) => a + (Number(d.totalEnCurso || d.total) || 0), 0);
     const totalItems = datos.reduce((a, d) => a + (Number(d.cantidadItems) || 0), 0);
+    const totalTareas = datos.reduce((a, d) => a + (Number(d.cantidadRegistros) || 0), 0);
+    const totalCerradas = datos.filter(d => d.cerrada).length;
+    const totalAbiertas = datos.filter(d => !d.cerrada).length;
     const usuariosUnicos = [...new Set(datos.map(d => d.legajo))].length;
 
     res.json({
@@ -1062,9 +1182,14 @@ app.get('/api/admin/reportes/datos', requireAdminAuth, (req, res) => {
       fechaHasta,
       tipo,
       legajo,
+      estado,
       totalProduccion,
+      totalProduccionEnCurso,
       totalItems,
+      totalTareas,
       totalJornadas: datos.length,
+      totalCerradas,
+      totalAbiertas,
       usuariosUnicos
     });
   } catch (err) {

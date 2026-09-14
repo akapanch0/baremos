@@ -24,7 +24,7 @@ const State = {
   histFilter: 'hoy',
   histSelected: new Set(),
   adminLoggedIn: false,
-  adminReportType: 'diario',
+  adminReportType: 'todos',
   updateAvailable: false,
   remoteVersion: null,
   mensaje200kMostrado: false,
@@ -2114,9 +2114,40 @@ function textoBusquedaJornada(j) {
      - cada jornada pasa a ser una tarjeta con franja de color segun
        el rango del dia, igual que el resto de la app.
    ============================================================ */
+let _nubeJornadasMap = new Map();
+
 async function renderHistorial() {
   const all = await dbGetAll('jornadas');
-  let f = all.filter(j => j.legajo === State.user.legajo);
+  const cuadrillaFilter = $('#histCuadrillaFilter')?.value || 'mi_usuario';
+  
+  let dataset = [];
+  if (cuadrillaFilter === 'todas_nube') {
+    const mapaUnificado = new Map();
+    all.forEach(j => {
+      const key = String(j.id || `${j.legajo}_${j.fecha}_${j.horaInicio}`);
+      mapaUnificado.set(key, j);
+      _nubeJornadasMap.set(key, j);
+    });
+
+    try {
+      const res = await fetchAdminAPI('/api/admin/reportes/datos?tipo=todos');
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.ok && Array.isArray(json.datos)) {
+          json.datos.forEach(j => {
+            const key = String(j.remoteId || j.syncId || j.localId || j.id || `${j.legajo}_${j.fecha}_${j.horaInicio}`);
+            mapaUnificado.set(key, j);
+            _nubeJornadasMap.set(key, j);
+          });
+        }
+      }
+    } catch (e) {}
+    dataset = Array.from(mapaUnificado.values());
+  } else {
+    dataset = all.filter(j => String(j.legajo) === String(State.user.legajo));
+  }
+
+  let f = dataset;
   if (State.histFilter === 'hoy') f = f.filter(j => j.fecha === hoy());
   else if (State.histFilter === 'mes') f = f.filter(j => j.fecha.startsWith(mesActual()));
   else if (State.histFilter === 'mesAnterior') f = f.filter(j => j.fecha.startsWith(mesAnterior()));
@@ -2126,7 +2157,7 @@ async function renderHistorial() {
   if (q) {
     const terminos = q.split(/\s+/).filter(Boolean);
     f = f.filter(j => {
-      const txt = textoBusquedaJornada(j);
+      const txt = (textoBusquedaJornada(j) + ' ' + (j.nombreUsuario || '') + ' ' + (j.legajo || '')).toLowerCase();
       return terminos.every(t => txt.includes(t));
     });
   }
@@ -2156,7 +2187,7 @@ async function renderHistorial() {
   if (!f.length) {
     lst.innerHTML = q
       ? `<div class="empty"><div class="ico">🔍</div><p>Sin resultados para “${q}”</p></div>`
-      : '<div class="empty"><div class="ico">📭</div><p>Sin jornadas</p></div>';
+      : '<div class="empty"><div class="ico">📭</div><p>Sin jornadas registradas</p></div>';
     return;
   }
 
@@ -2168,13 +2199,22 @@ async function renderHistorial() {
     const tj = totalesDeJornada(j);
     const cfg = getConfigDia(tj.total);
     const tareas = tareasCerradasDeJornada(j);
-    return `<div class="jornada-card ${is ? 'selected' : ''} ${j.cerrada ? '' : 'is-abierta'}" data-id="${j.id}">
+    const esOtroUsuario = j.legajo && String(j.legajo) !== String(State.user.legajo);
+    const jId = j.id || `${j.legajo}_${j.fecha}_${j.horaInicio}`;
+
+    return `<div class="jornada-card ${is ? 'selected' : ''} ${j.cerrada ? '' : 'is-abierta'}" data-id="${jId}">
       <span class="jc-franja" style="background:${cfg.hex}"></span>
       <div class="jc-body">
         <div class="jc-top">
           <div class="jc-fecha">${fechaCorta(j.fecha)}</div>
           <div class="jc-total">${fmt(tj.total)}</div>
         </div>
+        ${esOtroUsuario || cuadrillaFilter === 'todas_nube' ? `
+          <div style="font-size:11px;color:var(--text);margin-top:2px;font-weight:600;">
+            👤 ${escapeHTML(j.nombreUsuario || j.usuario || ('Legajo ' + j.legajo))}
+            <span style="font-weight:normal;color:var(--text-soft);font-size:10px;">· Leg. ${escapeHTML(j.legajo)} · Zona ${escapeHTML(j.zona || '-')}</span>
+          </div>
+        ` : ''}
         ${zonasHtml ? `<div class="jc-zonas">${zonasHtml}</div>` : ''}
         <div class="jc-chips">
           <span class="jc-chip">${fmtNum(tareas)} tarea(s)</span>
@@ -2185,11 +2225,11 @@ async function renderHistorial() {
           <span class="jc-estado ${j.cerrada ? 'cerrada' : 'abierta'}">${j.cerrada ? 'CERRADA' : 'ABIERTA'}</span>
           <span class="jc-rango">${cfg.nombre}</span>
           <div class="ji-actions">
-            <div class="check-box ${is ? 'checked' : ''}" data-act="select" data-id="${j.id}"></div>
-            <button class="mini-btn view" data-act="view" data-id="${j.id}" title="Ver detalle">👁️</button>
-            ${j.ats ? `<button class="mini-btn ats" data-act="ats-pdf" data-id="${j.id}" title="Exportar formulario ATS en PDF">🛡️</button>` : ''}
-            ${j.cerrada ? `<button class="mini-btn export" data-act="export" data-id="${j.id}" title="Generar PDF">📄</button>` : ''}
-            ${j.cerrada ? `<button class="mini-btn wa" data-act="wa" data-id="${j.id}" title="Generar PDF y enviar por WhatsApp">${iconoWhatsApp()}</button>` : ''}
+            <div class="check-box ${is ? 'checked' : ''}" data-act="select" data-id="${jId}"></div>
+            <button class="mini-btn view" data-act="view" data-id="${jId}" title="Ver detalle">👁️</button>
+            ${j.ats ? `<button class="mini-btn ats" data-act="ats-pdf" data-id="${jId}" title="Exportar formulario ATS en PDF">🛡️</button>` : ''}
+            ${j.cerrada ? `<button class="mini-btn export" data-act="export" data-id="${jId}" title="Generar PDF">📄</button>` : ''}
+            ${j.cerrada ? `<button class="mini-btn wa" data-act="wa" data-id="${jId}" title="Generar PDF y enviar por WhatsApp">${iconoWhatsApp()}</button>` : ''}
           </div>
         </div>
       </div>
@@ -2199,20 +2239,28 @@ async function renderHistorial() {
   lst.querySelectorAll('[data-act="select"]').forEach(el => {
     el.onclick = e => {
       e.stopPropagation();
-      const id = parseInt(el.dataset.id);
+      const rawId = el.dataset.id;
+      const id = isNaN(Number(rawId)) ? rawId : Number(rawId);
       if (State.histSelected.has(id)) State.histSelected.delete(id);
       else State.histSelected.add(id);
       renderHistorial();
     };
   });
   lst.querySelectorAll('[data-act="view"]').forEach(el => {
-    el.onclick = e => { e.stopPropagation(); openJornada(parseInt(el.dataset.id)); };
+    el.onclick = e => {
+      e.stopPropagation();
+      const rawId = el.dataset.id;
+      const id = isNaN(Number(rawId)) ? rawId : Number(rawId);
+      openJornada(id);
+    };
   });
   lst.querySelectorAll('[data-act="ats-pdf"]').forEach(el => {
     el.onclick = async e => {
       e.stopPropagation();
-      const id = parseInt(el.dataset.id);
-      const jor = await dbGet('jornadas', id);
+      const rawId = el.dataset.id;
+      const id = isNaN(Number(rawId)) ? rawId : Number(rawId);
+      let jor = await dbGet('jornadas', id);
+      if (!jor && _nubeJornadasMap.has(String(id))) jor = _nubeJornadasMap.get(String(id));
       if (jor && jor.ats) {
         await exportarAtsPDF(jor.ats);
       } else {
@@ -2221,14 +2269,23 @@ async function renderHistorial() {
     };
   });
   lst.querySelectorAll('[data-act="export"]').forEach(el => {
-    el.onclick = async e => { e.stopPropagation(); await exportarJornadaPDF(parseInt(el.dataset.id)); };
+    el.onclick = async e => {
+      e.stopPropagation();
+      const rawId = el.dataset.id;
+      const id = isNaN(Number(rawId)) ? rawId : Number(rawId);
+      await exportarJornadaPDF(id);
+    };
   });
   // v5.9.31 - mismo PDF, pero se abre la mensajeria para enviarlo.
   lst.querySelectorAll('[data-act="wa"]').forEach(el => {
     el.onclick = async e => {
       e.stopPropagation();
       el.disabled = true;
-      try { await exportarJornadaPDF(parseInt(el.dataset.id), true); }
+      try {
+        const rawId = el.dataset.id;
+        const id = isNaN(Number(rawId)) ? rawId : Number(rawId);
+        await exportarJornadaPDF(id, true);
+      }
       finally { el.disabled = false; }
     };
   });
@@ -2315,7 +2372,13 @@ function setHistFilter(f) {
   renderHistorial();
 }
 async function openJornada(id) {
-  const j = await dbGet('jornadas', id);
+  let j = await dbGet('jornadas', id);
+  if (!j && typeof id === 'string' && !isNaN(Number(id))) {
+    j = await dbGet('jornadas', Number(id));
+  }
+  if (!j && _nubeJornadasMap && _nubeJornadasMap.has(String(id))) {
+    j = _nubeJornadasMap.get(String(id));
+  }
   if (!j) return;
   const tj = totalesDeJornada(j);
   $('#mjFecha').textContent = fechaLegible(j.fecha);
@@ -2696,14 +2759,24 @@ async function compartirPDFWhatsApp(doc, nombre, texto) {
 }
 
 async function exportarJornadaPDF(id, compartir) {
-  const j = await dbGet('jornadas', id);
+  let j = await dbGet('jornadas', id);
+  if (!j && typeof id === 'string' && !isNaN(Number(id))) {
+    j = await dbGet('jornadas', Number(id));
+  }
+  if (!j && _nubeJornadasMap && _nubeJornadasMap.has(String(id))) {
+    j = _nubeJornadasMap.get(String(id));
+  }
   if (!j || !window.jspdf) return;
   const { jsPDF } = window.jspdf;
   await obtenerLogoPDF();
   const doc = new jsPDF();
 
+  const nombreOp = j.nombreUsuario || j.usuario || State.user.nombre;
+  const legajoOp = j.legajo || State.user.legajo;
+  const zonaOp = j.zona || State.user.zona || '-';
+
   drawElegantHeader(doc, 'BAREMO', 'Jornada del ' + fechaLegible(j.fecha),
-    State.user.nombre, 'Legajo: ' + State.user.legajo + ' | Zona: ' + (State.user.zona || '-'));
+    nombreOp, 'Legajo: ' + legajoOp + ' | Zona: ' + zonaOp);
 
   const tareas = Array.isArray(j.tareas) ? j.tareas : [];
   const finalizados = (j.items || []).filter(it => it.tareaId);
@@ -3718,6 +3791,9 @@ async function renderAdmin() {
   // Cargar estado en tiempo real del emisor push y comunicados remotos
   await cargarPanelAdminPush();
   await actualizarEstadoSyncNube();
+
+  // Renderizar de inmediato el reporte multi-dispositivo consolidado
+  await renderAdminReportesView();
 }
 function actualizarLabelFecha() {
   const label = $('#adminFechaLabel');
@@ -3848,7 +3924,7 @@ function setupAdmin() {
       btn.classList.add('active');
       State.adminReportType = btn.dataset.type;
       actualizarLabelFecha();
-      $('#adminSummary').style.display = 'none';
+      renderAdminReportesView();
     };
   });
 
@@ -3860,12 +3936,44 @@ function setupAdmin() {
       try {
         await cargarUsuariosReporteAdmin();
         await actualizarEstadoSyncNube();
-        toast('☁️ Lista de cuadrillas y datos sincronizados actualizados', 'success');
+        await renderAdminReportesView();
+        toast('☁️ Reportes consolidados actualizados desde la nube', 'success');
       } catch (err) {
         toast('Error al consultar nube: ' + err.message, 'error');
       } finally {
         btnRefrescarNube.disabled = false;
         btnRefrescarNube.textContent = '🔄 Actualizar Nube';
+      }
+    };
+  }
+
+  const btnDescargarNube = $('#btnDescargarNubeLocal');
+  if (btnDescargarNube) {
+    btnDescargarNube.onclick = async () => {
+      btnDescargarNube.disabled = true;
+      btnDescargarNube.textContent = '⏳ Descargando...';
+      try {
+        const res = await fetchAdminAPI('/api/sync/descargar-todas');
+        if (!res.ok) throw new Error('Error al conectar con servidor');
+        const json = await res.json();
+        if (!json.ok || !Array.isArray(json.jornadas)) throw new Error(json.error || 'Respuesta inválida');
+        
+        let guardadas = 0;
+        for (const j of json.jornadas) {
+          try {
+            await dbPut('jornadas', j);
+            guardadas++;
+          } catch (e) {}
+        }
+        await cargarUsuariosReporteAdmin();
+        await actualizarEstadoSyncNube();
+        await renderAdminReportesView();
+        toast(`✅ Se sincronizaron ${guardadas} jornadas de la nube a este equipo`, 'success');
+      } catch (err) {
+        toast(`❌ Error al descargar: ${err.message}`, 'error');
+      } finally {
+        btnDescargarNube.disabled = false;
+        btnDescargarNube.textContent = '📥 Traer Nube a Este Equipo';
       }
     };
   }
@@ -3879,6 +3987,7 @@ function setupAdmin() {
         await sincronizarJornadasAlServidor();
         await cargarUsuariosReporteAdmin();
         await actualizarEstadoSyncNube();
+        await renderAdminReportesView();
         toast('☁️ Tus jornadas cerradas se subieron con éxito a la nube', 'success');
       } catch (err) {
         toast('Error al subir: ' + err.message, 'error');
@@ -3890,11 +3999,13 @@ function setupAdmin() {
   }
 
   const selAdminUser = $('#adminUsuario');
-  if (selAdminUser) selAdminUser.onchange = () => { $('#adminSummary').style.display = 'none'; };
+  if (selAdminUser) selAdminUser.onchange = () => renderAdminReportesView();
+  const selAdminEstado = $('#adminEstadoJornada');
+  if (selAdminEstado) selAdminEstado.onchange = () => renderAdminReportesView();
   const selAdminFecha = $('#adminFecha');
-  if (selAdminFecha) selAdminFecha.onchange = () => { $('#adminSummary').style.display = 'none'; };
+  if (selAdminFecha) selAdminFecha.onchange = () => renderAdminReportesView();
   const selAdminQuincena = $('#adminQuincenaSel');
-  if (selAdminQuincena) selAdminQuincena.onchange = () => { $('#adminSummary').style.display = 'none'; };
+  if (selAdminQuincena) selAdminQuincena.onchange = () => renderAdminReportesView();
 
   $('#btnExportAllData').onclick = async () => {
     const legajo = State.user.legajo;
@@ -3961,93 +4072,8 @@ function setupAdmin() {
     i.click();
   };
   $('#btnAdminPreview').onclick = async () => {
-    const { datos, periodoLabel } = await obtenerDatosReporteAdmin();
-    const summary = $('#adminSummary');
-    const content = $('#adminSummaryContent');
-    const badge = $('#adminSummaryPeriodoBadge');
-    if (badge) badge.textContent = periodoLabel;
-
-    if (!datos.length) {
-      summary.style.display = 'block';
-      content.innerHTML = '<div style="color:var(--text-soft);text-align:center;padding:16px;">📭 Sin jornadas registradas en la nube ni localmente para el período seleccionado.</div>';
-      return;
-    }
-
-    const totalProduccion = datos.reduce((a, d) => a + (Number(d.total) || 0), 0);
-    const totalItems = datos.reduce((a, d) => a + (Number(d.cantidadItems) || 0), 0);
-    const usuariosUnicos = [...new Set(datos.map(d => d.legajo))];
-
-    // Desglose por usuario
-    const porUsuario = {};
-    datos.forEach(d => {
-      const leg = d.legajo || 'Sin Legajo';
-      if (!porUsuario[leg]) {
-        porUsuario[leg] = {
-          nombre: d.nombreUsuario || 'Desconocido',
-          zona: d.zona || '-',
-          jornadas: 0,
-          items: 0,
-          total: 0
-        };
-      }
-      porUsuario[leg].jornadas += 1;
-      porUsuario[leg].items += (Number(d.cantidadItems) || 0);
-      porUsuario[leg].total += (Number(d.total) || 0);
-    });
-
-    let tablaUsuariosHtml = `
-      <div style="margin-top:12px;overflow-x:auto;">
-        <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
-          <thead>
-            <tr style="background:var(--card);border-bottom:1.5px solid var(--border);text-align:left;">
-              <th style="padding:6px 8px;">Cuadrilla / Operario</th>
-              <th style="padding:6px 8px;text-align:center;">Jornadas</th>
-              <th style="padding:6px 8px;text-align:center;">Ítems</th>
-              <th style="padding:6px 8px;text-align:right;">Producción</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    for (const [leg, uInfo] of Object.entries(porUsuario)) {
-      tablaUsuariosHtml += `
-        <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:6px 8px;">
-            <strong>${escapeHTML(uInfo.nombre)}</strong>
-            <div style="font-size:10px;color:var(--text-soft);">Legajo ${escapeHTML(leg)} · ${escapeHTML(uInfo.zona)}</div>
-          </td>
-          <td style="padding:6px 8px;text-align:center;">${uInfo.jornadas}</td>
-          <td style="padding:6px 8px;text-align:center;">${uInfo.items}</td>
-          <td style="padding:6px 8px;text-align:right;font-weight:700;color:var(--primary);">${fmt(uInfo.total)}</td>
-        </tr>
-      `;
-    }
-    tablaUsuariosHtml += `</tbody></table></div>`;
-
-    summary.style.display = 'block';
-    content.innerHTML = `
-      <div style="font-weight:700;margin-bottom:8px;color:var(--primary);font-size:13px;">${periodoLabel}</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:10px;">
-        <div style="background:var(--bg);padding:8px 10px;border-radius:6px;">
-          <div style="font-size:10.5px;color:var(--text-soft);">Total Jornadas</div>
-          <div style="font-size:16px;font-weight:800;color:var(--text);">${fmtNum(datos.length)}</div>
-        </div>
-        <div style="background:var(--bg);padding:8px 10px;border-radius:6px;">
-          <div style="font-size:10.5px;color:var(--text-soft);">Cuadrillas Activas</div>
-          <div style="font-size:16px;font-weight:800;color:var(--text);">${fmtNum(usuariosUnicos.length)}</div>
-        </div>
-        <div style="background:var(--bg);padding:8px 10px;border-radius:6px;">
-          <div style="font-size:10.5px;color:var(--text-soft);">Ítems de Baremo</div>
-          <div style="font-size:16px;font-weight:800;color:var(--text);">${fmtNum(totalItems)}</div>
-        </div>
-        <div style="background:var(--bg);padding:8px 10px;border-radius:6px;">
-          <div style="font-size:10.5px;color:var(--text-soft);">Producción Total</div>
-          <div style="font-size:16px;font-weight:800;color:#16a34a;">${fmt(totalProduccion)}</div>
-        </div>
-      </div>
-      ${tablaUsuariosHtml}
-    `;
-    toast('✓ Vista previa de datos remotos generada', 'success');
+    await renderAdminReportesView();
+    toast('✓ Reportes consolidados actualizados', 'success');
   };
   $('#btnAdminPDF').onclick = async () => {
     if (!window.jspdf) { toast('jsPDF no disponible', 'error'); return; }
@@ -4058,8 +4084,8 @@ function setupAdmin() {
     
     drawElegantHeader(doc, "REPORTE ADMINISTRATIVO", periodoLabel, "BAREMO", `Generado: ${fechaCorta(hoy())}`);
     
-    const totalProduccion = datos.reduce((a, d) => a + (d.total || 0), 0);
-    const totalItems = datos.reduce((a, d) => a + (d.cantidadItems || 0), 0);
+    const totalProduccion = datos.reduce((a, d) => a + (Number(d.total) || Number(d.totalEnCurso) || 0), 0);
+    const totalItems = datos.reduce((a, d) => a + (Number(d.cantidadItems) || (Array.isArray(d.items) ? d.items.length : 0) || 0), 0);
     const usuariosUnicos = [...new Set(datos.map(d => d.legajo))].length;
     
     doc.setTextColor(0);
@@ -4073,7 +4099,16 @@ function setupAdmin() {
     doc.text(`• Ítems totales: ${totalItems}`, 14, 67);
     doc.text(`• Producción total: ${fmt(totalProduccion)}`, 14, 73);
     
-    const body = datos.map((d, i) => [i + 1, fechaCorta(d.fecha), d.nombreUsuario, d.legajo, d.zona, d.cantidadRegistros || 0, d.cantidadItems || 0, fmt(d.total || 0)]);
+    const body = datos.map((d, i) => [
+      i + 1,
+      fechaCorta(d.fecha),
+      d.nombreUsuario,
+      d.legajo,
+      d.zona,
+      d.cantidadRegistros || (Array.isArray(d.tareas) ? d.tareas.length : 0) || 0,
+      d.cantidadItems || (Array.isArray(d.items) ? d.items.length : 0) || 0,
+      fmt(Number(d.total) || Number(d.totalEnCurso) || 0)
+    ]);
     doc.autoTable({
       startY: 80,
       head: [['#', 'Fecha', 'Usuario', 'Legajo', 'Zona', 'Regs', 'Ítems', 'Total']],
@@ -4140,11 +4175,22 @@ function setupAdmin() {
     if (!datos.length) { toast('Sin datos para el período', 'warn'); return; }
     const wb = XLSX.utils.book_new();
     const resumen = datos.map((d, i) => ({
-      '#': i + 1, Fecha: fechaCorta(d.fecha), Usuario: d.nombreUsuario, Legajo: d.legajo,
-      Zona: d.zona, Registros: d.cantidadRegistros || 0, Ítems: d.cantidadItems || 0, Total: d.total || 0
+      '#': i + 1,
+      Fecha: fechaCorta(d.fecha),
+      Usuario: d.nombreUsuario,
+      Legajo: d.legajo,
+      Zona: d.zona,
+      Estado: d.cerrada ? 'Cerrada' : 'En Curso',
+      Registros: d.cantidadRegistros || (Array.isArray(d.tareas) ? d.tareas.length : 0) || 0,
+      Ítems: d.cantidadItems || (Array.isArray(d.items) ? d.items.length : 0) || 0,
+      Total: Number(d.total) || Number(d.totalEnCurso) || 0,
+      ATS: d.ats ? (d.ats.ot ? `OT ${d.ats.ot}` : 'Firmado') : 'No'
     }));
     resumen.push({});
-    resumen.push({ Fecha: 'TOTAL', Total: datos.reduce((a, d) => a + (d.total || 0), 0) });
+    resumen.push({
+      Fecha: 'TOTAL',
+      Total: datos.reduce((a, d) => a + (Number(d.total) || Number(d.totalEnCurso) || 0), 0)
+    });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), 'Resumen');
     const usuariosAgrupados = {};
     datos.forEach(d => {
@@ -4188,13 +4234,32 @@ function escapeHTML(str) {
 
 /* Helper universal para peticiones al servidor que requieren privilegios de Administrador / Supervisión */
 async function fetchAdminAPI(url, options = {}) {
-  const token = sessionStorage.getItem('baremo_admin_token') || '';
-  const pass = sessionStorage.getItem('baremo_admin_pass') || '';
+  let token = sessionStorage.getItem('baremo_admin_token') || localStorage.getItem('baremo_admin_token') || '';
+  let pass = sessionStorage.getItem('baremo_admin_pass') || localStorage.getItem('baremo_admin_pass') || '';
   const headers = Object.assign({}, options.headers || {}, {
     'x-admin-token': token,
     'x-admin-password': pass
   });
-  return fetch(url, Object.assign({}, options, { headers }));
+  let res = await fetch(url, Object.assign({}, options, { headers }));
+  if (res.status === 401 && pass) {
+    try {
+      const loginRes = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pass })
+      });
+      if (loginRes.ok) {
+        const d = await loginRes.json();
+        if (d && d.token) {
+          sessionStorage.setItem('baremo_admin_token', d.token);
+          localStorage.setItem('baremo_admin_token', d.token);
+          headers['x-admin-token'] = d.token;
+          res = await fetch(url, Object.assign({}, options, { headers }));
+        }
+      }
+    } catch (e) {}
+  }
+  return res;
 }
 
 /* Carga las cuadrillas y usuarios disponibles para reportes remotos y locales */
@@ -4244,7 +4309,7 @@ async function cargarUsuariosReporteAdmin() {
   }
 
   // 3. Reconstruir el selector
-  sel.innerHTML = '<option value="todos">👥 Todos los usuarios (Consolidado)</option>';
+  sel.innerHTML = '<option value="todos">👥 Todas las cuadrillas (Reporte Consolidado)</option>';
   const listaOrdenada = Array.from(mapaUsuarios.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   for (const u of listaOrdenada) {
@@ -4265,8 +4330,8 @@ async function cargarUsuariosReporteAdmin() {
 
 /* Actualiza las etiquetas de sincronización en la nube en el panel de reporte */
 async function actualizarEstadoSyncNube() {
-  const badge = $('#adminSyncEstadoBadge');
-  const countSpan = $('#adminSyncTotalJornadas');
+  const badge = $('#adminSyncStatusBadge') || $('#adminSyncEstadoBadge');
+  const countSpan = $('#adminSyncInfo') || $('#adminSyncTotalJornadas');
   const lastSyncSpan = $('#adminSyncUltimaHora');
 
   try {
@@ -4275,16 +4340,18 @@ async function actualizarEstadoSyncNube() {
       const d = await res.json();
       if (d.ok) {
         if (badge) {
-          badge.textContent = `☁️ ${d.totalUsuarios} Cuadrillas en Servidor Central`;
+          badge.textContent = `☁️ ${d.totalUsuarios} Cuadrillas Conectadas`;
           badge.style.background = 'rgba(22, 163, 74, 0.15)';
           badge.style.color = '#16a34a';
         }
-        if (countSpan) countSpan.textContent = `${d.totalJornadas} jornadas sincronizadas`;
+        if (countSpan) {
+          countSpan.textContent = `${d.totalJornadas} jornadas en servidor (${d.totalCerradas || d.totalJornadas} cerradas · ${d.totalAbiertas || 0} en curso)`;
+        }
         if (lastSyncSpan) {
           const ahoraHora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           lastSyncSpan.textContent = `Actualizado ${ahoraHora}`;
         }
-        return;
+        return d;
       }
     }
   } catch (e) {
@@ -4295,6 +4362,9 @@ async function actualizarEstadoSyncNube() {
     badge.textContent = '☁️ Nube local / sin conexión';
     badge.style.background = 'rgba(100, 116, 139, 0.15)';
     badge.style.color = 'var(--text-soft)';
+  }
+  if (countSpan) {
+    countSpan.textContent = 'Modo local: visualizando registros almacenados en este dispositivo';
   }
 }
 
@@ -4684,9 +4754,309 @@ async function eliminarAvisoRemoto(id) {
   }
 }
 
+let _adminViewModo = 'jornadas';
+
+async function renderAdminReportesView() {
+  const summary = $('#adminSummary');
+  const content = $('#adminSummaryContent');
+  const badge = $('#adminSummaryPeriodoBadge');
+  if (!summary || !content) return;
+
+  summary.style.display = 'block';
+  content.innerHTML = `
+    <div style="text-align:center;padding:24px 16px;color:var(--text-soft);font-size:12px;">
+      <div style="display:inline-block;animation:spin 1s linear infinite;margin-bottom:6px;font-size:18px;">⏳</div>
+      <div>Consultando reportes consolidados de todos los dispositivos...</div>
+    </div>
+  `;
+
+  const { datos, periodoLabel } = await obtenerDatosReporteAdmin();
+  if (badge) badge.textContent = periodoLabel;
+
+  if (!datos || !datos.length) {
+    content.innerHTML = `
+      <div style="text-align:center;padding:24px 16px;color:var(--text-soft);background:var(--bg);border-radius:8px;">
+        <div style="font-size:28px;margin-bottom:6px;">📭</div>
+        <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:4px;">No hay jornadas para el filtro seleccionado</div>
+        <div style="font-size:11.5px;color:var(--text-soft);margin-bottom:12px;">No se registraron jornadas en la nube ni localmente con este criterio.</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" id="btnAdminVerHistorico" style="font-size:11.5px;padding:4px 10px;">
+            🗂️ Ver Histórico Completo
+          </button>
+          <button class="btn btn-ghost btn-sm" id="btnAdminRefrescarVacio" style="font-size:11.5px;padding:4px 10px;">
+            🔄 Refrescar Nube
+          </button>
+        </div>
+      </div>
+    `;
+    const btnHist = $('#btnAdminVerHistorico');
+    if (btnHist) {
+      btnHist.onclick = () => {
+        const btnTodos = $(`#adminReportType button[data-type="todos"]`);
+        if (btnTodos) btnTodos.click();
+      };
+    }
+    const btnRef = $('#btnAdminRefrescarVacio');
+    if (btnRef) {
+      btnRef.onclick = () => renderAdminReportesView();
+    }
+    return;
+  }
+
+  const totalProduccionCerrada = datos.filter(d => d.cerrada).reduce((a, d) => a + (Number(d.total) || 0), 0);
+  const totalProduccionEnCurso = datos.filter(d => !d.cerrada).reduce((a, d) => a + (Number(d.totalEnCurso || d.total) || 0), 0);
+  const totalItems = datos.reduce((a, d) => a + (Number(d.cantidadItems) || (Array.isArray(d.items) ? d.items.length : 0) || 0), 0);
+  const totalTareas = datos.reduce((a, d) => a + (Number(d.cantidadRegistros) || (Array.isArray(d.tareas) ? d.tareas.length : 0) || 0), 0);
+  const totalAtsFirmados = datos.filter(d => d.ats && (d.ats.completado || d.ats.firmadoPor || d.ats.ot)).length;
+  const usuariosUnicos = [...new Set(datos.map(d => String(d.legajo)))];
+  const totalCerradas = datos.filter(d => d.cerrada).length;
+  const totalEnCurso = datos.length - totalCerradas;
+
+  // Tarjetas KPI
+  let kpisHtml = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:12px;">
+      <div style="background:var(--bg);padding:8px 10px;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:10.5px;color:var(--text-soft);font-weight:600;">Producción Total</div>
+        <div style="font-size:16px;font-weight:800;color:#16a34a;">${fmt(totalProduccionCerrada)}</div>
+        ${totalProduccionEnCurso > 0 ? `<div style="font-size:10px;color:#ca8a04;">+ ${fmt(totalProduccionEnCurso)} en curso</div>` : `<div style="font-size:10px;color:var(--text-soft);">${totalCerradas} cerradas</div>`}
+      </div>
+      <div style="background:var(--bg);padding:8px 10px;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:10.5px;color:var(--text-soft);font-weight:600;">Jornadas Totales</div>
+        <div style="font-size:16px;font-weight:800;color:var(--text);">${fmtNum(datos.length)}</div>
+        <div style="font-size:10px;color:var(--text-soft);">${totalCerradas} cerradas · ${totalEnCurso} en curso</div>
+      </div>
+      <div style="background:var(--bg);padding:8px 10px;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:10.5px;color:var(--text-soft);font-weight:600;">Cuadrillas Conectadas</div>
+        <div style="font-size:16px;font-weight:800;color:var(--primary);">${fmtNum(usuariosUnicos.length)} cuadrillas</div>
+        <div style="font-size:10px;color:var(--text-soft);">${fmtNum(totalTareas)} tareas registradas</div>
+      </div>
+      <div style="background:var(--bg);padding:8px 10px;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:10.5px;color:var(--text-soft);font-weight:600;">Ítems & ATS</div>
+        <div style="font-size:16px;font-weight:800;color:#0284c7;">${fmtNum(totalItems)} ítems</div>
+        <div style="font-size:10px;color:var(--text-soft);">${totalAtsFirmados} con ATS firmado</div>
+      </div>
+    </div>
+  `;
+
+  // Barra de pestañas
+  let tabsHtml = `
+    <div style="display:flex;gap:6px;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+      <button class="btn btn-sm ${_adminViewModo === 'jornadas' ? 'btn-primary' : 'btn-ghost'}" id="btnAdminTabJornadas" style="font-size:11px;padding:4px 10px;">
+        📋 Lista de Jornadas de Todos los Dispositivos (${datos.length})
+      </button>
+      <button class="btn btn-sm ${_adminViewModo === 'cuadrillas' ? 'btn-primary' : 'btn-ghost'}" id="btnAdminTabCuadrillas" style="font-size:11px;padding:4px 10px;">
+        👥 Resumen por Cuadrilla (${usuariosUnicos.length})
+      </button>
+    </div>
+  `;
+
+  let detalleHtml = '';
+
+  if (_adminViewModo === 'jornadas') {
+    detalleHtml += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+    datos.forEach((j, idx) => {
+      const jornadaKey = `jornada_row_${idx}`;
+      const itemsList = Array.isArray(j.items) ? j.items : [];
+      const cantItems = j.cantidadItems || itemsList.length || 0;
+      const cantTareas = j.cantidadRegistros || (Array.isArray(dTareas => dTareas.length) ? j.tareas.length : (Array.isArray(j.tareas) ? j.tareas.length : 0)) || 0;
+      const tieneAts = j.ats && (j.ats.completado || j.ats.firmadoPor || j.ats.ot);
+      const montoTotal = Number(j.total) || Number(j.totalEnCurso) || 0;
+      const estadoBadge = j.cerrada 
+        ? `<span style="background:rgba(22,163,74,0.12);color:#16a34a;font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:12px;">🟢 Cerrada</span>`
+        : `<span style="background:rgba(234,179,8,0.15);color:#ca8a04;font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:12px;">🟡 En Curso</span>`;
+
+      detalleHtml += `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="font-weight:700;font-size:12.5px;color:var(--text);">📅 ${fechaLegible(j.fecha)}</span>
+                ${estadoBadge}
+              </div>
+              <div style="font-size:12px;color:var(--text);margin-top:3px;">
+                👤 <strong>${escapeHTML(j.nombreUsuario || 'Operador')}</strong>
+                <span style="color:var(--text-soft);font-size:11px;"> · Legajo ${escapeHTML(j.legajo)} · Zona ${escapeHTML(j.zona || '-')}</span>
+              </div>
+              <div style="font-size:11px;color:var(--text-soft);margin-top:2px;">
+                ⏰ ${escapeHTML(j.horaInicio || '--:--')} a ${escapeHTML(j.horaFin || '--:--')} · ${cantItems} ítem(s) de baremo · ${cantTareas} tarea(s)
+              </div>
+              ${tieneAts ? `
+                <div style="font-size:11px;color:#16a34a;font-weight:600;margin-top:3px;display:flex;align-items:center;gap:4px;">
+                  <span>✅ ATS: OT ${escapeHTML(j.ats.ot || 'S/N')}</span>
+                  ${j.ats.obra ? `<span>· ${escapeHTML(j.ats.obra)}</span>` : ''}
+                </div>
+              ` : `
+                <div style="font-size:11px;color:var(--text-soft);margin-top:3px;">⏳ Sin ficha ATS registrada</div>
+              `}
+            </div>
+            <div style="text-align:right;min-width:110px;">
+              <div style="font-size:10.5px;color:var(--text-soft);">Producción</div>
+              <div style="font-size:16px;font-weight:800;color:var(--primary);">${fmt(montoTotal)}</div>
+              <button class="btn btn-ghost btn-sm btn-toggle-detalle-jornada" data-target="${jornadaKey}" style="margin-top:4px;padding:3px 8px;font-size:10.5px;border:1px solid var(--border);">
+                👁️ Ver Baremos y ATS
+              </button>
+            </div>
+          </div>
+
+          <!-- Acordeon desplegable de la jornada -->
+          <div id="${jornadaKey}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+            ${itemsList.length > 0 ? `
+              <div style="font-weight:700;font-size:11px;color:var(--text);margin-bottom:6px;">📋 Desglose de Códigos de Baremo Cargados:</div>
+              <div style="overflow-x:auto;margin-bottom:8px;">
+                <table style="width:100%;font-size:10.5px;border-collapse:collapse;">
+                  <thead>
+                    <tr style="background:var(--bg);border-bottom:1px solid var(--border);text-align:left;">
+                      <th style="padding:4px 6px;">Código</th>
+                      <th style="padding:4px 6px;">Descripción</th>
+                      <th style="padding:4px 6px;text-align:center;">Cant.</th>
+                      <th style="padding:4px 6px;text-align:right;">P. Unit</th>
+                      <th style="padding:4px 6px;text-align:right;">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itemsList.map(it => `
+                      <tr style="border-bottom:1px solid var(--border);">
+                        <td style="padding:4px 6px;font-family:monospace;font-weight:700;color:var(--primary);">${escapeHTML(it.codigo)}</td>
+                        <td style="padding:4px 6px;">${escapeHTML(it.descripcion || '-')}</td>
+                        <td style="padding:4px 6px;text-align:center;">${it.cantidad || 1}</td>
+                        <td style="padding:4px 6px;text-align:right;color:var(--text-soft);">${fmt(it.precio || 0)}</td>
+                        <td style="padding:4px 6px;text-align:right;font-weight:700;">${fmt(it.subtotal || 0)}</td>
+                      </tr>
+                    `).join('')}
+                    <tr style="background:var(--bg);font-weight:700;">
+                      <td colspan="4" style="padding:4px 6px;text-align:right;">Total Calculado:</td>
+                      <td style="padding:4px 6px;text-align:right;color:var(--primary);">${fmt(montoTotal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ` : `
+              <div style="color:var(--text-soft);font-size:11px;padding:4px 0;">No contiene ítems detallados de baremo guardados.</div>
+            `}
+
+            ${tieneAts ? `
+              <div style="background:var(--bg);padding:8px 10px;border-radius:6px;border:1px solid var(--border);margin-top:6px;font-size:11px;">
+                <div style="font-weight:700;color:var(--primary);margin-bottom:4px;display:flex;justify-content:space-between;">
+                  <span>📋 Ficha Técnica ATS (Análisis de Trabajo Seguro)</span>
+                  <span style="color:#16a34a;font-weight:600;">Firmado</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:4px;color:var(--text-soft);">
+                  <div><strong>OT:</strong> ${escapeHTML(j.ats.ot || '-')}</div>
+                  <div><strong>Obra:</strong> ${escapeHTML(j.ats.obra || '-')}</div>
+                  <div><strong>Pedido:</strong> ${escapeHTML(j.ats.pedido || '-')}</div>
+                  <div><strong>Sector:</strong> ${escapeHTML(j.ats.sector || '-')}</div>
+                  <div style="grid-column:1/-1;"><strong>Dirección:</strong> ${escapeHTML(j.ats.direccion || '-')}</div>
+                  <div style="grid-column:1/-1;"><strong>Trabajo Asignado:</strong> ${escapeHTML(j.ats.trabajo || '-')}</div>
+                  ${Array.isArray(j.ats.cuadrilla) && j.ats.cuadrilla.length > 0 ? `
+                    <div style="grid-column:1/-1;"><strong>Cuadrilla Firmante:</strong> ${j.ats.cuadrilla.map(c => escapeHTML(c.nombre || c)).join(', ')}</div>
+                  ` : ''}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    });
+    detalleHtml += `</div>`;
+  } else {
+    // Modo 2: Consolidado por Cuadrilla
+    const porUsuario = {};
+    datos.forEach(d => {
+      const leg = d.legajo || 'Sin Legajo';
+      if (!porUsuario[leg]) {
+        porUsuario[leg] = {
+          nombre: d.nombreUsuario || 'Desconocido',
+          zona: d.zona || '-',
+          jornadas: 0,
+          cerradas: 0,
+          abiertas: 0,
+          items: 0,
+          total: 0
+        };
+      }
+      porUsuario[leg].jornadas += 1;
+      if (d.cerrada) porUsuario[leg].cerradas += 1;
+      else porUsuario[leg].abiertas += 1;
+      porUsuario[leg].items += (Number(d.cantidadItems) || (Array.isArray(d.items) ? d.items.length : 0) || 0);
+      porUsuario[leg].total += (Number(d.total) || Number(d.totalEnCurso) || 0);
+    });
+
+    detalleHtml += `
+      <div style="overflow-x:auto;">
+        <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
+          <thead>
+            <tr style="background:var(--card);border-bottom:1.5px solid var(--border);text-align:left;">
+              <th style="padding:6px 8px;">Cuadrilla / Operario</th>
+              <th style="padding:6px 8px;text-align:center;">Jornadas</th>
+              <th style="padding:6px 8px;text-align:center;">Ítems</th>
+              <th style="padding:6px 8px;text-align:right;">Producción</th>
+              <th style="padding:6px 8px;text-align:right;">Promedio/Jornada</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Object.entries(porUsuario).map(([leg, uInfo]) => {
+              const prom = uInfo.jornadas > 0 ? Math.round(uInfo.total / uInfo.jornadas) : 0;
+              return `
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:6px 8px;">
+                    <strong>${escapeHTML(uInfo.nombre)}</strong>
+                    <div style="font-size:10px;color:var(--text-soft);">Legajo ${escapeHTML(leg)} · ${escapeHTML(uInfo.zona)}</div>
+                  </td>
+                  <td style="padding:6px 8px;text-align:center;">
+                    ${uInfo.jornadas}
+                    <div style="font-size:9.5px;color:var(--text-soft);">${uInfo.cerradas} cerradas · ${uInfo.abiertas} en curso</div>
+                  </td>
+                  <td style="padding:6px 8px;text-align:center;">${uInfo.items}</td>
+                  <td style="padding:6px 8px;text-align:right;font-weight:700;color:#16a34a;">${fmt(uInfo.total)}</td>
+                  <td style="padding:6px 8px;text-align:right;color:var(--text-soft);">${fmt(prom)}</td>
+                </tr>
+              `;
+            }).join('')}
+            <tr style="background:var(--bg);font-weight:800;border-top:2px solid var(--border);">
+              <td style="padding:8px;">TOTAL CONSOLIDADO (${usuariosUnicos.length} cuadrillas)</td>
+              <td style="padding:8px;text-align:center;">${datos.length}</td>
+              <td style="padding:8px;text-align:center;">${totalItems}</td>
+              <td style="padding:8px;text-align:right;color:#16a34a;">${fmt(totalProduccionCerrada + totalProduccionEnCurso)}</td>
+              <td style="padding:8px;text-align:right;">${fmt(datos.length > 0 ? Math.round((totalProduccionCerrada + totalProduccionEnCurso) / datos.length) : 0)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  content.innerHTML = `
+    <div style="font-weight:700;margin-bottom:8px;color:var(--primary);font-size:13px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+      <span>${periodoLabel}</span>
+      <span style="font-size:11px;font-weight:normal;color:var(--text-soft);">${datos.length} jornada(s) registradas</span>
+    </div>
+    ${kpisHtml}
+    ${tabsHtml}
+    ${detalleHtml}
+  `;
+
+  const tabJornadas = $('#btnAdminTabJornadas');
+  const tabCuadrillas = $('#btnAdminTabCuadrillas');
+  if (tabJornadas) tabJornadas.onclick = () => { _adminViewModo = 'jornadas'; renderAdminReportesView(); };
+  if (tabCuadrillas) tabCuadrillas.onclick = () => { _adminViewModo = 'cuadrillas'; renderAdminReportesView(); };
+
+  $$('.btn-toggle-detalle-jornada').forEach(btn => {
+    btn.onclick = () => {
+      const targetId = btn.dataset.target;
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        const isHidden = targetEl.style.display === 'none';
+        targetEl.style.display = isHidden ? 'block' : 'none';
+        btn.textContent = isHidden ? '🔼 Ocultar Baremos' : '👁️ Ver Baremos y ATS';
+      }
+    };
+  });
+}
+
 async function obtenerDatosReporteAdmin() {
-  const tipo = State.adminReportType || 'diario';
+  const tipo = State.adminReportType || 'todos';
   const usuarioSel = $('#adminUsuario')?.value || 'todos';
+  const estadoSel = $('#adminEstadoJornada')?.value || 'todos';
   const fechaInputVal = $('#adminFecha')?.value || hoy();
   const quincenaSel = $('#adminQuincenaSel')?.value || '1';
 
@@ -4722,10 +5092,10 @@ async function obtenerDatosReporteAdmin() {
     fechaHasta = `${y}-${m}-${String(ultDia).padStart(2, '0')}`;
     periodoLabel = `Reporte Mensual - ${nombreMes(mesRef)}`;
   } else {
-    // 'todos' / consolidado completo
-    fechaDesde = '2020-01-01';
+    // 'todos' / histórico consolidado
+    fechaDesde = '2000-01-01';
     fechaHasta = '2099-12-31';
-    periodoLabel = 'Reporte Histórico Consolidado (Todas las fechas)';
+    periodoLabel = 'Reporte Histórico Consolidado (Todos los dispositivos)';
   }
 
   // 1. Obtener datos remotos de la nube
@@ -4737,7 +5107,8 @@ async function obtenerDatosReporteAdmin() {
       fecha: fechaInputVal,
       desde: fechaDesde,
       hasta: fechaHasta,
-      quincena: quincenaSel
+      quincena: quincenaSel,
+      estado: estadoSel
     });
     const res = await fetchAdminAPI(`/api/admin/reportes/datos?${qParams.toString()}`);
     if (res.ok) {
@@ -4757,31 +5128,42 @@ async function obtenerDatosReporteAdmin() {
 
   if (Array.isArray(datosRemotos)) {
     datosRemotos.forEach(j => {
-      const key = String(j.id || `${j.legajo}_${j.fecha}_${j.horaInicio}`);
+      const idKey = String(j.remoteId || j.syncId || j.localId || j.id || j.horaInicio || '1').trim();
+      const key = `jornada__${String(j.legajo).trim()}__${String(j.fecha).trim()}__${idKey}`;
       jornadasMap.set(key, j);
     });
   }
 
-  let localesFiltradas = todasJornadasLocales.filter(j => j.cerrada);
+  let localesFiltradas = todasJornadasLocales;
+  if (estadoSel === 'cerradas') {
+    localesFiltradas = localesFiltradas.filter(j => j.cerrada);
+  } else if (estadoSel === 'abiertas') {
+    localesFiltradas = localesFiltradas.filter(j => !j.cerrada);
+  }
+
   if (usuarioSel !== 'todos') {
     localesFiltradas = localesFiltradas.filter(j => String(j.legajo) === String(usuarioSel));
   }
-  localesFiltradas = localesFiltradas.filter(j => j.fecha >= fechaDesde && j.fecha <= fechaHasta);
+  if (tipo !== 'todos') {
+    localesFiltradas = localesFiltradas.filter(j => j.fecha >= fechaDesde && j.fecha <= fechaHasta);
+  }
 
   localesFiltradas.forEach(j => {
-    const key = String(j.id || `${j.legajo}_${j.fecha}_${j.horaInicio}`);
+    const idKey = String(j.id || j.horaInicio || '1').trim();
+    const key = `jornada__${String(j.legajo).trim()}__${String(j.fecha).trim()}__${idKey}`;
     if (!jornadasMap.has(key)) {
       const u = usuariosLocales.find(u => String(u.legajo) === String(j.legajo));
       jornadasMap.set(key, {
         ...j,
-        nombreUsuario: u?.nombre || j.nombreUsuario || 'Operador',
-        zona: u?.zona || j.zona || '-'
+        nombreUsuario: u?.nombre || j.nombreUsuario || j.usuario || State.user?.nombre || 'Operador',
+        zona: u?.zona || j.zona || State.user?.zona || '-',
+        origenLocal: true
       });
     }
   });
 
   const datos = Array.from(jornadasMap.values());
-  datos.sort((a, b) => a.fecha.localeCompare(b.fecha) || String(a.legajo).localeCompare(String(b.legajo)));
+  datos.sort((a, b) => b.fecha.localeCompare(a.fecha) || String(a.legajo).localeCompare(String(b.legajo)));
 
   return { datos, periodoLabel, fechaDesde, fechaHasta, tipo };
 }
@@ -5383,6 +5765,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btnInfoClose')?.addEventListener('click', () => $('#modalInfo').classList.remove('show'));
   
   const hse = $('#histSearch'); if (hse) hse.addEventListener('input', renderHistorial);
+  const hcf = $('#histCuadrillaFilter'); if (hcf) hcf.addEventListener('change', renderHistorial);
   const mc = $('#mjClose'); if (mc) mc.onclick = () => $('#modalJornada').classList.remove('show');
   setupRegistro();
   setupCombustible();
