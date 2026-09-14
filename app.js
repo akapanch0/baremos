@@ -3583,7 +3583,7 @@ function renderAjustes() {
     <div class="ajuste-item" data-act="backup"><div class="aj-ico">💾</div><div class="aj-text"><div class="aj-title">Backup</div><div class="aj-desc">Guardá tus datos · te lo recordamos todos los lunes</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="restore"><div class="aj-ico">📤</div><div class="aj-text"><div class="aj-title">Restaurar</div><div class="aj-desc">Recuperar datos</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="notif"><div class="aj-ico">🔔</div><div class="aj-text"><div class="aj-title">Notificaciones Locales</div><div class="aj-desc" id="ajNotifDesc">Avisos de jornada y de inicio de mes</div></div><div class="aj-arrow">›</div></div>
-    <div class="ajuste-item admin" data-act="admin"><div class="aj-ico">🔐</div><div class="aj-text"><div class="aj-title">Panel de Administración</div><div class="aj-desc">Reportes, consolidación y seguridad</div></div><div class="aj-arrow">›</div></div>
+    <div class="ajuste-item admin" data-act="admin"><div class="aj-ico">🛡️</div><div class="aj-text"><div class="aj-title">Panel de Supervisión</div><div class="aj-desc">Reportes consolidados, alertas y clave maestra</div></div><div class="aj-arrow">›</div></div>
     <div class="credits credits-min">
       <div class="credits-top">
         <span class="credits-emoji">🚀</span>
@@ -3763,7 +3763,7 @@ function setupAdmin() {
   if (btnLogin) {
     btnLogin.onclick = async () => {
       const pass = $('#adminPassword').value.trim();
-      if (!pass) { toast('❌ Ingresá la contraseña', 'error'); return; }
+      if (!pass) { toast('❌ Ingresá la Clave Maestra', 'error'); return; }
 
       btnLogin.disabled = true;
       let r;
@@ -3771,44 +3771,44 @@ function setupAdmin() {
         r = await verificarPasswordAdmin(pass);
       } catch (e) {
         btnLogin.disabled = false;
-        toast('❌ No se pudo verificar la contraseña', 'error');
+        toast('❌ No se pudo verificar la Clave Maestra', 'error');
         return;
       }
       btnLogin.disabled = false;
 
-      // Instalacion nueva: no hay contraseña definida todavia. La primera que
-      // se escribe queda registrada como la del administrador de este equipo.
+      // Instalacion nueva: no hay clave definida todavía. La primera que
+      // se escribe queda registrada como la de supervisión de este equipo.
       if (r.sinCredencial) {
         if (pass.length < 6) {
-          toast('🔐 Definí la contraseña de administrador (mínimo 6 caracteres)', 'info');
+          toast('🔐 Definí la Clave Maestra de supervisión (mínimo 6 caracteres)', 'info');
           return;
         }
-        if (!await confirmDialog('No hay contraseña de administrador en este equipo.\n\n¿Querés usar la que acabas de escribir como contraseña definitiva?')) return;
+        if (!await confirmDialog('No hay Clave Maestra de supervisión en este equipo.\n\n¿Querés usar la que acabas de escribir como Clave Maestra definitiva?')) return;
         await guardarCredencialAdmin(pass, false);
         State.adminLoggedIn = true;
         sessionStorage.setItem('baremo_admin_pass', pass);
         $('#adminLogin').style.display = 'none';
         $('#adminPanel').style.display = 'block';
         $('#adminPassword').value = '';
-        toast('✅ Contraseña de administrador creada', 'success');
+        toast('✅ Clave Maestra de supervisión creada', 'success');
         await renderAdmin();
         return;
       }
 
-      if (!r.ok) { toast('❌ Contraseña incorrecta', 'error'); return; }
+      if (!r.ok) { toast('❌ Clave Maestra incorrecta', 'error'); return; }
 
       State.adminLoggedIn = true;
       sessionStorage.setItem('baremo_admin_pass', pass);
       $('#adminLogin').style.display = 'none';
       $('#adminPanel').style.display = 'block';
       $('#adminPassword').value = '';
-      toast('✅ Acceso concedido', 'success');
+      toast('✅ Acceso a Panel de Supervisión concedido', 'success');
       await renderAdmin();
 
-      // Seguia con la contraseña de fabrica: se exige cambiarla ahora mismo.
+      // Si requería cambio de clave inicial:
       if (r.debeCambiar) {
         setTimeout(() => {
-          toast('⚠️ Estás usando la contraseña de fábrica. Cambiala ahora.', 'error');
+          toast('⚠️ Por seguridad, definí una Clave Maestra personalizada.', 'warn');
           const m = $('#modalChangePassword');
           if (m) m.classList.add('show');
         }, 600);
@@ -3826,7 +3826,7 @@ function setupAdmin() {
       $('#adminLogin').style.display = 'block';
       $('#adminPanel').style.display = 'none';
       $('#adminPassword').value = '';
-      toast('Sesión admin cerrada', 'info');
+      toast('Sesión de supervisión cerrada', 'info');
     };
   }
   if (btnChangePassword) {

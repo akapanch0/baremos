@@ -3940,6 +3940,108 @@ input[type="checkbox"]:checked + .ats-box-indicator::after {
   }
 }
 
+/* Banner minimalista para activación de Notificaciones Push */
+.push-activar-banner {
+  margin: 6px 0 10px 0;
+  padding: 6px 10px 6px 12px;
+  border-radius: 8px;
+  background: rgba(234, 88, 12, 0.08);
+  border: 1px solid rgba(234, 88, 12, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  box-sizing: border-box;
+  animation: fadeIn 0.2s ease-out;
+}
+[data-theme="dark"] .push-activar-banner {
+  background: rgba(234, 88, 12, 0.14);
+  border-color: rgba(234, 88, 12, 0.4);
+}
+.push-activar-banner .pab-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+.push-activar-banner .pab-ico {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.push-activar-banner .pab-text {
+  font-size: 11.5px;
+  color: var(--text);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.push-activar-banner .pab-text strong {
+  color: #c2410c;
+  font-weight: 700;
+}
+[data-theme="dark"] .push-activar-banner .pab-text strong {
+  color: #fb923c;
+}
+.push-activar-banner .pab-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.push-activar-banner .btn-pab-activar {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #ea580c;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.push-activar-banner .btn-pab-activar:hover {
+  opacity: 0.9;
+}
+.push-activar-banner .btn-pab-activar:active {
+  transform: scale(0.96);
+}
+.push-activar-banner .btn-pab-close {
+  background: transparent;
+  border: none;
+  color: var(--text-soft);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background-color 0.15s;
+}
+.push-activar-banner .btn-pab-close:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.06);
+}
+[data-theme="dark"] .push-activar-banner .btn-pab-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+@media (max-width: 480px) {
+  .push-activar-banner {
+    padding: 5px 8px;
+    gap: 6px;
+  }
+  .push-activar-banner .pab-text {
+    font-size: 11px;
+  }
+}
+
 /* Modal de Avisos de la Empresa */
 .avisos-empresa-modal {
   width: 95%;

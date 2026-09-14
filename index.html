@@ -484,18 +484,15 @@ html.piel-grafito { background: #1f2937; }</style>
       </div>
     </div>
 
-    <!-- Banner interactivo para que cada cuadrilla active las alertas Push en su celular -->
-    <div class="jornada-pendiente-banner push-activar-banner" id="pushActivarBanner" style="display:none;background:linear-gradient(135deg, rgba(234, 88, 12, 0.12), rgba(249, 115, 22, 0.05));border:1.5px solid #ea580c;border-radius:12px;padding:12px 14px;margin-bottom:12px;">
-      <div class="jpb-left" style="align-items:center;">
-        <div class="jpb-ico" style="font-size:24px;background:#ea580c;color:#fff;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;">🔔</div>
-        <div class="jpb-info">
-          <div class="jpb-title" style="color:#ea580c;font-weight:700;font-size:13.5px;">Alertas de Supervisión en este Celular</div>
-          <div class="jpb-desc" style="font-size:12px;color:var(--text);margin-top:2px;">Activá las notificaciones para recibir al instante comunicados de cuadrilla, alertas meteorológicas y avisos de seguridad enviados por el supervisor.</div>
-        </div>
+    <!-- Banner minimalista para activación rápida de Push en el celular -->
+    <div class="push-activar-banner" id="pushActivarBanner" style="display:none;" role="alert">
+      <div class="pab-left">
+        <span class="pab-ico" aria-hidden="true">🔔</span>
+        <span class="pab-text"><strong>Notificaciones Push:</strong> Recibí avisos y comunicados en vivo</span>
       </div>
-      <div class="jpb-actions" style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn btn-sm btn-primary" id="btnActivarPushBanner" type="button" style="background:#ea580c;border-color:#ea580c;font-weight:700;padding:6px 14px;">📲 Activar Alertas en este Celular</button>
-        <button class="btn btn-sm btn-ghost" id="btnDescartarPushBanner" type="button" title="Ocultar por ahora">✕</button>
+      <div class="pab-actions">
+        <button class="btn-pab-activar" id="btnActivarPushBanner" type="button">Activar</button>
+        <button class="btn-pab-close" id="btnCerrarPushBanner" type="button" title="Cerrar aviso" aria-label="Cerrar">✕</button>
       </div>
     </div>
 
@@ -778,26 +775,23 @@ html.piel-grafito { background: #1f2937; }</style>
   </section>
 
   <section class="view" id="viewAdmin">
-    <div class="card-title" style="padding:0 4px 8px">🔐 Panel de Administración Remoto</div>
+    <div class="card-title" style="padding:0 4px 8px">🛡️ Panel de Supervisión</div>
 
     <div class="admin-login-box" id="adminLogin">
       <div style="font-size:42px;margin-bottom:8px">🔐</div>
-      <div style="font-size:17px;font-weight:700;margin-bottom:6px">Acceso Remoto de Administrador</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:6px">Acceso de Supervisión</div>
       <p style="font-size:12px;color:var(--text-soft);margin-bottom:14px;line-height:1.45;">
-        Ingresá con la <strong>Clave Maestra</strong> desde cualquier celular o dispositivo con internet para emitir notificaciones push y gestionar comunicados.
+        Ingresá con la <strong>Clave Maestra</strong> para emitir notificaciones push a las cuadrillas, publicar comunicados oficiales y consultar reportes consolidados.
       </p>
       <input class="input" id="adminPassword" type="password" placeholder="Ingresá la Clave Maestra" maxlength="35" style="margin-bottom:12px;text-align:center;font-size:15px;letter-spacing:1px;">
-      <button class="btn btn-danger" id="btnAdminLogin" style="width:100%;">🔓 Ingresar como Administrador</button>
-      <div style="font-size:11px;color:var(--text-soft);margin-top:12px;">
-        🔑 Clave inicial por defecto: <code style="background:rgba(128,128,128,0.15);padding:2px 6px;border-radius:4px;font-weight:700;">admin</code> o <code style="background:rgba(128,128,128,0.15);padding:2px 6px;border-radius:4px;font-weight:700;">baremo2026</code>
-      </div>
+      <button class="btn btn-danger" id="btnAdminLogin" style="width:100%;">🔓 Ingresar a Supervisión</button>
     </div>
 
     <div id="adminPanel" style="display:none">
       <div class="admin-panel">
         <div class="admin-header">
-          <div class="admin-badge">🔓 ADMIN REMOTO</div>
-          <div class="admin-title">Panel Central de Control</div>
+          <div class="admin-badge">🛡️ SUPERVISIÓN</div>
+          <div class="admin-title">Panel de Supervisión</div>
           <button class="admin-logout-btn" id="btnAdminLogout">Salir</button>
         </div>
 
