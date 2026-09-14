@@ -18,38 +18,38 @@ html.piel-grafito { background: #1f2937; }</style>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BAREMO">
 <meta name="application-name" content="BAREMO">
-<meta name="description" content="Registro de baremos y producción diaria para contratistas con control de tareas geolocalizadas, combustible y reportes.">
+<meta name="description" content="Registro de baremos y producción diaria para cuadrillas con alertas push de jornadas pendientes, comunicados oficiales de la empresa, control de tareas geolocalizadas y formulario ATS.">
 <meta property="og:title" content="BAREMO">
-<meta property="og:description" content="Registro de baremos y producción diaria para contratistas con control de tareas geolocalizadas, combustible y reportes.">
+<meta property="og:description" content="Registro de baremos y producción diaria para cuadrillas con alertas push de jornadas pendientes, comunicados oficiales de la empresa, control de tareas geolocalizadas y formulario ATS.">
 <title>BAREMO</title>
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.49">
-<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.49">
-<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.49">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.49">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.49">
-<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.49">
-<link rel="manifest" href="manifest.json?v=5.9.49">
-<link rel="stylesheet" href="styles.css?v=5.9.49">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.50">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.50">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.50">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.50">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.50">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.50">
+<link rel="manifest" href="manifest.json?v=5.9.50">
+<link rel="stylesheet" href="styles.css?v=5.9.50">
 <!-- GATE PWA: la app completa se abre en modo standalone; desde el navegador
      se redirige a landing.html. El contenido se oculta SOLO mientras dura la
      redireccion; si esta no ocurre, main.js quita el atributo y la app se ve.
      Nunca se detiene la carga de la pagina: no puede quedar en gris. -->
 <style>html[data-gate="redirecting"] body { visibility: hidden; }</style>
-<script src="main.js?v=5.9.49"></script>
-<script src="brand.js?v=5.9.49"></script>
+<script src="main.js?v=5.9.50"></script>
+<script src="brand.js?v=5.9.50"></script>
 <!-- Librerias externas (v5.9.29): primero la copia local de ./vendor y, solo si
      falta o falla, el CDN. Asi la app instalada nunca se queda sin graficos,
      sin PDF ni sin Excel. Ver vendor/README.txt -->
-<script src="vendor/chart.umd.min.js?v=5.9.49" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/chart.umd.min.js?v=5.9.50" onerror="this.dataset.fallo='1'"></script>
 <script>window.Chart||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/jspdf.umd.min.js?v=5.9.49" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/jspdf.umd.min.js?v=5.9.50" onerror="this.dataset.fallo='1'"></script>
 <script>window.jspdf||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/jspdf.plugin.autotable.min.js?v=5.9.49" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js?v=5.9.50" onerror="this.dataset.fallo='1'"></script>
 <script>(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API&&window.jspdf.jsPDF.API.autoTable)||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.6.0/dist/jspdf.plugin.autotable.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/xlsx.full.min.js?v=5.9.49" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/xlsx.full.min.js?v=5.9.50" onerror="this.dataset.fallo='1'"></script>
 <script>window.XLSX||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/scr'+'ipt>');</script>
 </head>
 <body>
@@ -96,6 +96,10 @@ html.piel-grafito { background: #1f2937; }</style>
     </h1>
     <div class="header-actions">
       <button class="btn-install-pwa" id="btnInstallApp" type="button" title="Instalar BAREMO en tu dispositivo" aria-label="Instalar app" hidden><span class="bip-ico" aria-hidden="true">📲</span><span class="bip-txt">Instalar</span></button>
+      <button class="icon-btn btn-avisos-empresa" id="btnAvisosEmpresa" type="button" title="Avisos Importantes de la Empresa y Seguridad" aria-label="Avisos de la Empresa">
+        <span aria-hidden="true">📢</span>
+        <span class="badge-unread-notif" id="badgeAvisosUnread" style="display:none;">0</span>
+      </button>
       <button class="btn-ayuda" id="btnHelp" title="Menú de Ayuda">AYUDA</button>
       <button class="icon-btn" id="btnTheme" type="button" title="Apariencia: modo claro u oscuro y piel de color" aria-label="Apariencia">🌓</button>
     </div>
@@ -439,6 +443,47 @@ html.piel-grafito { background: #1f2937; }</style>
   </div>
 
   <section class="view" id="viewInicio">
+    <!-- Banner de alerta de Jornadas Pendientes de Cierre -->
+    <div class="jornada-pendiente-banner" id="jornadaPendienteBanner" style="display:none">
+      <div class="jpb-left">
+        <div class="jpb-ico">⏰</div>
+        <div class="jpb-info">
+          <div class="jpb-title" id="jpbTitle">⚠️ Jornada pendiente de cierre</div>
+          <div class="jpb-desc" id="jpbDesc">Tenés una jornada sin cerrar. Controlá tus tareas y cerrala para asegurar el cómputo de tus baremos.</div>
+        </div>
+      </div>
+      <div class="jpb-actions">
+        <button class="btn btn-sm btn-primary" id="btnJpbCerrar" type="button">📋 Cerrar jornada</button>
+        <button class="btn btn-sm btn-ghost" id="btnJpbDescartar" type="button" title="Descartar aviso">✕</button>
+      </div>
+    </div>
+
+    <!-- Banner rápido de Avisos Importantes de la Empresa con Carrusel Automático -->
+    <div class="jornada-pendiente-banner empresa-aviso-banner" id="empresaAvisoBanner" style="display:none;" aria-live="polite" role="region" aria-label="Avisos importantes de la empresa">
+      <div class="jpb-left">
+        <div class="jpb-ico" id="eabIco">📢</div>
+        <div class="jpb-info eab-carousel-container">
+          <div class="eab-top-meta">
+            <span class="eab-badge-cat" id="eabCatBadge">Seguridad</span>
+            <span class="eab-badge-prio" id="eabPrioBadge" style="display:none;">URGENTE</span>
+            <div class="eab-carousel-controls" id="eabControls" style="display:none;">
+              <button class="eab-nav-btn" id="btnEabPrev" type="button" title="Aviso anterior" aria-label="Anterior">‹</button>
+              <span class="eab-counter" id="eabCounter">1/1</span>
+              <button class="eab-nav-btn" id="btnEabNext" type="button" title="Aviso siguiente" aria-label="Siguiente">›</button>
+            </div>
+          </div>
+          <div class="eab-slide-wrapper">
+            <div class="jpb-title eab-title" id="eabTitle">Aviso importante de la empresa</div>
+            <div class="jpb-desc eab-desc" id="eabDesc">Nuevo comunicado para el personal de cuadrilla.</div>
+          </div>
+          <div class="eab-dots" id="eabDots" style="display:none;"></div>
+        </div>
+      </div>
+      <div class="jpb-actions">
+        <button class="btn btn-sm btn-primary" id="btnEabVer" type="button">Ver comunicado</button>
+      </div>
+    </div>
+
     <!-- Banner de notificación de ATS obligatorio -->
     <div class="ats-banner" id="atsBanner" style="display:none">
       <div class="ats-b-left">
@@ -1246,7 +1291,120 @@ html.piel-grafito { background: #1f2937; }</style>
   </div>
 </div>
 
-<script src="db.js?v=5.9.49"></script>
-<script src="app.js?v=5.9.49"></script>
+<!-- Modal de Avisos Importantes de la Empresa -->
+<div class="modal-backdrop" id="modalAvisosEmpresa" style="z-index: 9995;">
+  <div class="modal avisos-empresa-modal">
+    <div class="avisos-modal-head">
+      <div class="avisos-modal-title"><span>📢</span> Avisos Importantes de la Empresa</div>
+      <button type="button" class="modal-close-btn" id="btnAvisosEmpresaClose" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="avisos-modal-toolbar">
+      <div class="avisos-filter-group" id="avisosFilterGroup">
+        <button type="button" class="avisos-pill active" data-cat="todas">Todos</button>
+        <button type="button" class="avisos-pill" data-cat="Seguridad">🛡️ Seguridad</button>
+        <button type="button" class="avisos-pill" data-cat="Procedimiento">📋 Procedimiento</button>
+        <button type="button" class="avisos-pill" data-cat="Operaciones">⚡ Operaciones</button>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="btnAbrirPushConfig" title="Configurar alertas push">🔔 Configurar Push</button>
+    </div>
+    <div class="avisos-modal-body" id="avisosEmpresaList">
+      <!-- Se carga dinámicamente -->
+    </div>
+    <div class="avisos-modal-foot">
+      <button type="button" class="btn btn-ghost btn-sm" id="btnAvisosMarcarLeidos">✓ Marcar leídos</button>
+      <button type="button" class="btn btn-primary btn-sm" id="btnAbrirPublicarAviso">➕ Publicar Aviso (Supervisión)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Publicar un Aviso de la Empresa (Supervisión / Administración) -->
+<div class="modal-backdrop" id="modalPublicarAviso" style="z-index: 9998;">
+  <div class="modal">
+    <div class="avisos-modal-head">
+      <div class="avisos-modal-title"><span>📢</span> Nuevo Comunicado de la Empresa</div>
+      <button type="button" class="modal-close-btn" id="btnPublicarAvisoClose" aria-label="Cerrar">✕</button>
+    </div>
+    <form id="formPublicarAviso">
+      <div class="field">
+        <label>Título del comunicado</label>
+        <input class="input" id="pubAvisoTitulo" placeholder="Ej: ⚠️ Alerta meteorológica por vientos" required maxlength="120">
+      </div>
+      <div class="field">
+        <label>Mensaje / Detalle para las cuadrillas</label>
+        <textarea class="input" id="pubAvisoCuerpo" rows="4" placeholder="Describí las medidas preventivas, normas o instrucciones..." required style="resize:vertical; font-family:inherit;"></textarea>
+      </div>
+      <div class="row-2" style="display:flex; gap:10px;">
+        <div class="field" style="flex:1;">
+          <label>Categoría</label>
+          <select class="input" id="pubAvisoCategoria">
+            <option value="Seguridad">🛡️ Seguridad & EPP</option>
+            <option value="Procedimiento">📋 Procedimiento Operativo</option>
+            <option value="Operaciones">⚡ Operaciones & Redes</option>
+            <option value="Clima">⛈️ Meteorología / Tormentas</option>
+            <option value="General">ℹ️ Comunicado General</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Nivel de Prioridad</label>
+          <select class="input" id="pubAvisoPrioridad">
+            <option value="alta">🔴 Alta / Urgente (Vibración y persistente)</option>
+            <option value="media" selected>🟡 Normal / Informativa</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Firma / Emisor</label>
+        <input class="input" id="pubAvisoAutor" placeholder="Ej: Dpto. Higiene & Seguridad / Supervisión">
+      </div>
+      <label class="check-line" style="margin:12px 0 16px 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="pubAvisoEnviarPush" checked>
+        <span style="font-size:13px; font-weight:600; color:var(--text);">🔔 Enviar Notificación Push a todos los dispositivos de la empresa</span>
+      </label>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" id="btnPublicarAvisoCancelar">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btnPublicarAvisoSubmit">🚀 Publicar y Emitir Push</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de Configuración y Diagnóstico de Push Service Worker -->
+<div class="modal-backdrop" id="modalPushConfig" style="z-index: 9997;">
+  <div class="modal push-config-modal">
+    <div class="avisos-modal-head">
+      <div class="avisos-modal-title"><span>🔔</span> Notificaciones Push del Sistema</div>
+      <button type="button" class="modal-close-btn" id="btnPushConfigClose" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="push-config-body">
+      <div class="push-status-card" id="pushStatusCard">
+        <div class="psc-icon" id="pscIcon">📡</div>
+        <div class="psc-info">
+          <div class="psc-status" id="pscStatusTxt">Verificando estado del Service Worker...</div>
+          <div class="psc-sub" id="pscSubTxt">Cargando permisos y suscripción VAPID...</div>
+        </div>
+      </div>
+
+      <div class="push-actions-row" style="margin-top:14px; display:flex; gap:8px;">
+        <button type="button" class="btn btn-primary" id="btnTogglePushSub" style="flex:1;">Activar Notificaciones Push</button>
+        <button type="button" class="btn btn-ghost" id="btnRefrescarPushStatus" title="Actualizar estado">🔄</button>
+      </div>
+
+      <div class="push-test-box" style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
+        <div style="font-size:13px; font-weight:700; margin-bottom:8px; color:var(--text);">🧪 Pruebas de Alertas Push en este dispositivo:</div>
+        <p style="font-size:12px; color:var(--text-soft); margin-bottom:12px;">Podés enviar una notificación de prueba para comprobar cómo llegan a la barra de estado y pantalla de bloqueo de tu dispositivo:</p>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnTestPushJornada">⏰ Probar Alerta de Jornada Pendiente</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnTestPushAviso">📢 Probar Alerta de Aviso de la Empresa</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" style="margin-top:16px; text-align:right;">
+      <button type="button" class="btn btn-primary btn-sm" id="btnPushConfigAceptar">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<script src="db.js?v=5.9.50"></script>
+<script src="app.js?v=5.9.50"></script>
 </body>
 </html>

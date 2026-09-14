@@ -3710,3 +3710,440 @@ input[type="checkbox"]:checked + .ats-box-indicator::after {
   }
 }
 
+/* ============================================================
+   NOTIFICACIONES PUSH Y AVISOS DE LA EMPRESA (v5.9.50)
+   ============================================================ */
+.btn-avisos-empresa {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.badge-unread-notif {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 17px;
+  height: 17px;
+  line-height: 17px;
+  border-radius: 999px;
+  text-align: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 5px rgba(239, 68, 68, 0.45);
+  animation: pulseBadge 2.2s infinite;
+}
+
+@keyframes pulseBadge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* Banners en pantalla de Registro */
+.jornada-pendiente-banner {
+  margin: 10px 0 14px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1.5px solid rgba(245, 158, 11, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.08);
+}
+[data-theme="dark"] .jornada-pendiente-banner {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.5);
+}
+.jpb-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+}
+.jpb-ico {
+  font-size: 22px;
+  line-height: 1;
+  padding-top: 2px;
+}
+.jpb-info {
+  flex: 1;
+}
+.jpb-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #b45309;
+  margin-bottom: 2px;
+}
+[data-theme="dark"] .jpb-title {
+  color: #f59e0b;
+}
+.jpb-desc {
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.4;
+}
+.jpb-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Banner de Avisos de la Empresa con Carrusel */
+.empresa-aviso-banner {
+  background: rgba(99, 102, 241, 0.10);
+  border: 1.5px solid rgba(99, 102, 241, 0.38);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.08);
+  transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+}
+[data-theme="dark"] .empresa-aviso-banner {
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(99, 102, 241, 0.48);
+}
+.eab-carousel-container {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.eab-top-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  flex-wrap: wrap;
+}
+.eab-badge-cat {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.16);
+  color: var(--primary);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+}
+.eab-badge-prio {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+[data-theme="dark"] .eab-badge-prio {
+  color: #f87171;
+}
+.eab-carousel-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  user-select: none;
+}
+.eab-nav-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+.eab-nav-btn:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+.eab-counter {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-soft);
+  padding: 0 4px;
+}
+.eab-slide-wrapper {
+  position: relative;
+  min-height: 38px;
+}
+.eab-title {
+  color: var(--primary) !important;
+  font-size: 13.5px;
+  font-weight: 700;
+  margin-bottom: 2px;
+  line-height: 1.35;
+  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.eab-desc {
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.eab-fade-out {
+  opacity: 0 !important;
+  transform: translateY(-4px);
+}
+.eab-fade-in {
+  opacity: 1 !important;
+  transform: translateY(0);
+}
+.eab-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+.eab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.35);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.eab-dot:hover {
+  background: rgba(128, 128, 128, 0.6);
+}
+.eab-dot.active {
+  width: 18px;
+  background: var(--primary);
+}
+@media (max-width: 540px) {
+  .empresa-aviso-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .empresa-aviso-banner .jpb-actions {
+    justify-content: flex-end;
+  }
+}
+
+/* Modal de Avisos de la Empresa */
+.avisos-empresa-modal {
+  width: 95%;
+  max-width: 600px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 16px;
+}
+.avisos-modal-head {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+}
+.avisos-modal-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text-soft);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+.modal-close-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+.avisos-modal-toolbar {
+  padding: 10px 18px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.avisos-filter-group {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.avisos-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-soft);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s ease;
+}
+.avisos-pill.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+.avisos-modal-body {
+  padding: 14px 18px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg);
+}
+.avisos-modal-foot {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  gap: 8px;
+}
+
+/* Card individual de Aviso de Empresa */
+.aviso-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .2s ease;
+}
+.aviso-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+.aviso-card.aviso-card-highlight {
+  outline: 2px solid var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 14px rgba(99, 102, 241, 0.4) !important;
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+.aviso-card.aviso-unread {
+  border-left: 4px solid var(--primary);
+  background: rgba(99, 102, 241, 0.04);
+}
+[data-theme="dark"] .aviso-card.aviso-unread {
+  background: rgba(99, 102, 241, 0.08);
+}
+.aviso-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.aviso-badge-prio {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.aviso-badge-prio.prio-alta {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.aviso-badge-prio.prio-media {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.aviso-date {
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.aviso-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.35;
+}
+.aviso-body {
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.5;
+  white-space: pre-line;
+  margin-bottom: 10px;
+}
+.aviso-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-soft);
+  border-top: 1px solid rgba(128,128,128,0.12);
+  padding-top: 8px;
+  margin-top: 6px;
+}
+.aviso-autor {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Modal de Configuración Push */
+.push-status-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.psc-icon {
+  font-size: 26px;
+}
+.psc-status {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.psc-sub {
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.35;
+}
+

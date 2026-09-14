@@ -9,7 +9,7 @@
    persistente, recordatorio de backup, librerias locales con respaldo
    en CDN, cache de geocodificacion y limpieza del service worker.
    ============================================================ */
-const APP_VERSION = '5.9.49';
+const APP_VERSION = '5.9.50';
 
 /* Control de versión de Términos y Condiciones */
 const CURRENT_TERMS_VERSION = 1;
@@ -31,7 +31,11 @@ const State = {
   mensaje150kMostrado: false,
   mensaje125kMostrado: false,
   mensaje100kMostrado: false,
-  metaAlcanzada: false
+  metaAlcanzada: false,
+  pushSubscribed: false,
+  pushPublicKey: null,
+  avisosEmpresa: [],
+  avisosCategoriaFiltro: 'todas'
 };
 
 const $ = (s, p = document) => p.querySelector(s);
@@ -1041,13 +1045,26 @@ async function continuarInicio() {
     }
     showApp();
 
-    // Si se abrió desde la notificación tocando "abrir_ats"
+    // Si se abrió desde la notificación tocando una acción
     try {
-      if (window.location.search && window.location.search.includes('ats=1')) {
-        history.replaceState({}, '', window.location.pathname);
-        setTimeout(() => {
-          if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
-        }, 300);
+      if (window.location.search) {
+        const search = window.location.search;
+        if (search.includes('ats=1')) {
+          history.replaceState({}, '', window.location.pathname);
+          setTimeout(() => {
+            if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
+          }, 300);
+        } else if (search.includes('avisos=1') || search.includes('vista=AvisosEmpresa')) {
+          history.replaceState({}, '', window.location.pathname);
+          setTimeout(() => {
+            if (typeof abrirModalAvisosEmpresa === 'function') abrirModalAvisosEmpresa();
+          }, 300);
+        } else if (search.includes('accion=cerrar_jornada')) {
+          history.replaceState({}, '', window.location.pathname);
+          setTimeout(() => {
+            if (typeof atenderJornadaPendientePush === 'function') atenderJornadaPendientePush();
+          }, 300);
+        }
       }
     } catch (e) {}
 
@@ -1055,6 +1072,13 @@ async function continuarInicio() {
     setTimeout(() => {
       try { revisarRecordatorioATSAlAbrir(); } catch (e) {}
     }, 700);
+
+    // Inicializaciones de notificaciones push, verificación de jornadas pendientes y avisos de empresa
+    setTimeout(() => {
+      try { if (typeof inicializarPushNotifications === 'function') inicializarPushNotifications(); } catch (e) {}
+      try { if (typeof verificarJornadasPendientes === 'function') verificarJornadasPendientes(); } catch (e) {}
+      try { if (typeof cargarAvisosEmpresa === 'function') cargarAvisosEmpresa(); } catch (e) {}
+    }, 850);
   } else { 
     showLogin(); 
   }
@@ -1921,7 +1945,12 @@ function showView(n) {
   if (n === 'Quincenas') renderQuincenas();
   if (n === 'Ajustes') renderAjustes();
   if (n === 'Admin') renderAdmin();
-  if (n === 'Inicio') renderFraseMotivacional();
+  if (n === 'Inicio') {
+    renderFraseMotivacional();
+    try { if (typeof actualizarIndicadorAvisos === 'function') actualizarIndicadorAvisos(); } catch (e) {}
+  } else {
+    try { if (typeof detenerTimerCarruselAvisos === 'function') detenerTimerCarruselAvisos(); } catch (e) {}
+  }
 }
 
 function renderMiniCalendar() {
@@ -3487,11 +3516,13 @@ function renderAjustes() {
   if (!lst) return;
   lst.innerHTML = `
     <div class="ajuste-item" data-act="update"><div class="aj-ico">🔄</div><div class="aj-text"><div class="aj-title">Actualizaciones</div><div class="aj-desc">Tenés la v${State.currentVersion || '?'} · tocá para buscar una nueva</div><button type="button" class="aj-sub" data-sub="forzar">🧹 ¿Quedó trabada? Forzar actualización</button></div><div class="aj-arrow">›</div></div>
+    <div class="ajuste-item" data-act="push"><div class="aj-ico">📡</div><div class="aj-text"><div class="aj-title">Notificaciones Push (Service Worker)</div><div class="aj-desc" id="ajPushDesc">Alertas de jornadas pendientes y avisos de empresa</div></div><div class="aj-arrow">›</div></div>
+    <div class="ajuste-item" data-act="avisos"><div class="aj-ico">📢</div><div class="aj-text"><div class="aj-title">Avisos de la Empresa</div><div class="aj-desc">Comunicados oficiales y normativas de seguridad</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="validar"><div class="aj-ico">🧮</div><div class="aj-text"><div class="aj-title">Validar totales del historial</div><div class="aj-desc">Recalcula jornadas que quedaron en $0</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="baremo"><div class="aj-ico">📥</div><div class="aj-text"><div class="aj-title">Cargar Baremos actualizados</div><div class="aj-desc">Archivo JSON, Excel o CSV</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="backup"><div class="aj-ico">💾</div><div class="aj-text"><div class="aj-title">Backup</div><div class="aj-desc">Guardá tus datos · te lo recordamos todos los lunes</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="restore"><div class="aj-ico">📤</div><div class="aj-text"><div class="aj-title">Restaurar</div><div class="aj-desc">Recuperar datos</div></div><div class="aj-arrow">›</div></div>
-    <div class="ajuste-item" data-act="notif"><div class="aj-ico">🔔</div><div class="aj-text"><div class="aj-title">Notificaciones</div><div class="aj-desc" id="ajNotifDesc">Avisos de jornada y de inicio de mes</div></div><div class="aj-arrow">›</div></div>
+    <div class="ajuste-item" data-act="notif"><div class="aj-ico">🔔</div><div class="aj-text"><div class="aj-title">Notificaciones Locales</div><div class="aj-desc" id="ajNotifDesc">Avisos de jornada y de inicio de mes</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item admin" data-act="admin"><div class="aj-ico">🔐</div><div class="aj-text"><div class="aj-title">Panel de Administración</div><div class="aj-desc">Reportes, consolidación y seguridad</div></div><div class="aj-arrow">›</div></div>
     <div class="credits credits-min">
       <div class="credits-top">
@@ -3507,12 +3538,19 @@ function renderAjustes() {
     </div>
   `;
   pintarEstadoNotificaciones();
+  if (typeof pintarEstadoPush === 'function') pintarEstadoPush();
   const sub = lst.querySelector('[data-sub="forzar"]');
   if (sub) sub.onclick = e => { e.stopPropagation(); forzarActualizacion(); };
   lst.querySelectorAll('.ajuste-item').forEach(item => {
     item.onclick = () => {
       const a = item.dataset.act;
       if (a === 'update') checkForUpdate();
+      else if (a === 'push') {
+        if (typeof abrirModalPushConfig === 'function') abrirModalPushConfig();
+      }
+      else if (a === 'avisos') {
+        if (typeof abrirModalAvisosEmpresa === 'function') abrirModalAvisosEmpresa();
+      }
       else if (a === 'validar') {
         repararTotalesDeJornadas({ verboso: true }).then(() => { renderAll(); });
       }
@@ -5755,17 +5793,26 @@ function iniciarRecordatorioDeCierre() {
   });
   window.addEventListener('focus', revisarRecordatorioDeCierre);
 
-  // Si el usuario toca la notificacion, se lo lleva a Registro.
+  // Si el usuario toca la notificacion, se lo lleva a la vista correspondiente.
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', ev => {
-      if (ev.data && ev.data.tipo === 'IR_A_REGISTRO') {
-        try { showView(ev.data.vista || 'Registro'); } catch (e) {
+      if (ev.data && (ev.data.tipo === 'IR_A_REGISTRO' || ev.data.tipo === 'IR_A_VISTA')) {
+        const vista = ev.data.vista || 'Registro';
+        try { showView(vista); } catch (e) {
           try { showView('Registro'); } catch (e2) {}
         }
         if (ev.data.accion === 'abrir_ats') {
           setTimeout(() => {
             if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
           }, 200);
+        } else if (ev.data.accion === 'cerrar_jornada') {
+          setTimeout(() => {
+            if (typeof atenderJornadaPendientePush === 'function') atenderJornadaPendientePush();
+          }, 300);
+        } else if (ev.data.accion === 'ver_aviso' || vista === 'AvisosEmpresa') {
+          setTimeout(() => {
+            if (typeof abrirModalAvisosEmpresa === 'function') abrirModalAvisosEmpresa();
+          }, 300);
         }
       }
     });
@@ -8221,3 +8268,902 @@ async function exportarAtsPDF(ats, compartir = false) {
 }
 
 document.addEventListener('DOMContentLoaded', initATS);
+
+/* ============================================================
+   MÓDULO DE NOTIFICACIONES PUSH Y AVISOS DE LA EMPRESA (v5.9.50)
+   - Push Notifications mediante Web Push API y Service Worker
+   - Alertas de jornadas pendientes sin cerrar (previas o prolongadas)
+   - Comunicados oficiales y avisos de seguridad de la empresa
+   - Sincronización y emisión de notificaciones a las cuadrillas
+   ============================================================ */
+
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function obtenerVapidPublicKey() {
+  if (State.pushPublicKey) return State.pushPublicKey;
+  try {
+    const res = await fetch('/api/push/public-key');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.publicKey) {
+        State.pushPublicKey = data.publicKey;
+        return data.publicKey;
+      }
+    }
+  } catch (e) {
+    console.warn('[Push] Error al obtener clave pública VAPID:', e);
+  }
+  return null;
+}
+
+async function inicializarPushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.info('[Push] Web Push API no disponible en este dispositivo/navegador.');
+    pintarEstadoPush();
+    return;
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+
+    // Si ya tiene permiso y no tiene suscripción activa, intentar suscribir con la clave VAPID
+    if (!sub && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      const key = await obtenerVapidPublicKey();
+      if (key) {
+        try {
+          const convertedKey = urlB64ToUint8Array(key);
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedKey
+          });
+        } catch (subErr) {
+          console.warn('[Push] No se pudo crear suscripción automática:', subErr);
+        }
+      }
+    }
+
+    if (sub) {
+      State.pushSubscribed = true;
+      // Enviar / actualizar la suscripción en el servidor para asociarla al legajo actual
+      try {
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: sub,
+            user: {
+              legajo: State.user ? State.user.legajo : 'anonimo',
+              nombre: State.user ? State.user.nombre : 'Operador'
+            }
+          })
+        });
+      } catch (errSync) {
+        console.warn('[Push] Error al sincronizar suscripción en servidor:', errSync);
+      }
+    } else {
+      State.pushSubscribed = false;
+    }
+  } catch (e) {
+    console.warn('[Push] Error en inicializarPushNotifications:', e);
+  }
+
+  pintarEstadoPush();
+}
+
+async function alternarSuscripcionPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toast('Las notificaciones Push no están soportadas en este navegador', 'warn');
+    return;
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+
+    if (sub) {
+      // Dar de baja
+      await sub.unsubscribe();
+      try {
+        await fetch('/api/push/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: sub.endpoint })
+        });
+      } catch (e) {}
+      State.pushSubscribed = false;
+      toast('🔕 Notificaciones Push desactivadas', 'info');
+    } else {
+      // Solicitar permiso
+      let perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+      if (perm !== 'granted') {
+        perm = await Notification.requestPermission();
+      }
+      if (perm !== 'granted') {
+        toast('Tenés que permitir las notificaciones en el navegador para recibir alertas push', 'warn');
+        pintarEstadoPush();
+        actualizarUIPushConfig();
+        return;
+      }
+
+      const key = await obtenerVapidPublicKey();
+      if (!key) {
+        toast('No se pudo conectar con el servicio Push del servidor', 'error');
+        return;
+      }
+
+      const convertedKey = urlB64ToUint8Array(key);
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedKey
+      });
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscription: sub,
+          user: {
+            legajo: State.user ? State.user.legajo : 'anonimo',
+            nombre: State.user ? State.user.nombre : 'Operador'
+          }
+        })
+      });
+
+      State.pushSubscribed = true;
+      toast('🔔 ¡Notificaciones Push activadas con éxito!', 'success');
+
+      // Envío de confirmación
+      setTimeout(() => {
+        enviarPushTest('bienvenida');
+      }, 500);
+    }
+  } catch (err) {
+    console.error('[Push] Error al alternar suscripción:', err);
+    toast('Error al gestionar las notificaciones push: ' + (err.message || err), 'error');
+  }
+
+  pintarEstadoPush();
+  actualizarUIPushConfig();
+}
+
+function pintarEstadoPush() {
+  const el = $('#ajPushDesc');
+  if (!el) return;
+  if (!('PushManager' in window)) {
+    el.textContent = 'No compatible con este navegador';
+    return;
+  }
+  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+    el.textContent = 'Bloqueadas desde los permisos del dispositivo';
+    return;
+  }
+  if (State.pushSubscribed) {
+    el.textContent = 'Activas · recibirás alertas de jornadas y avisos de empresa';
+  } else {
+    el.textContent = 'Desactivadas · tocá para activar alertas inmediatas';
+  }
+}
+
+async function enviarPushTest(tipo) {
+  toast('📡 Enviando notificación push de prueba...', 'info');
+
+  let payload = {
+    tipo: tipo || 'aviso_empresa',
+    titulo: '📢 BAREMO · Notificación Push',
+    cuerpo: 'Esta es una notificación push de prueba a través del Service Worker.',
+    prioridad: 'alta'
+  };
+
+  if (tipo === 'jornada_pendiente') {
+    payload = {
+      tipo: 'jornada_pendiente',
+      titulo: '⏰ BAREMO · Jornada Pendiente de Cierre',
+      cuerpo: 'Tenés una jornada abierta del día ' + hoy() + '. Revisá tus baremos y cerrala para asegurar tu registro.',
+      prioridad: 'alta',
+      accion: 'cerrar_jornada',
+      legajo: State.user ? State.user.legajo : undefined
+    };
+  } else if (tipo === 'aviso_empresa') {
+    payload = {
+      tipo: 'aviso_empresa',
+      titulo: '📢 BAREMO · Aviso Oficial de Cuadrilla',
+      cuerpo: 'Seguridad Operativa: Uso obligatorio de guantes dieléctricos y verificación de ATS en cuadrilla.',
+      prioridad: 'alta',
+      accion: 'ver_aviso'
+    };
+  } else if (tipo === 'bienvenida') {
+    payload = {
+      tipo: 'aviso_empresa',
+      titulo: '🔔 BAREMO · Notificaciones Push Habilitadas',
+      cuerpo: 'Recibirás avisos de jornadas sin cerrar y comunicados urgentes de la empresa.',
+      prioridad: 'normal'
+    };
+  }
+
+  // 1. Intentar enviar vía servidor Web Push a todos los suscriptores o al actual
+  try {
+    const res = await fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && (data.success || data.ok)) {
+      const cant = data.enviados !== undefined ? data.enviados : (data.enviadas !== undefined ? data.enviadas : 1);
+      toast('✓ Notificación push enviada (' + cant + ' dispositivo/s)', 'success');
+    } else {
+      // Si el backend no tiene suscriptores o falla VAPID externo en el sandbox, emitir vía Service Worker local
+      emitirAlertaServiceWorkerLocal(payload);
+    }
+  } catch (e) {
+    console.warn('[Push] Falla en /api/push/send, activando emisor local:', e);
+    emitirAlertaServiceWorkerLocal(payload);
+  }
+}
+
+async function emitirAlertaServiceWorkerLocal(payload) {
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.showNotification) {
+        await reg.showNotification(payload.titulo, {
+          body: payload.cuerpo,
+          icon: 'icons/icon-192.png',
+          badge: 'icons/icon-192.png',
+          tag: 'push-test-' + Date.now(),
+          vibrate: [200, 100, 200],
+          data: {
+            tipo: payload.tipo,
+            accion: payload.accion,
+            url: window.location.origin
+          },
+          actions: [
+            { action: payload.accion || 'ver', title: 'Abrir en BAREMO' }
+          ]
+        });
+        toast('🔔 Alerta mostrada en la barra del dispositivo', 'success');
+      }
+    }
+  } catch (err) {
+    console.error('[Push Local]', err);
+  }
+}
+
+/* ------------------------------------------------------------
+   DETECCIÓN Y ALERTA DE JORNADAS PENDIENTES
+   ------------------------------------------------------------ */
+let _jornadaPendienteDetectada = null;
+
+async function verificarJornadasPendientes() {
+  if (!State.user) return;
+  try {
+    const all = await dbGetAll('jornadas');
+    const mias = all.filter(j => j.legajo === State.user.legajo);
+    const fechaActual = hoy();
+
+    // 1. Jornadas de días anteriores que hayan quedado sin cerrar
+    const anterioresAbiertas = mias.filter(j => !j.cerrada && j.fecha && j.fecha < fechaActual);
+
+    // 2. Jornada de hoy abierta con tiempo excesivo (> 7 horas)
+    let hoyAbiertaProlongada = null;
+    if (State.jornada && !State.jornada.cerrada && State.jornada.horaInicio) {
+      const partes = State.jornada.horaInicio.split(':');
+      if (partes.length >= 2) {
+        const d = new Date();
+        const inicio = new Date();
+        inicio.setHours(parseInt(partes[0], 10), parseInt(partes[1], 10), 0, 0);
+        const diffHoras = (d.getTime() - inicio.getTime()) / (1000 * 60 * 60);
+        if (diffHoras >= 7) {
+          hoyAbiertaProlongada = State.jornada;
+        }
+      }
+    }
+
+    const pendiente = (anterioresAbiertas.length > 0) ? anterioresAbiertas[anterioresAbiertas.length - 1] : hoyAbiertaProlongada;
+    _jornadaPendienteDetectada = pendiente;
+
+    const banner = $('#jornadaPendienteBanner');
+    if (!banner) return;
+
+    if (pendiente) {
+      const cantTareas = (pendiente.items || []).length;
+      const esFechaAnterior = pendiente.fecha < fechaActual;
+      
+      const titleEl = $('#jpbTitle');
+      const descEl = $('#jpbDesc');
+      if (titleEl) {
+        titleEl.textContent = esFechaAnterior 
+          ? `⚠️ Jornada pendiente sin cerrar (${pendiente.fecha})`
+          : `⚠️ Turno prolongado sin cerrar (${pendiente.horaInicio || ''})`;
+      }
+      if (descEl) {
+        descEl.textContent = esFechaAnterior
+          ? `Tenés una jornada del ${pendiente.fecha} que no fue cerrada (${cantTareas} baremos registrados). Cerrala para consolidar tus números.`
+          : `Llevás más de 7 horas de trabajo en la jornada de hoy. Acordate de controlar tus tareas y cerrarla al terminar.`;
+      }
+      banner.style.display = 'flex';
+
+      // Disparar push automático en background si no se envió en las últimas 4 horas
+      const keyCache = 'baremo_push_pend_' + (pendiente.id || pendiente.fecha);
+      const ultimoEnvio = parseInt(localStorage.getItem(keyCache) || '0', 10);
+      const ahora = Date.now();
+      if (ahora - ultimoEnvio > 4 * 60 * 60 * 1000) {
+        localStorage.setItem(keyCache, String(ahora));
+        try {
+          fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tipo: 'jornada_pendiente',
+              titulo: '⏰ BAREMO · Jornada Pendiente de Cierre',
+              cuerpo: `Tenés una jornada pendiente del ${pendiente.fecha}. Ingresá a BAREMO para revisarla y cerrarla.`,
+              prioridad: 'alta',
+              accion: 'cerrar_jornada',
+              legajo: State.user.legajo
+            })
+          }).catch(() => {});
+        } catch (e) {}
+      }
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch (err) {
+    console.warn('[Jornadas Pendientes]', err);
+  }
+}
+
+function atenderJornadaPendientePush() {
+  showView('Registro');
+  if (_jornadaPendienteDetectada) {
+    // Cargar la jornada pendiente en State si es de un día anterior
+    if (State.jornada?.id !== _jornadaPendienteDetectada.id) {
+      State.jornada = _jornadaPendienteDetectada;
+      State.items = _jornadaPendienteDetectada.items || [];
+      State.tareas = _jornadaPendienteDetectada.tareas || [];
+      actualizarBotoneraJornada();
+      renderAll();
+    }
+    setTimeout(() => {
+      confirmDialog(`Tenés seleccionada la jornada del ${_jornadaPendienteDetectada.fecha}.\n\n¿Querés cerrarla ahora?`).then(ok => {
+        if (ok) cerrarJornada();
+      });
+    }, 250);
+  } else if (State.jornada && !State.jornada.cerrada) {
+    cerrarJornada();
+  } else {
+    toast('No hay jornadas pendientes en este momento', 'info');
+  }
+}
+
+/* ------------------------------------------------------------
+   AVISOS IMPORTANTES DE LA EMPRESA (COMUNICADOS)
+   ------------------------------------------------------------ */
+async function cargarAvisosEmpresa() {
+  try {
+    const res = await fetch('/api/push/avisos');
+    if (res.ok) {
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data && Array.isArray(data.avisos) ? data.avisos : []);
+      if (list && list.length > 0) {
+        State.avisosEmpresa = list;
+        localStorage.setItem('baremo_avisos_cache', JSON.stringify(list));
+      }
+    }
+  } catch (e) {
+    // Fallback a caché local
+    try {
+      const cache = localStorage.getItem('baremo_avisos_cache');
+      if (cache) State.avisosEmpresa = JSON.parse(cache);
+    } catch (cErr) {}
+  }
+
+  actualizarIndicadorAvisos();
+}
+
+/* ------------------------------------------------------------
+   CARRUSEL AUTOMÁTICO DE AVISOS IMPORTANTES EN INICIO
+   ------------------------------------------------------------ */
+let _carruselAvisosTimer = null;
+let _carruselAvisosIdx = 0;
+let _carruselAvisosList = [];
+let _carruselPausado = false;
+
+function detenerTimerCarruselAvisos() {
+  if (_carruselAvisosTimer) {
+    clearInterval(_carruselAvisosTimer);
+    _carruselAvisosTimer = null;
+  }
+}
+
+function iniciarTimerCarruselAvisos() {
+  detenerTimerCarruselAvisos();
+  if (!_carruselAvisosList || _carruselAvisosList.length <= 1) return;
+  _carruselAvisosTimer = setInterval(() => {
+    if (!_carruselPausado) {
+      avanzarCarruselAvisos(1, false);
+    }
+  }, 4500);
+}
+
+function obtenerIconoAviso(categoria) {
+  const cat = (categoria || '').toLowerCase();
+  if (cat.includes('segur') || cat.includes('epp') || cat.includes('arnes')) return '🛡️';
+  if (cat.includes('proced') || cat.includes('norm') || cat.includes('ats')) return '📋';
+  if (cat.includes('opera') || cat.includes('linea') || cat.includes('media')) return '⚡';
+  if (cat.includes('clima') || cat.includes('tormenta') || cat.includes('lluvia')) return '⛈️';
+  return '📢';
+}
+
+function mostrarSlideAviso(indice, animar = true) {
+  if (!_carruselAvisosList || _carruselAvisosList.length === 0) return;
+  if (indice < 0) indice = _carruselAvisosList.length - 1;
+  if (indice >= _carruselAvisosList.length) indice = 0;
+  _carruselAvisosIdx = indice;
+
+  const aviso = _carruselAvisosList[indice];
+  if (!aviso) return;
+
+  const elIco = $('#eabIco');
+  const elCat = $('#eabCatBadge');
+  const elPrio = $('#eabPrioBadge');
+  const elTitle = $('#eabTitle');
+  const elDesc = $('#eabDesc');
+  const elCounter = $('#eabCounter');
+  const elControls = $('#eabControls');
+  const elDots = $('#eabDots');
+
+  // Actualizar controles y contador
+  if (_carruselAvisosList.length > 1) {
+    if (elControls) elControls.style.display = 'inline-flex';
+    if (elCounter) elCounter.textContent = `${_carruselAvisosIdx + 1}/${_carruselAvisosList.length}`;
+    if (elDots) {
+      elDots.style.display = 'flex';
+      elDots.innerHTML = _carruselAvisosList.map((_, i) =>
+        `<span class="eab-dot ${i === _carruselAvisosIdx ? 'active' : ''}" data-idx="${i}" title="Aviso ${i + 1}"></span>`
+      ).join('');
+      elDots.querySelectorAll('.eab-dot').forEach(dot => {
+        dot.onclick = (e) => {
+          e.stopPropagation();
+          const targetIdx = parseInt(dot.dataset.idx, 10);
+          if (!isNaN(targetIdx) && targetIdx !== _carruselAvisosIdx) {
+            mostrarSlideAviso(targetIdx, true);
+            iniciarTimerCarruselAvisos();
+          }
+        };
+      });
+    }
+  } else {
+    if (elControls) elControls.style.display = 'none';
+    if (elDots) elDots.style.display = 'none';
+  }
+
+  // Meta badges
+  if (elIco) elIco.textContent = obtenerIconoAviso(aviso.categoria);
+  if (elCat) elCat.textContent = aviso.categoria || 'General';
+  if (elPrio) {
+    if (aviso.prioridad === 'alta') {
+      elPrio.textContent = 'URGENTE';
+      elPrio.style.display = 'inline-block';
+    } else {
+      elPrio.style.display = 'none';
+    }
+  }
+
+  // Animación suave de transición en textos
+  if (animar && elTitle && elDesc) {
+    elTitle.classList.add('eab-fade-out');
+    elDesc.classList.add('eab-fade-out');
+    setTimeout(() => {
+      elTitle.textContent = aviso.titulo || 'Comunicado oficial';
+      elDesc.textContent = aviso.cuerpo || '';
+      elTitle.classList.remove('eab-fade-out');
+      elDesc.classList.remove('eab-fade-out');
+      elTitle.classList.add('eab-fade-in');
+      elDesc.classList.add('eab-fade-in');
+      setTimeout(() => {
+        elTitle.classList.remove('eab-fade-in');
+        elDesc.classList.remove('eab-fade-in');
+      }, 250);
+    }, 180);
+  } else {
+    if (elTitle) elTitle.textContent = aviso.titulo || 'Comunicado oficial';
+    if (elDesc) elDesc.textContent = aviso.cuerpo || '';
+  }
+}
+
+function avanzarCarruselAvisos(pasos = 1, porUsuario = true) {
+  if (!_carruselAvisosList || _carruselAvisosList.length <= 1) return;
+  const nuevoIdx = (_carruselAvisosIdx + pasos + _carruselAvisosList.length) % _carruselAvisosList.length;
+  mostrarSlideAviso(nuevoIdx, true);
+  if (porUsuario) {
+    iniciarTimerCarruselAvisos();
+  }
+}
+
+function actualizarIndicadorAvisos() {
+  const avisos = State.avisosEmpresa || [];
+  let leidos = [];
+  try {
+    leidos = JSON.parse(localStorage.getItem('baremo_avisos_leidos') || '[]');
+  } catch (e) {}
+
+  const noLeidos = avisos.filter(a => !leidos.includes(a.id));
+  const badge = $('#badgeAvisosUnread');
+  if (badge) {
+    if (noLeidos.length > 0) {
+      badge.textContent = noLeidos.length > 9 ? '9+' : String(noLeidos.length);
+      badge.style.display = 'block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // Banner en inicio con carrusel si hay múltiples avisos
+  const banner = $('#empresaAvisoBanner');
+  if (!banner) return;
+
+  const itemsParaBanner = noLeidos.length > 0 ? noLeidos : avisos;
+
+  if (itemsParaBanner && itemsParaBanner.length > 0) {
+    _carruselAvisosList = itemsParaBanner;
+    if (_carruselAvisosIdx >= _carruselAvisosList.length) {
+      _carruselAvisosIdx = 0;
+    }
+    banner.style.display = 'flex';
+    mostrarSlideAviso(_carruselAvisosIdx, false);
+    iniciarTimerCarruselAvisos();
+  } else {
+    banner.style.display = 'none';
+    detenerTimerCarruselAvisos();
+  }
+}
+
+function renderAvisosEmpresaList() {
+  const container = $('#avisosEmpresaList');
+  if (!container) return;
+
+  const avisos = State.avisosEmpresa || [];
+  const cat = State.avisosCategoriaFiltro || 'todas';
+  let leidos = [];
+  try {
+    leidos = JSON.parse(localStorage.getItem('baremo_avisos_leidos') || '[]');
+  } catch (e) {}
+
+  const filtrados = cat === 'todas' ? avisos : avisos.filter(a => a.categoria === cat);
+
+  if (filtrados.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:32px 16px; color:var(--text-soft);">
+        <div style="font-size:36px; margin-bottom:8px;">📭</div>
+        <div style="font-size:14px; font-weight:700;">No hay comunicados en esta categoría</div>
+        <div style="font-size:12px; margin-top:4px;">Los avisos emitidos por supervisión o seguridad aparecerán aquí.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtrados.map(a => {
+    const esNoLeido = !leidos.includes(a.id);
+    const esAlta = a.prioridad === 'alta';
+    const prioLabel = esAlta ? '🔴 ALTA PRIORIDAD' : '🟡 INFORMATIVO';
+    const prioClass = esAlta ? 'prio-alta' : 'prio-media';
+    const fecha = a.fecha ? new Date(a.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+    return `
+      <div class="aviso-card ${esNoLeido ? 'aviso-unread' : ''}" data-id="${a.id}">
+        <div class="aviso-card-head">
+          <span class="aviso-badge-prio ${prioClass}">${prioLabel}</span>
+          <span class="aviso-date">${fecha}</span>
+        </div>
+        <div class="aviso-title">${a.titulo}</div>
+        <div class="aviso-body">${a.cuerpo}</div>
+        <div class="aviso-footer">
+          <div class="aviso-autor">🏢 ${a.autor || 'Supervisión de Operaciones'}</div>
+          <div style="font-size:11px; opacity:0.8;">🏷️ ${a.categoria || 'General'}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function abrirModalAvisosEmpresa(categoria, avisoIdDestacado) {
+  if (categoria) State.avisosCategoriaFiltro = categoria;
+  renderAvisosEmpresaList();
+  const m = $('#modalAvisosEmpresa');
+  if (m) m.classList.add('show');
+  if (avisoIdDestacado) {
+    setTimeout(() => {
+      const card = $(`#avisosEmpresaList [data-id="${avisoIdDestacado}"]`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('aviso-card-highlight');
+        setTimeout(() => card.classList.remove('aviso-card-highlight'), 2200);
+      }
+    }, 200);
+  }
+}
+
+function cerrarModalAvisosEmpresa() {
+  const m = $('#modalAvisosEmpresa');
+  if (m) m.classList.remove('show');
+}
+
+function marcarTodosAvisosLeidos() {
+  const avisos = State.avisosEmpresa || [];
+  const ids = avisos.map(a => a.id);
+  localStorage.setItem('baremo_avisos_leidos', JSON.stringify(ids));
+  actualizarIndicadorAvisos();
+  renderAvisosEmpresaList();
+  toast('✓ Todos los comunicados marcados como leídos', 'success');
+}
+
+function abrirModalPublicarAviso() {
+  const m = $('#modalPublicarAviso');
+  if (!m) return;
+  const autorInput = $('#pubAvisoAutor');
+  if (autorInput && !autorInput.value) {
+    autorInput.value = State.user ? `${State.user.nombre} (${State.user.legajo})` : 'Supervisión';
+  }
+  m.classList.add('show');
+}
+
+function cerrarModalPublicarAviso() {
+  const m = $('#modalPublicarAviso');
+  if (m) m.classList.remove('show');
+}
+
+function abrirModalPushConfig() {
+  actualizarUIPushConfig();
+  const m = $('#modalPushConfig');
+  if (m) m.classList.add('show');
+}
+
+function cerrarModalPushConfig() {
+  const m = $('#modalPushConfig');
+  if (m) m.classList.remove('show');
+}
+
+async function actualizarUIPushConfig() {
+  const txtStatus = $('#pscStatusTxt');
+  const txtSub = $('#pscSubTxt');
+  const icon = $('#pscIcon');
+  const btn = $('#btnTogglePushSub');
+
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (txtStatus) txtStatus.textContent = 'Push no disponible';
+    if (txtSub) txtSub.textContent = 'Este navegador no soporta el estándar PushManager de Service Workers.';
+    if (icon) icon.textContent = '❌';
+    if (btn) { btn.disabled = true; btn.textContent = 'No soportado'; }
+    return;
+  }
+
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+
+  if (sub) {
+    State.pushSubscribed = true;
+    if (txtStatus) txtStatus.textContent = 'Push Activo y Vinculado';
+    if (txtSub) txtSub.textContent = 'Este dispositivo recibe alertas inmediatas de jornadas pendientes y comunicados de empresa.';
+    if (icon) icon.textContent = '🟢';
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn btn-ghost';
+      btn.textContent = '🔕 Desactivar Notificaciones Push';
+    }
+  } else {
+    State.pushSubscribed = false;
+    const perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+    if (perm === 'denied') {
+      if (txtStatus) txtStatus.textContent = 'Permiso Bloqueado';
+      if (txtSub) txtSub.textContent = 'Las notificaciones fueron bloqueadas en la configuración del navegador.';
+      if (icon) icon.textContent = '🚫';
+      if (btn) { btn.disabled = true; btn.textContent = 'Desbloquear en Ajustes'; }
+    } else {
+      if (txtStatus) txtStatus.textContent = 'Push Inactivo';
+      if (txtSub) txtSub.textContent = 'Activá las notificaciones para recibir avisos de jornadas sin cerrar y comunicados urgentes.';
+      if (icon) icon.textContent = '📡';
+      if (btn) {
+        btn.disabled = false;
+        btn.className = 'btn btn-primary';
+        btn.textContent = '🔔 Activar Notificaciones Push';
+      }
+    }
+  }
+}
+
+function inicializarEventosPushYAvisos() {
+  // Botón header avisos de empresa
+  const btnAvisos = $('#btnAvisosEmpresa');
+  if (btnAvisos) btnAvisos.onclick = () => abrirModalAvisosEmpresa();
+
+  const btnAvisosClose = $('#btnAvisosEmpresaClose');
+  if (btnAvisosClose) btnAvisosClose.onclick = cerrarModalAvisosEmpresa;
+
+  // Botón configurar push desde avisos
+  const btnAbrirPush = $('#btnAbrirPushConfig');
+  if (btnAbrirPush) btnAbrirPush.onclick = () => {
+    cerrarModalAvisosEmpresa();
+    abrirModalPushConfig();
+  };
+
+  // Botones de modal push config
+  const btnPushClose = $('#btnPushConfigClose');
+  if (btnPushClose) btnPushClose.onclick = cerrarModalPushConfig;
+  const btnPushAceptar = $('#btnPushConfigAceptar');
+  if (btnPushAceptar) btnPushAceptar.onclick = cerrarModalPushConfig;
+
+  const btnTogglePush = $('#btnTogglePushSub');
+  if (btnTogglePush) btnTogglePush.onclick = alternarSuscripcionPush;
+
+  const btnRefrescarPush = $('#btnRefrescarPushStatus');
+  if (btnRefrescarPush) btnRefrescarPush.onclick = actualizarUIPushConfig;
+
+  // Pruebas de push
+  const btnTestJ = $('#btnTestPushJornada');
+  if (btnTestJ) btnTestJ.onclick = () => enviarPushTest('jornada_pendiente');
+
+  const btnTestA = $('#btnTestPushAviso');
+  if (btnTestA) btnTestA.onclick = () => enviarPushTest('aviso_empresa');
+
+  // Filtros de categoría de avisos
+  const filterGroup = $('#avisosFilterGroup');
+  if (filterGroup) {
+    filterGroup.querySelectorAll('.avisos-pill').forEach(pill => {
+      pill.onclick = () => {
+        filterGroup.querySelectorAll('.avisos-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        State.avisosCategoriaFiltro = pill.dataset.cat || 'todas';
+        renderAvisosEmpresaList();
+      };
+    });
+  }
+
+  // Marcar todos leídos
+  const btnMarcarLeidos = $('#btnAvisosMarcarLeidos');
+  if (btnMarcarLeidos) btnMarcarLeidos.onclick = marcarTodosAvisosLeidos;
+
+  // Publicar aviso
+  const btnAbrirPub = $('#btnAbrirPublicarAviso');
+  if (btnAbrirPub) btnAbrirPub.onclick = abrirModalPublicarAviso;
+
+  const btnClosePub = $('#btnPublicarAvisoClose');
+  if (btnClosePub) btnClosePub.onclick = cerrarModalPublicarAviso;
+
+  const btnCancelPub = $('#btnPublicarAvisoCancelar');
+  if (btnCancelPub) btnCancelPub.onclick = cerrarModalPublicarAviso;
+
+  // Formulario publicar aviso
+  const formPub = $('#formPublicarAviso');
+  if (formPub) {
+    formPub.onsubmit = async (e) => {
+      e.preventDefault();
+      const titulo = ($('#pubAvisoTitulo')?.value || '').trim();
+      const cuerpo = ($('#pubAvisoCuerpo')?.value || '').trim();
+      const categoria = $('#pubAvisoCategoria')?.value || 'General';
+      const prioridad = $('#pubAvisoPrioridad')?.value || 'media';
+      const autor = ($('#pubAvisoAutor')?.value || '').trim() || 'Supervisión';
+      const enviarPush = $('#pubAvisoEnviarPush')?.checked ?? true;
+
+      if (!titulo || !cuerpo) {
+        toast('Completá título y descripción del comunicado', 'warn');
+        return;
+      }
+
+      const submitBtn = $('#btnPublicarAvisoSubmit');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Emitiendo...'; }
+
+      try {
+        const res = await fetch('/api/push/avisos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            titulo,
+            cuerpo,
+            categoria,
+            prioridad,
+            autor,
+            enviarPush
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && (data.success || data.ok)) {
+          toast('📢 Comunicado emitido con éxito a las cuadrillas', 'success');
+          cerrarModalPublicarAviso();
+          formPub.reset();
+          await cargarAvisosEmpresa();
+          renderAvisosEmpresaList();
+        } else {
+          toast('Error al publicar: ' + (data.error || 'Intente nuevamente'), 'error');
+        }
+      } catch (err) {
+        toast('Fallo de red al publicar aviso: ' + err.message, 'error');
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '🚀 Publicar y Emitir Push'; }
+      }
+    };
+  }
+
+  // Acciones en banners de viewInicio
+  const btnJpbCerrar = $('#btnJpbCerrar');
+  if (btnJpbCerrar) btnJpbCerrar.onclick = atenderJornadaPendientePush;
+
+  const btnJpbDesc = $('#btnJpbDescartar');
+  if (btnJpbDesc) btnJpbDesc.onclick = () => {
+    const b = $('#jornadaPendienteBanner');
+    if (b) b.style.display = 'none';
+  };
+
+  const btnEabVer = $('#btnEabVer');
+  if (btnEabVer) {
+    btnEabVer.onclick = () => {
+      const avisoActual = _carruselAvisosList[_carruselAvisosIdx];
+      abrirModalAvisosEmpresa(null, avisoActual ? avisoActual.id : null);
+    };
+  }
+
+  // Controles de navegación manual del carrusel de avisos
+  const btnEabPrev = $('#btnEabPrev');
+  if (btnEabPrev) {
+    btnEabPrev.onclick = (e) => {
+      e.stopPropagation();
+      avanzarCarruselAvisos(-1, true);
+    };
+  }
+
+  const btnEabNext = $('#btnEabNext');
+  if (btnEabNext) {
+    btnEabNext.onclick = (e) => {
+      e.stopPropagation();
+      avanzarCarruselAvisos(1, true);
+    };
+  }
+
+  // Tocar el título del banner abre directamente el comunicado
+  const elTitleBanner = $('#eabTitle');
+  if (elTitleBanner) {
+    elTitleBanner.style.cursor = 'pointer';
+    elTitleBanner.onclick = () => {
+      const avisoActual = _carruselAvisosList[_carruselAvisosIdx];
+      abrirModalAvisosEmpresa(null, avisoActual ? avisoActual.id : null);
+    };
+  }
+
+  // Pausar rotación automática al interactuar o pasar el mouse sobre el banner
+  const bannerAvisos = $('#empresaAvisoBanner');
+  if (bannerAvisos) {
+    bannerAvisos.addEventListener('mouseenter', () => { _carruselPausado = true; });
+    bannerAvisos.addEventListener('mouseleave', () => { _carruselPausado = false; });
+    bannerAvisos.addEventListener('touchstart', () => { _carruselPausado = true; }, { passive: true });
+    bannerAvisos.addEventListener('touchend', () => {
+      setTimeout(() => { _carruselPausado = false; }, 3500);
+    }, { passive: true });
+  }
+
+  // Pausar el carrusel cuando la pestaña no está visible para ahorrar batería
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      detenerTimerCarruselAvisos();
+    } else {
+      const vInicio = $('#viewInicio');
+      if (vInicio && vInicio.classList.contains('active')) {
+        iniciarTimerCarruselAvisos();
+      }
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  try { inicializarEventosPushYAvisos(); } catch (e) { console.error(e); }
+});
+

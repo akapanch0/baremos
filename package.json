@@ -1,6 +1,6 @@
 {
   "name": "baremos",
-  "version": "5.9.49",
+  "version": "5.9.50",
   "description": "Registro de baremos para contratistas",
   "private": true,
   "type": "module",
@@ -10,7 +10,8 @@
     "build": "node -e 'console.log(\"Static build ready\")'"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "jsdom": "^30.0.1"

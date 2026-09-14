@@ -1,0 +1,52 @@
+[
+  {
+    "id": "aviso-1789344685752",
+    "titulo": "Alerta de Prueba",
+    "cuerpo": "Mensaje de prueba para cuadrilla",
+    "prioridad": "alta",
+    "categoria": "Seguridad",
+    "autor": "Supervisión Test",
+    "fecha": "2026-09-14",
+    "creadoEn": "2026-09-14T00:11:25.752Z"
+  },
+  {
+    "id": "aviso-init-1",
+    "titulo": "⚠️ Alerta de Seguridad: EPP y Arnés Obligatorio",
+    "cuerpo": "Todo el personal en trabajos de altura o poda debe utilizar arnés con doble cabo de vida y verificar ausencia de tensión en líneas MT/BT.",
+    "prioridad": "alta",
+    "categoria": "Seguridad",
+    "autor": "Dpto. de Higiene & Seguridad",
+    "fecha": "2026-09-13",
+    "leido": false
+  },
+  {
+    "id": "aviso-init-2",
+    "titulo": "📋 Análisis de Trabajo Seguro (ATS) Diario",
+    "cuerpo": "Recordá completar y firmar el ATS con todo el equipo antes de comenzar cualquier tarea en la vía pública. Podés exportar el PDF con firmas digitales.",
+    "prioridad": "alta",
+    "categoria": "Procedimiento",
+    "autor": "Supervisión Operativa",
+    "fecha": "2026-09-12",
+    "leido": false
+  },
+  {
+    "id": "aviso-init-3",
+    "titulo": "⏰ Alerta de Cierre de Jornadas Pendientes",
+    "cuerpo": "Evitá dejar jornadas abiertas de días anteriores. Al finalizar el día, asegurate de cerrar tu jornada para consolidar la producción y baremos.",
+    "prioridad": "media",
+    "categoria": "Operaciones",
+    "autor": "Administración BAREMO",
+    "fecha": "2026-09-11",
+    "leido": false
+  },
+  {
+    "id": "aviso-init-4",
+    "titulo": "⛈️ Protocolo de Tormenta Eléctrica",
+    "cuerpo": "Ante relámpagos o alerta meteorológica en la zona de trabajo, interrumpir inmediatamente las tareas en postes o grúas y guarecerse.",
+    "prioridad": "media",
+    "categoria": "Seguridad",
+    "autor": "Coordinación Central",
+    "fecha": "2026-09-10",
+    "leido": false
+  }
+]

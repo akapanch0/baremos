@@ -36,7 +36,7 @@
    Se mantiene el control del usuario: el service worker nuevo espera y
    la cache vieja recien se reemplaza cuando se acepta actualizar.
    ------------------------------------------------------------ */
-const SHELL_CACHE = 'baremo-shell-5.9.49';
+const SHELL_CACHE = 'baremo-shell-5.9.50';
 
 // Se guardan las dos formas de cada pagina (con y sin .html) porque el
 // hosting puede entrar por cualquiera de las dos.
@@ -45,37 +45,37 @@ const PAGINAS = ['./', './index.html', './index', './landing.html', './landing']
 // Copias locales de las librerias (si estan en ./vendor). Si no existen, se
 // omiten en silencio y la app usa el CDN, que tambien queda cacheado.
 const VENDOR_ASSETS = [
-  './vendor/chart.umd.min.js?v=5.9.49',
-  './vendor/jspdf.umd.min.js?v=5.9.49',
-  './vendor/jspdf.plugin.autotable.min.js?v=5.9.49',
-  './vendor/xlsx.full.min.js?v=5.9.49'
+  './vendor/chart.umd.min.js?v=5.9.50',
+  './vendor/jspdf.umd.min.js?v=5.9.50',
+  './vendor/jspdf.plugin.autotable.min.js?v=5.9.50',
+  './vendor/xlsx.full.min.js?v=5.9.50'
 ];
 
 const ASSETS = [
-  './landing.css?v=5.9.49',
-  './styles.css?v=5.9.49',
-  './main.js?v=5.9.49',
-  './brand.js?v=5.9.49',
-  './app.js?v=5.9.49',
-  './db.js?v=5.9.49',
+  './landing.css?v=5.9.50',
+  './styles.css?v=5.9.50',
+  './main.js?v=5.9.50',
+  './brand.js?v=5.9.50',
+  './app.js?v=5.9.50',
+  './db.js?v=5.9.50',
   './baremo.json',
-  './manifest.json?v=5.9.49',
-  './icons/logo.png?v=5.9.49',
-  './icons/icon-192.png?v=5.9.49',
-  './icons/icon-512.png?v=5.9.49',
-  './icons/icon-any-192.png?v=5.9.49',
-  './icons/icon-any-512.png?v=5.9.49',
-  './icons/icon-maskable-192.png?v=5.9.49',
-  './icons/icon-maskable-512.png?v=5.9.49',
-  './icons/apple-touch-icon-180.png?v=5.9.49',
+  './manifest.json?v=5.9.50',
+  './icons/logo.png?v=5.9.50',
+  './icons/icon-192.png?v=5.9.50',
+  './icons/icon-512.png?v=5.9.50',
+  './icons/icon-any-192.png?v=5.9.50',
+  './icons/icon-any-512.png?v=5.9.50',
+  './icons/icon-maskable-192.png?v=5.9.50',
+  './icons/icon-maskable-512.png?v=5.9.50',
+  './icons/apple-touch-icon-180.png?v=5.9.50',
   './maps/trujui.png', './maps/cuartelv.png', './maps/moreno.png',
   './maps/gralrodriguez.png', './maps/tigre.png', './maps/sanmartin.png',
   './maps/olivos.png', './maps/pilarescobar.png',
-  './help/baremos-1.png?v=5.9.49',
-  './help/baremos-2.png?v=5.9.49',
-  './help/baremos-3.png?v=5.9.49',
-  './help/baremos-4.png?v=5.9.49',
-  './help/baremos-5.png?v=5.9.49'
+  './help/baremos-1.png?v=5.9.50',
+  './help/baremos-2.png?v=5.9.50',
+  './help/baremos-3.png?v=5.9.50',
+  './help/baremos-4.png?v=5.9.50',
+  './help/baremos-5.png?v=5.9.50'
 ];
 
 const CDN_ASSETS = [
@@ -420,22 +420,129 @@ self.addEventListener('sync', event => {
 // (El mensaje REVISAR_AVISOS y la revision al activar se manejan mas arriba,
 //  en el listener unico de 'message' y en el de 'activate'.)
 
-/* ---------- AL TOCAR UNA NOTIFICACION ---------- */
+// ============================================================
+// NOTIFICACIONES PUSH VÍA SERVICE WORKER (Jornadas y Avisos de Empresa)
+// ============================================================
+self.addEventListener('push', event => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      try {
+        data = JSON.parse(event.data.text());
+      } catch (e2) {
+        data = { cuerpo: event.data.text() };
+      }
+    }
+  }
+
+  const tipo = data.tipo || 'aviso_empresa';
+  let defaultTitulo = '📢 BAREMO · Aviso de la Empresa';
+  if (tipo === 'jornada_pendiente') {
+    defaultTitulo = '⏰ BAREMO · Jornada Pendiente de Cierre';
+  } else if (tipo === 'ats_pendiente') {
+    defaultTitulo = '⚠️ BAREMO · ATS Pendiente Obligatorio';
+  }
+
+  const titulo = data.titulo || defaultTitulo;
+  const cuerpo = data.cuerpo || data.mensaje || 'Aviso importante para el equipo de trabajo.';
+  const tag = data.tag || (`baremo-${tipo}-${data.id || Date.now()}`);
+  const icon = data.icon || './icons/icon-192.png?v=5.9.50';
+  const badge = data.badge || './icons/icon-192.png?v=5.9.50';
+  const esPrioridadAlta = data.prioridad === 'alta' || tipo === 'jornada_pendiente' || tipo === 'ats_pendiente';
+  const vibrar = data.vibrate || (esPrioridadAlta ? [300, 150, 300, 150, 300] : [200, 100, 200]);
+
+  // Acciones en la barra de notificación del sistema
+  const actions = [];
+  if (tipo === 'jornada_pendiente') {
+    actions.push({ action: 'ir_jornada', title: '📋 Cerrar Jornada' });
+    actions.push({ action: 'descartar', title: '✕ Más tarde' });
+  } else if (tipo === 'ats_pendiente') {
+    actions.push({ action: 'abrir_ats', title: '✍️ Completar ATS' });
+    actions.push({ action: 'descartar', title: '✕ Entendido' });
+  } else {
+    actions.push({ action: 'ver_aviso', title: '📢 Ver Comunicado' });
+    actions.push({ action: 'descartar', title: '✕ Cerrar' });
+  }
+
+  const vista = data.vista || (tipo === 'jornada_pendiente' ? 'Registro' : (tipo === 'aviso_empresa' ? 'AvisosEmpresa' : 'Registro'));
+  const accion = data.accion || (tipo === 'jornada_pendiente' ? 'cerrar_jornada' : (tipo === 'ats_pendiente' ? 'abrir_ats' : 'ver_aviso'));
+
+  const options = {
+    body: cuerpo,
+    icon: icon,
+    badge: badge,
+    tag: tag,
+    vibrate: vibrar,
+    requireInteraction: esPrioridadAlta,
+    renotify: true,
+    silent: false,
+    timestamp: data.timestamp || Date.now(),
+    data: {
+      url: data.url || './index.html',
+      vista: vista,
+      accion: accion,
+      avisoId: data.id || (data.datos && data.datos.avisoId) || null,
+      tipo: tipo,
+      ...data.datos
+    },
+    actions: actions
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(titulo, options)
+  );
+});
+
+/* ---------- AL TOCAR UNA NOTIFICACIÓN O ACCIÓN ---------- */
 self.addEventListener('notificationclick', event => {
   event.notification.close();
+
+  const action = event.action;
+  if (action === 'descartar') {
+    return;
+  }
+
   const datos = event.notification.data || {};
-  const vista = datos.vista || 'Registro';
-  const accion = datos.accion || '';
+  let vista = datos.vista || 'Registro';
+  let accion = datos.accion || '';
+
+  if (action === 'ir_jornada') {
+    vista = 'Registro';
+    accion = 'cerrar_jornada';
+  } else if (action === 'abrir_ats') {
+    vista = 'Registro';
+    accion = 'abrir_ats';
+  } else if (action === 'ver_aviso') {
+    vista = 'AvisosEmpresa';
+    accion = 'ver_aviso';
+  }
 
   event.waitUntil((async () => {
     const clientes = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of clientes) {
       if ('focus' in c) {
-        try { c.postMessage({ tipo: 'IR_A_REGISTRO', vista: vista, accion: accion }); } catch (e) {}
+        try {
+          c.postMessage({
+            tipo: 'IR_A_VISTA',
+            vista: vista,
+            accion: accion,
+            datos: datos
+          });
+        } catch (e) {}
         return c.focus();
       }
     }
-    const url = './index.html?app=1' + (accion === 'abrir_ats' ? '&ats=1' : '');
+
+    let url = './index.html?app=1';
+    if (accion === 'abrir_ats') {
+      url += '&ats=1';
+    } else if (vista === 'AvisosEmpresa') {
+      url += '&avisos=1' + (datos.avisoId ? `&avisoId=${encodeURIComponent(datos.avisoId)}` : '');
+    } else if (vista) {
+      url += `&vista=${encodeURIComponent(vista)}` + (accion ? `&accion=${encodeURIComponent(accion)}` : '');
+    }
     return self.clients.openWindow(url);
   })());
 });

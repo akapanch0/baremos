@@ -1,6 +1,6 @@
 {
   "name": "BAREMO",
-  "description": "Registro de baremos y producción diaria para contratistas con control de tareas geolocalizadas, combustible y reportes.",
+  "description": "Registro de baremos y producción diaria para cuadrillas con alertas push de jornadas pendientes, comunicados oficiales de la empresa, control de tareas geolocalizadas y formulario ATS.",
   "requestFramePermissions": [
     "geolocation"
   ],
