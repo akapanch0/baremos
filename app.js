@@ -631,8 +631,33 @@ async function estadoCredencialAdmin() {
   return { existe: !!(vieja && vieja.value), debeCambiar: false };
 }
 
-/* Verifica la contraseña y migra el formato viejo de forma transparente. */
+/* Verifica la contraseña primero remotamente en el servidor (Clave Maestra desde cualquier celular)
+   y luego con respaldo local si está sin conexión. */
 async function verificarPasswordAdmin(pass) {
+  // 1. Verificación remota contra el servidor central
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.ok) {
+        if (data.token) {
+          sessionStorage.setItem('baremo_admin_token', data.token);
+        }
+        try { await guardarCredencialAdmin(pass, !!data.debeCambiar); } catch (e) {}
+        return { ok: true, debeCambiar: !!data.debeCambiar, sinCredencial: false, token: data.token, remoto: true };
+      }
+    } else if (res.status === 401) {
+      return { ok: false, debeCambiar: false, sinCredencial: false, remoto: true };
+    }
+  } catch (err) {
+    console.warn('[Admin] Servidor remoto no disponible, usando validación local:', err.message);
+  }
+
+  // 2. Fallback de verificación local (modo offline)
   const nueva = await leerCredencialAdmin();
   if (nueva) {
     const hash = await derivarPBKDF2(pass, hexABytes(nueva.salt), nueva.iter || PBKDF2_ITERACIONES);
@@ -645,14 +670,18 @@ async function verificarPasswordAdmin(pass) {
     if (!igualSeguro(hashViejo, vieja.value)) {
       return { ok: false, debeCambiar: false, sinCredencial: false };
     }
-    // Contraseña correcta: se migra al formato nuevo y se borra el hash viejo.
     const eraDeFabrica = igualSeguro(vieja.value, HASH_DEFECTO_LEGADO);
     await guardarCredencialAdmin(pass, eraDeFabrica);
     try { await dbDelete('config', CLAVE_CREDENCIAL_LEGADO); } catch (e) {}
     return { ok: true, debeCambiar: eraDeFabrica, migrada: true, sinCredencial: false };
   }
 
-  // Instalacion nueva: todavia no hay contraseña definida.
+  // Si no hay credenciales locales y coincide con claves de fábrica conocidas
+  if (pass === 'admin' || pass === 'baremo2026') {
+    await guardarCredencialAdmin(pass, true);
+    return { ok: true, debeCambiar: true, sinCredencial: false };
+  }
+
   return { ok: false, debeCambiar: false, sinCredencial: true };
 }
 
@@ -3359,14 +3388,36 @@ async function handleChangePassword(e) {
   const current = $('#currentPass').value;
   const newPass = $('#newPass').value;
   const confirm = $('#confirmPass').value;
-  if (newPass.length < 6) { toast('❌ La nueva contraseña debe tener al menos 6 caracteres', 'error'); return; }
-  if (newPass !== confirm) { toast('❌ Las nuevas contraseñas no coinciden', 'error'); return; }
-  const r = await verificarPasswordAdmin(current);
-  if (r.sinCredencial) { toast('❌ Todavía no hay contraseña de administrador en este equipo', 'error'); return; }
-  if (!r.ok) { toast('❌ La contraseña actual es incorrecta', 'error'); return; }
-  if (newPass === current) { toast('❌ La nueva contraseña tiene que ser distinta de la actual', 'error'); return; }
+  if (newPass.length < 4) { toast('❌ La nueva clave debe tener al menos 4 caracteres', 'error'); return; }
+  if (newPass !== confirm) { toast('❌ Las nuevas claves no coinciden', 'error'); return; }
+  if (newPass === current) { toast('❌ La nueva clave tiene que ser distinta de la actual', 'error'); return; }
+
+  const token = sessionStorage.getItem('baremo_admin_token') || '';
+  let remotoOk = false;
+
+  try {
+    const res = await fetch('/api/admin/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-token': token
+      },
+      body: JSON.stringify({ currentPassword: current, newPassword: newPass })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      if (data.token) sessionStorage.setItem('baremo_admin_token', data.token);
+      remotoOk = true;
+    } else {
+      toast(`❌ ${data.error || 'No se pudo actualizar en el servidor'}`, 'error');
+      return;
+    }
+  } catch (err) {
+    console.warn('[Admin] Servidor no respondió al cambio de clave:', err.message);
+  }
+
   await guardarCredencialAdmin(newPass, false);
-  toast('✅ Contraseña actualizada correctamente', 'success');
+  toast(remotoOk ? '✅ Clave Maestra actualizada en el servidor' : '✅ Contraseña actualizada localmente', 'success');
   $('#modalChangePassword').classList.remove('show');
   $('#formChangePassword').reset();
 }
@@ -3662,6 +3713,9 @@ async function renderAdmin() {
   const fechaInput = $('#adminFecha');
   if (fechaInput && !fechaInput.value) fechaInput.value = hoy();
   actualizarLabelFecha();
+
+  // Cargar estado en tiempo real del emisor push y comunicados remotos
+  await cargarPanelAdminPush();
 }
 function actualizarLabelFecha() {
   const label = $('#adminFechaLabel');
@@ -3745,6 +3799,7 @@ function setupAdmin() {
   if (btnLogout) {
     btnLogout.onclick = () => {
       State.adminLoggedIn = false;
+      sessionStorage.removeItem('baremo_admin_token');
       $('#adminLogin').style.display = 'block';
       $('#adminPanel').style.display = 'none';
       $('#adminPassword').value = '';
@@ -3980,6 +4035,410 @@ function setupAdmin() {
     XLSX.writeFile(wb, fileName);
     toast(`Reporte Excel generado: ${datos.length} jornadas`, 'success');
   };
+
+  setupAdminPushEvents();
+}
+
+/* ============================================================
+   PANEL DE CONTROL REMOTO DE PUSH Y COMUNICADOS (ADMIN)
+   ============================================================ */
+function escapeHTML(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+async function cargarPanelAdminPush() {
+  const badge = $('#adminPushSubscribersBadge');
+  const trayCount = $('#trayDispositivosCount');
+  const trayList = $('#trayDispositivosList');
+  const avisosCount = $('#adminAvisosCount');
+  const avisosList = $('#adminAvisosList');
+  const selDest = $('#adminPushDestinatario');
+
+  const token = sessionStorage.getItem('baremo_admin_token') || '';
+
+  try {
+    const res = await fetch('/api/admin/push/stats', {
+      headers: { 'x-admin-token': token }
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        console.warn('[Admin Push] Sesión administrativa expirada o no autenticada.');
+      }
+      return;
+    }
+
+    const data = await res.json();
+    if (!data || !data.ok) return;
+
+    // 1. Contador de dispositivos conectados en tiempo real
+    if (badge) {
+      badge.textContent = `📱 ${data.totalSuscriptores} celular${data.totalSuscriptores === 1 ? '' : 'es'} conectado${data.totalSuscriptores === 1 ? '' : 's'}`;
+      if (data.totalSuscriptores > 0) {
+        badge.classList.add('success');
+      } else {
+        badge.classList.remove('success');
+      }
+    }
+    if (trayCount) {
+      trayCount.textContent = `${data.totalSuscriptores} activos`;
+    }
+
+    // 2. Desplegable de celulares conectados
+    if (trayList) {
+      if (!data.dispositivos || data.dispositivos.length === 0) {
+        trayList.innerHTML = '<div style="color:var(--text-soft);font-size:11px;padding:6px 0;">No hay celulares conectados aún. Las cuadrillas se vinculan automáticamente desde <em>Ajustes > Notificaciones Push</em> en cada dispositivo.</div>';
+      } else {
+        trayList.innerHTML = data.dispositivos.map(d => `
+          <div class="admin-device-row">
+            <div>
+              <strong style="color:var(--text);">👤 Legajo ${escapeHTML(d.legajo)}</strong>
+              <span style="color:var(--text-soft);margin-left:6px;">${escapeHTML(d.nombre)}</span>
+            </div>
+            <div style="font-size:10.5px;color:var(--text-soft);display:flex;align-items:center;gap:6px;">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);"></span>
+              <span>${escapeHTML(d.endpointCorto)}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // 3. Población dinámica de destinatarios
+    if (selDest) {
+      const valorPrevio = selDest.value;
+      selDest.innerHTML = '<option value="todos">👥 A todas las cuadrillas (Broadcast)</option>';
+      const legajosAgregados = new Set();
+      (data.dispositivos || []).forEach(d => {
+        if (d.legajo && d.legajo !== 'Sin legajo' && !legajosAgregados.has(d.legajo)) {
+          legajosAgregados.add(d.legajo);
+          const opt = document.createElement('option');
+          opt.value = d.legajo;
+          opt.textContent = `👤 Legajo ${d.legajo} · ${d.nombre}`;
+          selDest.appendChild(opt);
+        }
+      });
+      try {
+        const usuariosLocales = await dbGetAll('usuarios');
+        for (const u of usuariosLocales) {
+          if (u.legajo && !legajosAgregados.has(u.legajo)) {
+            legajosAgregados.add(u.legajo);
+            const opt = document.createElement('option');
+            opt.value = u.legajo;
+            opt.textContent = `👤 Legajo ${u.legajo} · ${u.nombre}`;
+            selDest.appendChild(opt);
+          }
+        }
+      } catch (e) {}
+      if (valorPrevio && [...selDest.options].some(o => o.value === valorPrevio)) {
+        selDest.value = valorPrevio;
+      }
+    }
+
+    // 4. Lista de Comunicados Activos en el Servidor Central
+    const avisos = data.avisos || [];
+    if (avisosCount) {
+      avisosCount.textContent = `(${avisos.length} comunicado${avisos.length === 1 ? '' : 's'})`;
+    }
+
+    if (avisosList) {
+      if (avisos.length === 0) {
+        avisosList.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:16px;">No hay comunicados activos en el servidor.</div>';
+      } else {
+        avisosList.innerHTML = avisos.map(a => {
+          const esAlta = a.prioridad === 'alta';
+          const badgePrio = esAlta
+            ? '<span style="background:rgba(239,68,68,0.15);color:#ef4444;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🔴 ALTA</span>'
+            : '<span style="background:rgba(234,179,8,0.15);color:#ca8a04;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🟡 NORMAL</span>';
+
+          const destInfo = (a.destinatario && a.destinatario !== 'todos')
+            ? `<span style="font-size:10px;background:rgba(99,102,241,0.12);color:var(--primary);padding:2px 6px;border-radius:4px;">👤 Legajo: ${escapeHTML(a.destinatario)}</span>`
+            : '<span style="font-size:10px;background:rgba(128,128,128,0.12);color:var(--text-soft);padding:2px 6px;border-radius:4px;">👥 Todas las cuadrillas</span>';
+
+          const fechaFormateada = a.fecha ? (typeof fechaCorta === 'function' ? fechaCorta(a.fecha.slice(0, 10)) : a.fecha.slice(0, 10)) : '';
+
+          return `
+            <div class="admin-aviso-item" data-aviso-id="${a.id}">
+              <div class="admin-aviso-item-header">
+                <div style="font-weight:700;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <span>${escapeHTML(a.titulo)}</span>
+                  ${badgePrio}
+                  ${destInfo}
+                </div>
+                <span style="font-size:10.5px;color:var(--text-soft);white-space:nowrap;">${fechaFormateada}</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--text-soft);line-height:1.4;">
+                ${escapeHTML(a.cuerpo)}
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(128,128,128,0.1);padding-top:6px;margin-top:2px;">
+                <span style="font-size:10.5px;color:var(--text-soft);">✍️ ${escapeHTML(a.autor || 'Supervisión')} · 🏷️ ${escapeHTML(a.categoria || 'General')}</span>
+                <div class="admin-aviso-actions">
+                  <button type="button" class="btn btn-ghost btn-xs btn-reenviar-push" data-id="${a.id}" title="Reenviar Push a todos los celulares" style="padding:3px 8px;font-size:11px;color:var(--primary);border:1px solid rgba(99,102,241,0.3);">
+                    🔁 Reenviar
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-xs btn-eliminar-aviso" data-id="${a.id}" title="Eliminar del servidor central" style="padding:3px 8px;font-size:11px;color:var(--danger);border:1px solid rgba(239,68,68,0.3);">
+                    🗑️ Borrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Listeners para Reenviar y Eliminar
+        avisosList.querySelectorAll('.btn-reenviar-push').forEach(btn => {
+          btn.onclick = async () => {
+            const id = btn.dataset.id;
+            const targetAviso = avisos.find(x => x.id === id);
+            if (!targetAviso) return;
+            if (!await confirmDialog(`¿Reenviar notificación push de "${targetAviso.titulo}" a todos los celulares ahora mismo?`)) return;
+            await enviarPushRemoto({
+              tipo: 'aviso_empresa',
+              titulo: targetAviso.titulo,
+              cuerpo: targetAviso.cuerpo,
+              prioridad: targetAviso.prioridad,
+              categoria: targetAviso.categoria,
+              destinatario: targetAviso.destinatario || 'todos',
+              crearAviso: false,
+              enviarPush: true
+            });
+          };
+        });
+
+        avisosList.querySelectorAll('.btn-eliminar-aviso').forEach(btn => {
+          btn.onclick = async () => {
+            const id = btn.dataset.id;
+            const targetAviso = avisos.find(x => x.id === id);
+            const titulo = targetAviso ? targetAviso.titulo : 'este comunicado';
+            if (!await confirmDialog(`¿Eliminar "${titulo}" del servidor central?\n\nDesaparecerá automáticamente del carrusel de todos los celulares.`)) return;
+            await eliminarAvisoRemoto(id);
+          };
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[Admin Push] Error cargando stats:', err);
+  }
+}
+
+let adminPushEventsInitialized = false;
+function setupAdminPushEvents() {
+  if (adminPushEventsInitialized) return;
+  adminPushEventsInitialized = true;
+
+  const btnSubmit = $('#btnAdminPushSubmit');
+  const btnRefresh = $('#btnAdminPushRefresh');
+  const btnToggle = $('#btnToggleDispositivos');
+  const selTipo = $('#adminPushTipo');
+  const inpTitulo = $('#adminPushTitulo');
+  const txtMensaje = $('#adminPushMensaje');
+  const selCat = $('#adminPushCategoria');
+  const selPrio = $('#adminPushPrioridad');
+  const selDest = $('#adminPushDestinatario');
+  const chkPush = $('#adminPushCheckPush');
+  const chkAviso = $('#adminPushCheckAviso');
+  const statusMsg = $('#adminPushStatusMsg');
+
+  // Toggle bandeja de celulares
+  if (btnToggle) {
+    btnToggle.onclick = () => {
+      const tray = $('#trayDispositivos');
+      if (!tray) return;
+      const visible = tray.style.display !== 'none';
+      tray.style.display = visible ? 'none' : 'block';
+      btnToggle.textContent = visible ? '👥 Ver celulares' : '🔼 Ocultar';
+    };
+  }
+
+  // Refrescar estado del servidor
+  if (btnRefresh) {
+    btnRefresh.onclick = () => {
+      toast('🔄 Actualizando estado del servidor...', 'info');
+      cargarPanelAdminPush();
+    };
+  }
+
+  // Plantillas Rápidas
+  $$('#adminTemplateGrid button').forEach(btn => {
+    btn.onclick = () => {
+      const tpl = btn.dataset.tpl;
+      aplicarPlantillaAdminPush(tpl);
+    };
+  });
+
+  // Selector de Tipo de Notificación
+  if (selTipo) {
+    selTipo.onchange = () => {
+      const t = selTipo.value;
+      if (t === 'jornada_pendiente') aplicarPlantillaAdminPush('jornada');
+      else if (t === 'ats_pendiente') aplicarPlantillaAdminPush('ats');
+      else if (t === 'seguridad_urgente') aplicarPlantillaAdminPush('seguridad');
+      else if (t === 'clima_tormenta') aplicarPlantillaAdminPush('tormenta');
+      else if (t === 'aviso_empresa') aplicarPlantillaAdminPush('comunicado');
+    };
+  }
+
+  // Enviar Notificación Remota
+  if (btnSubmit) {
+    btnSubmit.onclick = async () => {
+      const titulo = (inpTitulo ? inpTitulo.value : '').trim();
+      const cuerpo = (txtMensaje ? txtMensaje.value : '').trim();
+      const tipo = selTipo ? selTipo.value : 'aviso_empresa';
+      const categoria = selCat ? selCat.value : 'Seguridad';
+      const prioridad = selPrio ? selPrio.value : 'alta';
+      const destinatario = selDest ? selDest.value : 'todos';
+      const enviarPush = chkPush ? chkPush.checked : true;
+      const crearAviso = chkAviso ? chkAviso.checked : true;
+
+      if (!titulo) {
+        toast('❌ Ingresá un título para la notificación', 'error');
+        if (inpTitulo) inpTitulo.focus();
+        return;
+      }
+      if (!cuerpo) {
+        toast('❌ Ingresá el mensaje o instrucciones para las cuadrillas', 'error');
+        if (txtMensaje) txtMensaje.focus();
+        return;
+      }
+      if (!enviarPush && !crearAviso) {
+        toast('⚠️ Seleccioná al menos Enviar Push o Publicar en Carrusel', 'warn');
+        return;
+      }
+
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = '⏳ Emitiendo a los celulares conectados...';
+
+      try {
+        const res = await enviarPushRemoto({
+          tipo,
+          titulo,
+          cuerpo,
+          categoria,
+          prioridad,
+          destinatario,
+          enviarPush,
+          crearAviso
+        });
+
+        if (res && res.ok) {
+          if (inpTitulo) inpTitulo.value = '';
+          if (txtMensaje) txtMensaje.value = '';
+          if (statusMsg) {
+            statusMsg.style.display = 'block';
+            statusMsg.style.background = 'rgba(16,185,129,0.12)';
+            statusMsg.style.color = 'var(--success)';
+            statusMsg.style.border = '1px solid rgba(16,185,129,0.25)';
+            statusMsg.innerHTML = `✅ <strong>Notificación emitida con éxito.</strong> ${res.enviados || 0} celular/es conectado/s recibieron la alerta push en segundo plano.`;
+            setTimeout(() => { statusMsg.style.display = 'none'; }, 6000);
+          }
+          toast(`🚀 Notificación enviada a ${res.enviados || 0} celulares`, 'success');
+        } else {
+          toast(`❌ Error: ${res?.error || 'No se pudo enviar la notificación'}`, 'error');
+        }
+      } catch (err) {
+        toast(`❌ Error al conectar con el servidor: ${err.message}`, 'error');
+      } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = '🚀 Emitir Notificación Remota a Dispositivos';
+      }
+    };
+  }
+}
+
+function aplicarPlantillaAdminPush(tpl) {
+  const selTipo = $('#adminPushTipo');
+  const inpTitulo = $('#adminPushTitulo');
+  const txtMensaje = $('#adminPushMensaje');
+  const selCat = $('#adminPushCategoria');
+  const selPrio = $('#adminPushPrioridad');
+
+  if (tpl === 'jornada') {
+    if (selTipo) selTipo.value = 'jornada_pendiente';
+    if (inpTitulo) inpTitulo.value = '⏰ Recordatorio de Cierre de Jornada Diaria';
+    if (txtMensaje) txtMensaje.value = 'Tenés una jornada sin cerrar. Por favor controlá tus tareas y cerrala desde la pantalla de inicio para asegurar el cómputo correcto de tus baremos.';
+    if (selCat) selCat.value = 'Operaciones';
+    if (selPrio) selPrio.value = 'alta';
+  } else if (tpl === 'ats') {
+    if (selTipo) selTipo.value = 'ats_pendiente';
+    if (inpTitulo) inpTitulo.value = '📋 Análisis de Trabajo Seguro (ATS) Obligatorio';
+    if (txtMensaje) txtMensaje.value = 'Recordá completar y firmar el ATS con todo el equipo antes de iniciar cualquier tarea en la vía pública.';
+    if (selCat) selCat.value = 'Procedimiento';
+    if (selPrio) selPrio.value = 'alta';
+  } else if (tpl === 'seguridad') {
+    if (selTipo) selTipo.value = 'seguridad_urgente';
+    if (inpTitulo) inpTitulo.value = '⚠️ Alerta de Seguridad Urgente: Protocolo de EPP';
+    if (txtMensaje) txtMensaje.value = 'Uso obligatorio de arnés con doble cabo de vida y verificación de ausencia de tensión en líneas MT/BT. Prohibido operar sin EPP completo.';
+    if (selCat) selCat.value = 'Seguridad';
+    if (selPrio) selPrio.value = 'alta';
+  } else if (tpl === 'tormenta') {
+    if (selTipo) selTipo.value = 'clima_tormenta';
+    if (inpTitulo) inpTitulo.value = '⛈️ Alerta Meteorológica: Protocolo de Tormenta';
+    if (txtMensaje) txtMensaje.value = 'Se registran condiciones climáticas adversas en la zona de trabajo. Suspender de inmediato trabajos en altura o líneas aéreas y resguardar a la cuadrilla.';
+    if (selCat) selCat.value = 'Seguridad';
+    if (selPrio) selPrio.value = 'alta';
+  } else if (tpl === 'comunicado') {
+    if (selTipo) selTipo.value = 'aviso_empresa';
+    if (inpTitulo) inpTitulo.value = '📢 Comunicado Oficial de la Empresa';
+    if (txtMensaje) txtMensaje.value = '';
+    if (selCat) selCat.value = 'General';
+    if (selPrio) selPrio.value = 'media';
+  }
+}
+
+async function enviarPushRemoto(payload) {
+  const token = sessionStorage.getItem('baremo_admin_token') || '';
+  try {
+    const res = await fetch('/api/admin/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-token': token
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      await cargarPanelAdminPush();
+      if (payload.crearAviso && typeof cargarAvisosEmpresa === 'function') {
+        await cargarAvisosEmpresa();
+        if (typeof renderCarruselAvisos === 'function') renderCarruselAvisos();
+      }
+      return data;
+    }
+    return { ok: false, error: data.error || 'Error al emitir notificación' };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+async function eliminarAvisoRemoto(id) {
+  const token = sessionStorage.getItem('baremo_admin_token') || '';
+  try {
+    const res = await fetch(`/api/admin/avisos/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-token': token }
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      toast('Aviso eliminado del servidor central', 'success');
+      await cargarPanelAdminPush();
+      if (typeof cargarAvisosEmpresa === 'function') {
+        await cargarAvisosEmpresa();
+        if (typeof renderCarruselAvisos === 'function') renderCarruselAvisos();
+      }
+      return true;
+    }
+    toast(`❌ Error: ${data.error || 'No autorizado'}`, 'error');
+    return false;
+  } catch (err) {
+    toast(`❌ Error al conectar: ${err.message}`, 'error');
+    return false;
+  }
 }
 
 async function obtenerDatosReporteAdmin() {

@@ -763,21 +763,169 @@ html.piel-grafito { background: #1f2937; }</style>
   </section>
 
   <section class="view" id="viewAdmin">
-    <div class="card-title" style="padding:0 4px 8px">🔐 Panel de Administración</div>
-    <div class="admin-login" id="adminLogin">
-      <div style="font-size:40px;margin-bottom:10px">🔒</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:14px">Acceso Restringido</div>
-      <input class="input" id="adminPassword" type="password" placeholder="Ingrese contraseña" maxlength="20" style="margin-bottom:10px">
-      <button class="btn btn-danger" id="btnAdminLogin">Ingresar</button>
+    <div class="card-title" style="padding:0 4px 8px">🔐 Panel de Administración Remoto</div>
+
+    <div class="admin-login-box" id="adminLogin">
+      <div style="font-size:42px;margin-bottom:8px">🔐</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:6px">Acceso Remoto de Administrador</div>
+      <p style="font-size:12px;color:var(--text-soft);margin-bottom:14px;line-height:1.45;">
+        Ingresá con la <strong>Clave Maestra</strong> desde cualquier celular o dispositivo con internet para emitir notificaciones push y gestionar comunicados.
+      </p>
+      <input class="input" id="adminPassword" type="password" placeholder="Ingresá la Clave Maestra" maxlength="35" style="margin-bottom:12px;text-align:center;font-size:15px;letter-spacing:1px;">
+      <button class="btn btn-danger" id="btnAdminLogin" style="width:100%;">🔓 Ingresar como Administrador</button>
+      <div style="font-size:11px;color:var(--text-soft);margin-top:12px;">
+        🔑 Clave inicial por defecto: <code style="background:rgba(128,128,128,0.15);padding:2px 6px;border-radius:4px;font-weight:700;">admin</code> o <code style="background:rgba(128,128,128,0.15);padding:2px 6px;border-radius:4px;font-weight:700;">baremo2026</code>
+      </div>
     </div>
+
     <div id="adminPanel" style="display:none">
       <div class="admin-panel">
         <div class="admin-header">
-          <div class="admin-badge">🔓 ADMIN</div>
-          <div class="admin-title">Panel de Control</div>
+          <div class="admin-badge">🔓 ADMIN REMOTO</div>
+          <div class="admin-title">Panel Central de Control</div>
           <button class="admin-logout-btn" id="btnAdminLogout">Salir</button>
         </div>
-        <button class="btn btn-ghost" style="margin-bottom:14px;border:1px dashed var(--primary);color:var(--primary)" id="btnChangePassword">🔑 Cambiar contraseña del Administrador</button>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" style="border:1px dashed var(--primary);color:var(--primary)" id="btnChangePassword">
+            🔑 Cambiar Clave Maestra en Servidor
+          </button>
+          <span style="font-size:11px;color:var(--success);font-weight:700;display:flex;align-items:center;gap:4px;">
+            <span style="display:inline-block;width:8px;height:8px;background:var(--success);border-radius:50%;"></span> Servidor Conectado
+          </span>
+        </div>
+
+        <!-- CENTRO REMOTO DE NOTIFICACIONES PUSH & COMUNICADOS -->
+        <div class="admin-push-card" id="adminPushCard">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--primary);">
+              📢 Emisión Remota de Notificaciones Push
+            </div>
+            <div class="admin-stats-pills">
+              <span class="admin-pill-badge" id="adminPushSubscribersBadge">
+                📱 0 dispositivos
+              </span>
+              <button class="btn btn-ghost btn-sm" id="btnAdminPushRefresh" type="button" title="Refrescar estado del servidor" style="padding:4px 8px;font-size:12px;">
+                🔄
+              </button>
+              <button class="btn btn-ghost btn-sm" id="btnToggleDispositivos" type="button" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);">
+                👥 Ver celulares
+              </button>
+            </div>
+          </div>
+
+          <p style="font-size:12px;color:var(--text-soft);margin-bottom:12px;line-height:1.4;">
+            Emití notificaciones push en tiempo real a las cuadrillas desde este celular. Los teléfonos sonarán y vibrarán con la alerta aunque tengan la app cerrada.
+          </p>
+
+          <!-- Bandeja desplegable de celulares conectados -->
+          <div class="admin-devices-tray" id="trayDispositivos" style="display:none;margin-bottom:14px;">
+            <div style="font-weight:700;font-size:11.5px;margin-bottom:6px;display:flex;justify-content:space-between;">
+              <span>📱 Teléfonos Suscriptos a Notificaciones Push</span>
+              <span id="trayDispositivosCount">0 activos</span>
+            </div>
+            <div id="trayDispositivosList">
+              <div style="color:var(--text-soft);font-size:11px;padding:4px 0;">No hay dispositivos conectados aún.</div>
+            </div>
+          </div>
+
+          <!-- Plantillas rápidas de 1-clic -->
+          <div style="font-size:11px;font-weight:700;color:var(--text-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
+            ⚡ Plantillas Rápidas
+          </div>
+          <div class="admin-template-grid" id="adminTemplateGrid">
+            <button type="button" class="admin-tpl-btn" data-tpl="jornada">⏰ Cierre Jornada</button>
+            <button type="button" class="admin-tpl-btn" data-tpl="ats">📋 ATS Pendiente</button>
+            <button type="button" class="admin-tpl-btn" data-tpl="seguridad">⚠️ Seguridad EPP</button>
+            <button type="button" class="admin-tpl-btn" data-tpl="tormenta">⛈️ Clima Tormenta</button>
+            <button type="button" class="admin-tpl-btn" data-tpl="comunicado">📢 Comunicado</button>
+          </div>
+
+          <!-- Formulario de Envío Remoto -->
+          <form id="formAdminEmitirPush" onsubmit="return false;" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="field" style="margin:0;">
+                <label style="font-size:11px;font-weight:700;">Tipo de Notificación</label>
+                <select class="select" id="adminPushTipo">
+                  <option value="aviso_empresa">📢 Comunicado Oficial</option>
+                  <option value="jornada_pendiente">⏰ Alerta Cierre de Jornada</option>
+                  <option value="ats_pendiente">📋 Recordatorio ATS Obligatorio</option>
+                  <option value="seguridad_urgente">⚠️ Seguridad y EPP Urgente</option>
+                  <option value="clima_tormenta">⛈️ Protocolo de Tormenta</option>
+                  <option value="personalizado">✍️ Personalizado</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0;">
+                <label style="font-size:11px;font-weight:700;">Destinatarios</label>
+                <select class="select" id="adminPushDestinatario">
+                  <option value="todos">👥 A todas las cuadrillas (Broadcast)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field" style="margin:0;">
+              <label style="font-size:11px;font-weight:700;">Título de la Notificación</label>
+              <input class="input" id="adminPushTitulo" type="text" placeholder="Ej: ⚠️ Alerta de Seguridad: Uso estricto de arnés" required>
+            </div>
+
+            <div class="field" style="margin:0;">
+              <label style="font-size:11px;font-weight:700;">Mensaje / Instrucciones</label>
+              <textarea class="textarea" id="adminPushMensaje" rows="3" placeholder="Ingresá las instrucciones o detalles del aviso para las cuadrillas..." required></textarea>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="field" style="margin:0;">
+                <label style="font-size:11px;font-weight:700;">Categoría</label>
+                <select class="select" id="adminPushCategoria">
+                  <option value="Seguridad">🛡️ Seguridad</option>
+                  <option value="Procedimiento">📋 Procedimiento</option>
+                  <option value="Operaciones">⚡ Operaciones</option>
+                  <option value="Urgente">🚨 Urgente</option>
+                  <option value="General">📢 General</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0;">
+                <label style="font-size:11px;font-weight:700;">Prioridad</label>
+                <select class="select" id="adminPushPrioridad">
+                  <option value="alta">🔴 Alta (Vibración & Alerta)</option>
+                  <option value="media">🟡 Normal / Informativa</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:4px 0;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer;user-select:none;">
+                <input type="checkbox" id="adminPushCheckPush" checked style="accent-color:var(--primary);width:16px;height:16px;">
+                <span>📲 Enviar Push a celulares conectados</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer;user-select:none;">
+                <input type="checkbox" id="adminPushCheckAviso" checked style="accent-color:var(--primary);width:16px;height:16px;">
+                <span>📢 Publicar en Carrusel de Inicio</span>
+              </label>
+            </div>
+
+            <div class="admin-actions" style="margin-top:2px;">
+              <button class="btn btn-primary" id="btnAdminPushSubmit" type="button" style="grid-column:1/-1;padding:12px;font-size:13px;font-weight:700;">
+                🚀 Emitir Notificación Remota a Dispositivos
+              </button>
+            </div>
+            <div id="adminPushStatusMsg" style="display:none;font-size:12px;padding:8px 12px;border-radius:8px;margin-top:4px;"></div>
+          </form>
+
+          <!-- Gestor de Comunicados Activos en el Servidor -->
+          <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;">
+                <span>📋 Comunicados Activos en Servidor</span>
+                <span id="adminAvisosCount" style="font-size:11px;color:var(--text-soft);font-weight:normal;">(0 avisos)</span>
+              </div>
+            </div>
+            <div id="adminAvisosList" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;padding-right:2px;">
+              <div style="text-align:center;color:var(--text-soft);font-size:12px;padding:12px;">Cargando comunicados...</div>
+            </div>
+          </div>
+        </div>
+
         <div class="card" style="margin-bottom:14px">
           <div class="card-title">📦 Consolidación de Datos</div>
           <p style="font-size:11px;color:var(--text-soft);margin-bottom:10px">Para ver datos de todos los usuarios, cada usuario debe exportar sus datos y el admin importarlos aquí.</p>
