@@ -1,55 +1,14 @@
 [
   {
-    "id": "aviso-1789348250161",
-    "titulo": "Prueba Supervisión Remota",
-    "cuerpo": "Notificación enviada desde cualquier celular",
+    "id": "aviso-1789428955088",
+    "titulo": "⚠️ Alerta de Seguridad: EPP y Arnés Obligatorio",
+    "cuerpo": "Todo el personal en trabajos de altura o poda debe utilizar arnés con doble cabo de vida y verificar ausencia de tensión.",
     "prioridad": "alta",
     "categoria": "Seguridad",
-    "autor": "Administración",
+    "autor": "Dpto. de Higiene & Seguridad",
     "fecha": "2026-09-14",
-    "creadoEn": "2026-09-14T01:10:50.161Z",
+    "creadoEn": "2026-09-14T23:35:55.088Z",
+    "expiraEn": "2026-09-15T04:35:55.088Z",
     "destinatario": "todos"
-  },
-  {
-    "id": "aviso-1789347405748",
-    "titulo": "📢 Comunicado Oficial de la Empresa",
-    "cuerpo": "Vamos a cerrar la jornada ahora chicos",
-    "prioridad": "media",
-    "categoria": "General",
-    "autor": "Administración",
-    "fecha": "2026-09-14",
-    "creadoEn": "2026-09-14T00:56:45.748Z",
-    "destinatario": "todos"
-  },
-  {
-    "id": "aviso-1789347324794",
-    "titulo": "📋 Análisis de Trabajo Seguro (ATS) Obligatorio",
-    "cuerpo": "Recordá completar y firmar el ATS con todo el equipo antes de iniciar cualquier tarea en la vía pública.",
-    "prioridad": "alta",
-    "categoria": "Procedimiento",
-    "autor": "Administración",
-    "fecha": "2026-09-14",
-    "creadoEn": "2026-09-14T00:55:24.794Z",
-    "destinatario": "todos"
-  },
-  {
-    "id": "aviso-init-2",
-    "titulo": "📋 Análisis de Trabajo Seguro (ATS) Diario",
-    "cuerpo": "Recordá completar y firmar el ATS con todo el equipo antes de comenzar cualquier tarea en la vía pública. Podés exportar el PDF con firmas digitales.",
-    "prioridad": "alta",
-    "categoria": "Procedimiento",
-    "autor": "Supervisión Operativa",
-    "fecha": "2026-09-12",
-    "leido": false
-  },
-  {
-    "id": "aviso-init-3",
-    "titulo": "⏰ Alerta de Cierre de Jornadas Pendientes",
-    "cuerpo": "Evitá dejar jornadas abiertas de días anteriores. Al finalizar el día, asegurate de cerrar tu jornada para consolidar la producción y baremos.",
-    "prioridad": "media",
-    "categoria": "Operaciones",
-    "autor": "Administración BAREMO",
-    "fecha": "2026-09-11",
-    "leido": false
   }
 ]

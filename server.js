@@ -221,58 +221,11 @@ function leerAvisosEmpresa() {
   try {
     if (fs.existsSync(AVISOS_FILE)) {
       const data = JSON.parse(fs.readFileSync(AVISOS_FILE, 'utf8'));
-      if (Array.isArray(data) && data.length > 0) return data;
+      if (Array.isArray(data)) return data;
     }
   } catch (e) {}
 
-  // Semilla inicial con avisos importantes de la empresa si no existe
-  const avisosIniciales = [
-    {
-      id: 'aviso-init-1',
-      titulo: '⚠️ Alerta de Seguridad: EPP y Arnés Obligatorio',
-      cuerpo: 'Todo el personal en trabajos de altura o poda debe utilizar arnés con doble cabo de vida y verificar ausencia de tensión en líneas MT/BT.',
-      prioridad: 'alta',
-      categoria: 'Seguridad',
-      autor: 'Dpto. de Higiene & Seguridad',
-      fecha: '2026-09-13',
-      leido: false
-    },
-    {
-      id: 'aviso-init-2',
-      titulo: '📋 Análisis de Trabajo Seguro (ATS) Diario',
-      cuerpo: 'Recordá completar y firmar el ATS con todo el equipo antes de comenzar cualquier tarea en la vía pública. Podés exportar el PDF con firmas digitales.',
-      prioridad: 'alta',
-      categoria: 'Procedimiento',
-      autor: 'Supervisión Operativa',
-      fecha: '2026-09-12',
-      leido: false
-    },
-    {
-      id: 'aviso-init-3',
-      titulo: '⏰ Alerta de Cierre de Jornadas Pendientes',
-      cuerpo: 'Evitá dejar jornadas abiertas de días anteriores. Al finalizar el día, asegurate de cerrar tu jornada para consolidar la producción y baremos.',
-      prioridad: 'media',
-      categoria: 'Operaciones',
-      autor: 'Administración BAREMO',
-      fecha: '2026-09-11',
-      leido: false
-    },
-    {
-      id: 'aviso-init-4',
-      titulo: '⛈️ Protocolo de Tormenta Eléctrica',
-      cuerpo: 'Ante relámpagos o alerta meteorológica en la zona de trabajo, interrumpir inmediatamente las tareas en postes o grúas y guarecerse.',
-      prioridad: 'media',
-      categoria: 'Seguridad',
-      autor: 'Coordinación Central',
-      fecha: '2026-09-10',
-      leido: false
-    }
-  ];
-
-  try {
-    fs.writeFileSync(AVISOS_FILE, JSON.stringify(avisosIniciales, null, 2), 'utf8');
-  } catch (e) {}
-  return avisosIniciales;
+  return [];
 }
 
 function guardarAvisosEmpresa(avisos) {
@@ -551,16 +504,19 @@ app.post('/api/push/avisos', requireAdminAuth, async (req, res) => {
     }
 
     const avisos = leerAvisosEmpresa();
-    const hoyStr = new Date().toISOString().split('T')[0];
+    const ahoraMs = Date.now();
+    const ahoraIso = new Date(ahoraMs).toISOString();
+    const expiraIso = new Date(ahoraMs + 5 * 60 * 60 * 1000).toISOString(); // 5 horas exactas de duración en banner
     const nuevoAviso = {
-      id: 'aviso-' + Date.now(),
+      id: 'aviso-' + ahoraMs,
       titulo: titulo.trim(),
       cuerpo: cuerpo.trim(),
       prioridad,
       categoria,
       autor: autor.trim() || 'Supervisión',
-      fecha: hoyStr,
-      creadoEn: new Date().toISOString(),
+      fecha: ahoraIso.split('T')[0],
+      creadoEn: ahoraIso,
+      expiraEn: expiraIso,
       destinatario: 'todos'
     };
 
@@ -773,15 +729,19 @@ app.post('/api/admin/push/send', requireAdminAuth, async (req, res) => {
     let nuevoAviso = null;
     if (crearAviso) {
       const avisos = leerAvisosEmpresa();
+      const ahoraMs = Date.now();
+      const ahoraIso = new Date(ahoraMs).toISOString();
+      const expiraIso = new Date(ahoraMs + 5 * 60 * 60 * 1000).toISOString(); // 5 horas de duración activa en banner
       nuevoAviso = {
-        id: 'aviso-' + Date.now(),
+        id: 'aviso-' + ahoraMs,
         titulo: titulo.trim(),
         cuerpo: cuerpo.trim(),
         prioridad,
         categoria,
         autor: autor.trim() || 'Administración',
-        fecha: new Date().toISOString().split('T')[0],
-        creadoEn: new Date().toISOString(),
+        fecha: ahoraIso.split('T')[0],
+        creadoEn: ahoraIso,
+        expiraEn: expiraIso,
         destinatario: destinatario !== 'todos' ? destinatario : 'todos'
       };
       avisos.unshift(nuevoAviso);
@@ -866,12 +826,24 @@ app.post('/api/admin/push/send', requireAdminAuth, async (req, res) => {
 // A6. Eliminar un aviso del servidor remotamente
 app.delete('/api/admin/avisos/:id', requireAdminAuth, (req, res) => {
   try {
-    const { id } = req.params;
+    const rawId = String(req.params.id || '').trim();
+    const decodedId = decodeURIComponent(rawId);
     let avisos = leerAvisosEmpresa();
     const antes = avisos.length;
-    avisos = avisos.filter(a => a.id !== id);
+    avisos = avisos.filter(a => String(a.id) !== rawId && String(a.id) !== decodedId);
     guardarAvisosEmpresa(avisos);
-    res.json({ ok: true, eliminados: antes - avisos.length });
+
+    // Registrar live-alert de aviso eliminado para que todos los celulares lo retiren al instante
+    registrarLiveAlert({
+      id: 'del-' + Date.now(),
+      tipo: 'aviso_eliminado',
+      avisoId: decodedId,
+      titulo: 'Aviso retirado',
+      cuerpo: 'Un comunicado fue retirado de cartelera por la supervisión.',
+      destinatario: 'todos'
+    });
+
+    res.json({ ok: true, eliminados: antes - avisos.length, total: avisos.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

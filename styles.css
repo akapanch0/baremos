@@ -3807,6 +3807,38 @@ input[type="checkbox"]:checked + .ats-box-indicator::after {
   background: rgba(99, 102, 241, 0.16);
   border-color: rgba(99, 102, 241, 0.48);
 }
+.empresa-aviso-banner.sin-avisos {
+  background: rgba(100, 116, 139, 0.07);
+  border: 1.5px dashed rgba(100, 116, 139, 0.35);
+  box-shadow: none;
+}
+[data-theme="dark"] .empresa-aviso-banner.sin-avisos {
+  background: rgba(100, 116, 139, 0.12);
+  border-color: rgba(100, 116, 139, 0.4);
+}
+.empresa-aviso-banner.sin-avisos .eab-title {
+  color: var(--text) !important;
+}
+.empresa-aviso-banner.sin-avisos .eab-badge-cat {
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--text-soft);
+  border-color: rgba(100, 116, 139, 0.25);
+}
+.eab-badge-expira {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+[data-theme="dark"] .eab-badge-expira {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.38);
+}
 .eab-carousel-container {
   min-width: 0;
   display: flex;

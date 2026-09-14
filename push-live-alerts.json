@@ -1,5 +1,79 @@
 [
   {
+    "id": "aviso-1789428955088",
+    "tipo": "aviso_empresa",
+    "titulo": "⚠️ Alerta de Seguridad: EPP y Arnés Obligatorio",
+    "cuerpo": "Todo el personal en trabajos de altura o poda debe utilizar arnés con doble cabo de vida y verificar ausencia de tensión.",
+    "prioridad": "alta",
+    "categoria": "Seguridad",
+    "autor": "Dpto. de Higiene & Seguridad",
+    "destinatario": "todos",
+    "creadoEn": "2026-09-14T23:35:55.088Z",
+    "timestamp": 1789428955088
+  },
+  {
+    "id": "del-1789428945290",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-1789428943296",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789428945290,
+    "creadoEn": "2026-09-14T23:35:45.290Z"
+  },
+  {
+    "id": "aviso-1789428943296",
+    "tipo": "aviso_empresa",
+    "titulo": "Alerta de Seguridad en Altura",
+    "cuerpo": "Uso obligatorio de arnés con doble cola en toda maniobra sobre postes.",
+    "prioridad": "alta",
+    "categoria": "Seguridad",
+    "autor": "Supervisión",
+    "destinatario": "todos",
+    "creadoEn": "2026-09-14T23:35:43.296Z",
+    "timestamp": 1789428943297
+  },
+  {
+    "id": "del-1789428939890",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-1789347324794",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789428939890,
+    "creadoEn": "2026-09-14T23:35:39.890Z"
+  },
+  {
+    "id": "del-1789428939859",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-1789347405748",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789428939859,
+    "creadoEn": "2026-09-14T23:35:39.859Z"
+  },
+  {
+    "id": "del-1789428937982",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-init-2",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789428937982,
+    "creadoEn": "2026-09-14T23:35:37.982Z"
+  },
+  {
+    "id": "del-1789428934935",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-init-3",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789428934936,
+    "creadoEn": "2026-09-14T23:35:34.936Z"
+  },
+  {
     "id": "aviso-1789348250161",
     "tipo": "aviso_empresa",
     "titulo": "Prueba Supervisión Remota",

@@ -646,7 +646,10 @@ async function verificarPasswordAdmin(pass) {
       if (data && data.ok) {
         if (data.token) {
           sessionStorage.setItem('baremo_admin_token', data.token);
+          localStorage.setItem('baremo_admin_token', data.token);
         }
+        sessionStorage.setItem('baremo_admin_pass', pass);
+        localStorage.setItem('baremo_admin_pass', pass);
         try { await guardarCredencialAdmin(pass, !!data.debeCambiar); } catch (e) {}
         return { ok: true, debeCambiar: !!data.debeCambiar, sinCredencial: false, token: data.token, remoto: true };
       }
@@ -3863,6 +3866,7 @@ function setupAdmin() {
         await guardarCredencialAdmin(pass, false);
         State.adminLoggedIn = true;
         sessionStorage.setItem('baremo_admin_pass', pass);
+        localStorage.setItem('baremo_admin_pass', pass);
         $('#adminLogin').style.display = 'none';
         $('#adminPanel').style.display = 'block';
         $('#adminPassword').value = '';
@@ -3875,6 +3879,11 @@ function setupAdmin() {
 
       State.adminLoggedIn = true;
       sessionStorage.setItem('baremo_admin_pass', pass);
+      localStorage.setItem('baremo_admin_pass', pass);
+      if (r.token) {
+        sessionStorage.setItem('baremo_admin_token', r.token);
+        localStorage.setItem('baremo_admin_token', r.token);
+      }
       $('#adminLogin').style.display = 'none';
       $('#adminPanel').style.display = 'block';
       $('#adminPassword').value = '';
@@ -4491,11 +4500,11 @@ async function cargarPanelAdminPush() {
               <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(128,128,128,0.1);padding-top:6px;margin-top:2px;">
                 <span style="font-size:10.5px;color:var(--text-soft);">✍️ ${escapeHTML(a.autor || 'Supervisión')} · 🏷️ ${escapeHTML(a.categoria || 'General')}</span>
                 <div class="admin-aviso-actions">
-                  <button type="button" class="btn btn-ghost btn-xs btn-reenviar-push" data-id="${a.id}" title="Reenviar Push a todos los celulares" style="padding:3px 8px;font-size:11px;color:var(--primary);border:1px solid rgba(99,102,241,0.3);">
+                  <button type="button" class="btn btn-ghost btn-xs btn-reenviar-push" data-id="${a.id}" data-titulo="${escapeHTML(a.titulo)}" title="Reenviar Push a todos los celulares" style="padding:4px 10px;font-size:11.5px;color:var(--primary);border:1px solid rgba(99,102,241,0.3);border-radius:5px;cursor:pointer;">
                     🔁 Reenviar
                   </button>
-                  <button type="button" class="btn btn-ghost btn-xs btn-eliminar-aviso" data-id="${a.id}" title="Eliminar del servidor central" style="padding:3px 8px;font-size:11px;color:var(--danger);border:1px solid rgba(239,68,68,0.3);">
-                    🗑️ Borrar
+                  <button type="button" class="btn btn-ghost btn-xs btn-eliminar-aviso" data-id="${a.id}" data-titulo="${escapeHTML(a.titulo)}" title="Eliminar del servidor central" style="padding:4px 10px;font-size:11.5px;color:var(--danger);border:1px solid rgba(239,68,68,0.35);border-radius:5px;cursor:pointer;font-weight:600;">
+                    🗑️ Eliminar
                   </button>
                 </div>
               </div>
@@ -4503,35 +4512,53 @@ async function cargarPanelAdminPush() {
           `;
         }).join('');
 
-        // Listeners para Reenviar y Eliminar
-        avisosList.querySelectorAll('.btn-reenviar-push').forEach(btn => {
-          btn.onclick = async () => {
-            const id = btn.dataset.id;
-            const targetAviso = avisos.find(x => x.id === id);
-            if (!targetAviso) return;
-            if (!await confirmDialog(`¿Reenviar notificación push de "${targetAviso.titulo}" a todos los celulares ahora mismo?`)) return;
-            await enviarPushRemoto({
-              tipo: 'aviso_empresa',
-              titulo: targetAviso.titulo,
-              cuerpo: targetAviso.cuerpo,
-              prioridad: targetAviso.prioridad,
-              categoria: targetAviso.categoria,
-              destinatario: targetAviso.destinatario || 'todos',
-              crearAviso: false,
-              enviarPush: true
-            });
-          };
-        });
+        // Delegación de eventos segura en avisosList para Eliminar y Reenviar
+        if (!avisosList._pushEventsWired) {
+          avisosList._pushEventsWired = true;
+          avisosList.addEventListener('click', async (e) => {
+            const btnDel = e.target.closest('.btn-eliminar-aviso');
+            if (btnDel) {
+              e.preventDefault();
+              e.stopPropagation();
+              const id = btnDel.dataset.id;
+              const targetAviso = (State.avisosEmpresa || []).find(x => String(x.id) === String(id));
+              const titulo = targetAviso ? targetAviso.titulo : (btnDel.dataset.titulo || 'este comunicado');
+              if (!await confirmDialog(`¿Eliminar "${titulo}" del servidor central?\n\nDesaparecerá automáticamente del banner de todos los celulares.`)) return;
+              btnDel.disabled = true;
+              btnDel.textContent = '⏳ Borrando...';
+              const ok = await eliminarAvisoRemoto(id);
+              if (!ok) {
+                btnDel.disabled = false;
+                btnDel.textContent = '🗑️ Eliminar';
+              }
+              return;
+            }
 
-        avisosList.querySelectorAll('.btn-eliminar-aviso').forEach(btn => {
-          btn.onclick = async () => {
-            const id = btn.dataset.id;
-            const targetAviso = avisos.find(x => x.id === id);
-            const titulo = targetAviso ? targetAviso.titulo : 'este comunicado';
-            if (!await confirmDialog(`¿Eliminar "${titulo}" del servidor central?\n\nDesaparecerá automáticamente del carrusel de todos los celulares.`)) return;
-            await eliminarAvisoRemoto(id);
-          };
-        });
+            const btnReenviar = e.target.closest('.btn-reenviar-push');
+            if (btnReenviar) {
+              e.preventDefault();
+              e.stopPropagation();
+              const id = btnReenviar.dataset.id;
+              const targetAviso = (State.avisosEmpresa || []).find(x => String(x.id) === String(id));
+              if (!targetAviso) return;
+              if (!await confirmDialog(`¿Reenviar notificación push de "${targetAviso.titulo}" a todos los celulares ahora mismo?`)) return;
+              btnReenviar.disabled = true;
+              btnReenviar.textContent = '⏳ Enviando...';
+              await enviarPushRemoto({
+                tipo: 'aviso_empresa',
+                titulo: targetAviso.titulo,
+                cuerpo: targetAviso.cuerpo,
+                prioridad: targetAviso.prioridad,
+                categoria: targetAviso.categoria,
+                destinatario: targetAviso.destinatario || 'todos',
+                crearAviso: false,
+                enviarPush: true
+              });
+              btnReenviar.disabled = false;
+              btnReenviar.textContent = '🔁 Reenviar';
+            }
+          });
+        }
       }
     }
   } catch (err) {
@@ -4704,13 +4731,11 @@ function aplicarPlantillaAdminPush(tpl) {
 }
 
 async function enviarPushRemoto(payload) {
-  const token = sessionStorage.getItem('baremo_admin_token') || '';
   try {
-    const res = await fetch('/api/admin/push/send', {
+    const res = await fetchAdminAPI('/api/admin/push/send', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-admin-token': token
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
@@ -4719,7 +4744,7 @@ async function enviarPushRemoto(payload) {
       await cargarPanelAdminPush();
       if (payload.crearAviso && typeof cargarAvisosEmpresa === 'function') {
         await cargarAvisosEmpresa();
-        if (typeof renderCarruselAvisos === 'function') renderCarruselAvisos();
+        actualizarIndicadorAvisos();
       }
       return data;
     }
@@ -4730,23 +4755,22 @@ async function enviarPushRemoto(payload) {
 }
 
 async function eliminarAvisoRemoto(id) {
-  const token = sessionStorage.getItem('baremo_admin_token') || '';
   try {
-    const res = await fetch(`/api/admin/avisos/${id}`, {
-      method: 'DELETE',
-      headers: { 'x-admin-token': token }
+    const res = await fetchAdminAPI(`/api/admin/avisos/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
     });
     const data = await res.json();
     if (res.ok && data.ok) {
-      toast('Aviso eliminado del servidor central', 'success');
+      toast('✓ Aviso eliminado del servidor central', 'success');
+      // Actualizar inmediatamente estado local y caché
+      State.avisosEmpresa = (State.avisosEmpresa || []).filter(a => String(a.id) !== String(id));
+      localStorage.setItem('baremo_avisos_cache', JSON.stringify(State.avisosEmpresa));
+      actualizarIndicadorAvisos();
+      if (typeof renderAvisosEmpresaList === 'function') renderAvisosEmpresaList();
       await cargarPanelAdminPush();
-      if (typeof cargarAvisosEmpresa === 'function') {
-        await cargarAvisosEmpresa();
-        if (typeof renderCarruselAvisos === 'function') renderCarruselAvisos();
-      }
       return true;
     }
-    toast(`❌ Error: ${data.error || 'No autorizado'}`, 'error');
+    toast(`❌ Error al eliminar: ${data.error || 'No autorizado'}`, 'error');
     return false;
   } catch (err) {
     toast(`❌ Error al conectar: ${err.message}`, 'error');
@@ -9812,10 +9836,8 @@ async function cargarAvisosEmpresa() {
     if (res.ok) {
       const data = await res.json();
       const list = Array.isArray(data) ? data : (data && Array.isArray(data.avisos) ? data.avisos : []);
-      if (list && list.length > 0) {
-        State.avisosEmpresa = list;
-        localStorage.setItem('baremo_avisos_cache', JSON.stringify(list));
-      }
+      State.avisosEmpresa = list;
+      localStorage.setItem('baremo_avisos_cache', JSON.stringify(list));
     }
   } catch (e) {
     // Fallback a caché local
@@ -9829,8 +9851,99 @@ async function cargarAvisosEmpresa() {
 }
 
 /* ------------------------------------------------------------
-   CARRUSEL AUTOMÁTICO DE AVISOS IMPORTANTES EN INICIO
+   REGLA DE EXPIRACIÓN (5 HORAS) Y CARRUSEL DINÁMICO DE AVISOS
    ------------------------------------------------------------ */
+const BANNER_AVISO_MAX_EDAD_MS = 5 * 60 * 60 * 1000; // 5 horas exactas en milisegundos
+
+function obtenerTimestampAviso(aviso) {
+  if (!aviso) return 0;
+  if (aviso.creadoEn) {
+    const t = new Date(aviso.creadoEn).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (typeof aviso.id === 'string' && aviso.id.startsWith('aviso-')) {
+    const num = parseInt(aviso.id.replace('aviso-', ''), 10);
+    if (!isNaN(num) && num > 1000000000000) return num;
+  }
+  if (aviso.fecha) {
+    const t = new Date(aviso.fecha).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  return 0;
+}
+
+function esAvisoVigenteParaBanner(aviso) {
+  if (!aviso) return false;
+  const ahora = Date.now();
+  if (aviso.expiraEn) {
+    const tExp = new Date(aviso.expiraEn).getTime();
+    if (!isNaN(tExp) && tExp > 0) {
+      return tExp > ahora;
+    }
+  }
+  const tCreado = obtenerTimestampAviso(aviso);
+  if (tCreado <= 0) return false;
+  return (ahora - tCreado) <= BANNER_AVISO_MAX_EDAD_MS;
+}
+
+function calcularTiempoRestanteBanner(aviso) {
+  if (!aviso) return '';
+  const ahora = Date.now();
+  let msRestante = 0;
+  if (aviso.expiraEn) {
+    const tExp = new Date(aviso.expiraEn).getTime();
+    if (!isNaN(tExp) && tExp > 0) {
+      msRestante = tExp - ahora;
+    }
+  }
+  if (msRestante <= 0) {
+    const tCreado = obtenerTimestampAviso(aviso);
+    if (tCreado > 0) {
+      msRestante = BANNER_AVISO_MAX_EDAD_MS - (ahora - tCreado);
+    }
+  }
+  if (msRestante <= 0) return 'Vencido';
+  const mins = Math.floor(msRestante / 60000);
+  const horas = Math.floor(mins / 60);
+  const minsRest = mins % 60;
+  if (horas > 0) {
+    return `${horas}h ${minsRest}m`;
+  }
+  return `${mins} min`;
+}
+
+function mostrarBannerSinAvisos() {
+  detenerTimerCarruselAvisos();
+  _carruselAvisosList = [];
+  const banner = $('#empresaAvisoBanner');
+  if (!banner) return;
+
+  banner.style.display = 'flex';
+  banner.classList.add('sin-avisos');
+
+  const elIco = $('#eabIco');
+  const elCat = $('#eabCatBadge');
+  const elPrio = $('#eabPrioBadge');
+  const elExpira = $('#eabExpiraBadge');
+  const elTitle = $('#eabTitle');
+  const elDesc = $('#eabDesc');
+  const elControls = $('#eabControls');
+  const elDots = $('#eabDots');
+  const btnVer = $('#btnEabVer');
+
+  if (elIco) elIco.textContent = '📢';
+  if (elCat) elCat.textContent = 'Supervisión';
+  if (elPrio) elPrio.style.display = 'none';
+  if (elExpira) elExpira.style.display = 'none';
+  if (elControls) elControls.style.display = 'none';
+  if (elDots) elDots.style.display = 'none';
+
+  // Mensaje dinámico exacto solicitado por el usuario:
+  if (elTitle) elTitle.textContent = 'No Hay Anuncios del Supervisor';
+  if (elDesc) elDesc.textContent = 'Sin comunicados activos para el personal en este momento.';
+  if (btnVer) btnVer.textContent = 'Ver comunicados';
+}
+
 let _carruselAvisosTimer = null;
 let _carruselAvisosIdx = 0;
 let _carruselAvisosList = [];
@@ -9863,22 +9976,32 @@ function obtenerIconoAviso(categoria) {
 }
 
 function mostrarSlideAviso(indice, animar = true) {
-  if (!_carruselAvisosList || _carruselAvisosList.length === 0) return;
+  if (!_carruselAvisosList || _carruselAvisosList.length === 0) {
+    mostrarBannerSinAvisos();
+    return;
+  }
   if (indice < 0) indice = _carruselAvisosList.length - 1;
   if (indice >= _carruselAvisosList.length) indice = 0;
   _carruselAvisosIdx = indice;
 
   const aviso = _carruselAvisosList[indice];
-  if (!aviso) return;
+  if (!aviso) {
+    mostrarBannerSinAvisos();
+    return;
+  }
 
   const elIco = $('#eabIco');
   const elCat = $('#eabCatBadge');
   const elPrio = $('#eabPrioBadge');
+  const elExpira = $('#eabExpiraBadge');
   const elTitle = $('#eabTitle');
   const elDesc = $('#eabDesc');
   const elCounter = $('#eabCounter');
   const elControls = $('#eabControls');
   const elDots = $('#eabDots');
+  const btnVer = $('#btnEabVer');
+
+  if (btnVer) btnVer.textContent = 'Ver comunicado';
 
   // Actualizar controles y contador
   if (_carruselAvisosList.length > 1) {
@@ -9914,6 +10037,18 @@ function mostrarSlideAviso(indice, animar = true) {
       elPrio.style.display = 'inline-block';
     } else {
       elPrio.style.display = 'none';
+    }
+  }
+
+  // Tiempo restante de vigencia en el banner (máximo 5 horas)
+  if (elExpira) {
+    const restante = calcularTiempoRestanteBanner(aviso);
+    if (restante && restante !== 'Vencido') {
+      elExpira.textContent = `⏳ ${restante}`;
+      elExpira.style.display = 'inline-block';
+      elExpira.title = `Aviso activo en el banner por 5 horas. Restante: ${restante}`;
+    } else {
+      elExpira.style.display = 'none';
     }
   }
 
@@ -9955,7 +10090,10 @@ function actualizarIndicadorAvisos() {
     leidos = JSON.parse(localStorage.getItem('baremo_avisos_leidos') || '[]');
   } catch (e) {}
 
-  const noLeidos = avisos.filter(a => !leidos.includes(a.id));
+  // Filtrar estrictamente solo los avisos con vigencia menor a 5 horas
+  const avisosVigentes = avisos.filter(esAvisoVigenteParaBanner);
+
+  const noLeidos = avisosVigentes.filter(a => !leidos.includes(a.id));
   const badge = $('#badgeAvisosUnread');
   if (badge) {
     if (noLeidos.length > 0) {
@@ -9966,13 +10104,14 @@ function actualizarIndicadorAvisos() {
     }
   }
 
-  // Banner en inicio con carrusel si hay múltiples avisos
+  // Banner en inicio: si no hay avisos vigentes (< 5h), mostrar mensaje dinámico "No Hay Anuncios del Supervisor"
   const banner = $('#empresaAvisoBanner');
   if (!banner) return;
 
-  const itemsParaBanner = noLeidos.length > 0 ? noLeidos : avisos;
+  const itemsParaBanner = noLeidos.length > 0 ? noLeidos : avisosVigentes;
 
   if (itemsParaBanner && itemsParaBanner.length > 0) {
+    banner.classList.remove('sin-avisos');
     _carruselAvisosList = itemsParaBanner;
     if (_carruselAvisosIdx >= _carruselAvisosList.length) {
       _carruselAvisosIdx = 0;
@@ -9981,9 +10120,16 @@ function actualizarIndicadorAvisos() {
     mostrarSlideAviso(_carruselAvisosIdx, false);
     iniciarTimerCarruselAvisos();
   } else {
-    banner.style.display = 'none';
-    detenerTimerCarruselAvisos();
+    // Si no hay avisos vigentes o vencieron, mostrar el mensaje dinámico solicitado
+    mostrarBannerSinAvisos();
   }
+}
+
+// Re-verificar vigencia cada 30 segundos para que si un aviso vence a las 5 horas, desaparezca al instante del banner
+if (!window._bannerVigenciaInterval) {
+  window._bannerVigenciaInterval = setInterval(() => {
+    actualizarIndicadorAvisos();
+  }, 30000);
 }
 
 function renderAvisosEmpresaList() {
@@ -10016,22 +10162,54 @@ function renderAvisosEmpresaList() {
     const prioLabel = esAlta ? '🔴 ALTA PRIORIDAD' : '🟡 INFORMATIVO';
     const prioClass = esAlta ? 'prio-alta' : 'prio-media';
     const fecha = a.fecha ? new Date(a.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    const esVigente = esAvisoVigenteParaBanner(a);
+    const restante = calcularTiempoRestanteBanner(a);
+    const badgeBanner = esVigente
+      ? `<span style="font-size:10px;background:rgba(16,185,129,0.15);color:#059669;padding:2px 6px;border-radius:4px;font-weight:700;">🟢 Activo en Banner (${restante})</span>`
+      : `<span style="font-size:10px;background:rgba(100,116,139,0.15);color:var(--text-soft);padding:2px 6px;border-radius:4px;font-weight:600;">⏳ Vencido en Banner (+5h)</span>`;
+
+    const adminDeleteBtn = State.adminLoggedIn
+      ? `<button type="button" class="btn btn-ghost btn-xs btn-eliminar-aviso-modal" data-id="${a.id}" data-titulo="${escapeHTML(a.titulo)}" style="color:var(--danger);font-size:11px;padding:2px 6px;border:1px solid rgba(239,68,68,0.3);border-radius:4px;cursor:pointer;">🗑️ Eliminar</button>`
+      : '';
 
     return `
       <div class="aviso-card ${esNoLeido ? 'aviso-unread' : ''}" data-id="${a.id}">
-        <div class="aviso-card-head">
-          <span class="aviso-badge-prio ${prioClass}">${prioLabel}</span>
-          <span class="aviso-date">${fecha}</span>
+        <div class="aviso-card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="aviso-badge-prio ${prioClass}">${prioLabel}</span>
+            ${badgeBanner}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="aviso-date">${fecha}</span>
+            ${adminDeleteBtn}
+          </div>
         </div>
-        <div class="aviso-title">${a.titulo}</div>
-        <div class="aviso-body">${a.cuerpo}</div>
+        <div class="aviso-title">${escapeHTML(a.titulo)}</div>
+        <div class="aviso-body">${escapeHTML(a.cuerpo)}</div>
         <div class="aviso-footer">
-          <div class="aviso-autor">🏢 ${a.autor || 'Supervisión de Operaciones'}</div>
-          <div style="font-size:11px; opacity:0.8;">🏷️ ${a.categoria || 'General'}</div>
+          <div class="aviso-autor">🏢 ${escapeHTML(a.autor || 'Supervisión de Operaciones')}</div>
+          <div style="font-size:11px; opacity:0.8;">🏷️ ${escapeHTML(a.categoria || 'General')}</div>
         </div>
       </div>
     `;
   }).join('');
+
+  // Delegar listener para eliminar en modal si es admin
+  container.querySelectorAll('.btn-eliminar-aviso-modal').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const titulo = btn.dataset.titulo || 'este comunicado';
+      if (!await confirmDialog(`¿Eliminar "${titulo}" del servidor central?`)) return;
+      btn.disabled = true;
+      btn.textContent = '⏳ Borrando...';
+      const ok = await eliminarAvisoRemoto(id);
+      if (!ok) {
+        btn.disabled = false;
+        btn.textContent = '🗑️ Eliminar';
+      }
+    };
+  });
 }
 
 function abrirModalAvisosEmpresa(categoria, avisoIdDestacado) {
@@ -10252,6 +10430,17 @@ async function chequearLiveAlerts() {
     for (const ev of data.events) {
       _ultimoLiveAlertTimestamp = Math.max(_ultimoLiveAlertTimestamp, ev.timestamp || 0);
       localStorage.setItem('baremo_last_alert_ts', String(_ultimoLiveAlertTimestamp));
+
+      if (ev.tipo === 'aviso_eliminado') {
+        if (ev.avisoId) {
+          State.avisosEmpresa = (State.avisosEmpresa || []).filter(a => String(a.id) !== String(ev.avisoId));
+          localStorage.setItem('baremo_avisos_cache', JSON.stringify(State.avisosEmpresa));
+          actualizarIndicadorAvisos();
+          if (typeof renderAvisosEmpresaList === 'function') renderAvisosEmpresaList();
+        }
+      } else if (ev.tipo === 'aviso_empresa') {
+        if (typeof cargarAvisosEmpresa === 'function') cargarAvisosEmpresa();
+      }
 
       if (ev.id && !_alertasVistasIds.has(ev.id)) {
         _alertasVistasIds.add(ev.id);
