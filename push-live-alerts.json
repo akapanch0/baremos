@@ -1,5 +1,89 @@
 [
   {
+    "id": "del-1789430361385",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-1789430361340",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789430361385,
+    "creadoEn": "2026-09-14T23:59:21.385Z"
+  },
+  {
+    "id": "aviso-1789430361340",
+    "tipo": "aviso_empresa",
+    "titulo": "Test Aviso 1789430361305",
+    "cuerpo": "Mensaje de prueba para verificar eliminación inmediata",
+    "prioridad": "alta",
+    "categoria": "Seguridad",
+    "autor": "Supervisión",
+    "destinatario": "todos",
+    "creadoEn": "2026-09-14T23:59:21.340Z",
+    "timestamp": 1789430361340
+  },
+  {
+    "id": "aviso-1789429844185",
+    "tipo": "ats_pendiente",
+    "titulo": "📋 Análisis de Trabajo Seguro (ATS) Obligatorio",
+    "cuerpo": "Recordá completar y firmar el ATS con todo el equipo antes de iniciar cualquier tarea en la vía pública.",
+    "prioridad": "alta",
+    "categoria": "Procedimiento",
+    "autor": "Administración",
+    "destinatario": "todos",
+    "creadoEn": "2026-09-14T23:50:44.185Z",
+    "timestamp": 1789429844185
+  },
+  {
+    "id": "del-1789429835895",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-1789428955088",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789429835895,
+    "creadoEn": "2026-09-14T23:50:35.895Z"
+  },
+  {
+    "id": "del-1789429833598",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-1789428955088",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789429833598,
+    "creadoEn": "2026-09-14T23:50:33.598Z"
+  },
+  {
+    "id": "del-1789429831594",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-1789428955088",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789429831594,
+    "creadoEn": "2026-09-14T23:50:31.594Z"
+  },
+  {
+    "id": "del-1789429829514",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-1789428955088",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789429829514,
+    "creadoEn": "2026-09-14T23:50:29.514Z"
+  },
+  {
+    "id": "del-1789429827411",
+    "tipo": "aviso_eliminado",
+    "avisoId": "aviso-1789428955088",
+    "titulo": "Aviso retirado",
+    "cuerpo": "Un comunicado fue retirado de cartelera por la supervisión.",
+    "destinatario": "todos",
+    "timestamp": 1789429827411,
+    "creadoEn": "2026-09-14T23:50:27.411Z"
+  },
+  {
     "id": "aviso-1789428955088",
     "tipo": "aviso_empresa",
     "titulo": "⚠️ Alerta de Seguridad: EPP y Arnés Obligatorio",

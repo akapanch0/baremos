@@ -1,14 +1,14 @@
 [
   {
-    "id": "aviso-1789428955088",
-    "titulo": "⚠️ Alerta de Seguridad: EPP y Arnés Obligatorio",
-    "cuerpo": "Todo el personal en trabajos de altura o poda debe utilizar arnés con doble cabo de vida y verificar ausencia de tensión.",
+    "id": "aviso-1789429844185",
+    "titulo": "📋 Análisis de Trabajo Seguro (ATS) Obligatorio",
+    "cuerpo": "Recordá completar y firmar el ATS con todo el equipo antes de iniciar cualquier tarea en la vía pública.",
     "prioridad": "alta",
-    "categoria": "Seguridad",
-    "autor": "Dpto. de Higiene & Seguridad",
+    "categoria": "Procedimiento",
+    "autor": "Administración",
     "fecha": "2026-09-14",
-    "creadoEn": "2026-09-14T23:35:55.088Z",
-    "expiraEn": "2026-09-15T04:35:55.088Z",
+    "creadoEn": "2026-09-14T23:50:44.185Z",
+    "expiraEn": "2026-09-15T04:50:44.185Z",
     "destinatario": "todos"
   }
 ]

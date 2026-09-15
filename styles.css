@@ -3872,6 +3872,31 @@ input[type="checkbox"]:checked + .ats-box-indicator::after {
   color: #dc2626;
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
+.eab-badge-prio.prio-ats {
+  background: rgba(245, 158, 11, 0.2);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+[data-theme="dark"] .eab-badge-prio.prio-ats {
+  color: #fbbf24;
+}
+.empresa-aviso-banner.modo-ats {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.1);
+}
+[data-theme="dark"] .empresa-aviso-banner.modo-ats {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.55);
+}
+.empresa-aviso-banner.modo-ats .eab-badge-cat {
+  background: rgba(245, 158, 11, 0.18);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+[data-theme="dark"] .empresa-aviso-banner.modo-ats .eab-badge-cat {
+  color: #fbbf24;
+}
 [data-theme="dark"] .eab-badge-prio {
   color: #f87171;
 }

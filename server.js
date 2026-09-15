@@ -827,17 +827,20 @@ app.post('/api/admin/push/send', requireAdminAuth, async (req, res) => {
 app.delete('/api/admin/avisos/:id', requireAdminAuth, (req, res) => {
   try {
     const rawId = String(req.params.id || '').trim();
-    const decodedId = decodeURIComponent(rawId);
+    const decodedId = decodeURIComponent(rawId).trim();
     let avisos = leerAvisosEmpresa();
     const antes = avisos.length;
-    avisos = avisos.filter(a => String(a.id) !== rawId && String(a.id) !== decodedId);
+    avisos = avisos.filter(a => {
+      const aId = String(a.id || '').trim();
+      return aId !== rawId && aId !== decodedId;
+    });
     guardarAvisosEmpresa(avisos);
 
     // Registrar live-alert de aviso eliminado para que todos los celulares lo retiren al instante
     registrarLiveAlert({
       id: 'del-' + Date.now(),
       tipo: 'aviso_eliminado',
-      avisoId: decodedId,
+      avisoId: decodedId || rawId,
       titulo: 'Aviso retirado',
       cuerpo: 'Un comunicado fue retirado de cartelera por la supervisión.',
       destinatario: 'todos'
@@ -973,6 +976,137 @@ app.post('/api/sync/jornadas', (req, res) => {
     });
   } catch (err) {
     console.error('[Sync] Error en /api/sync/jornadas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// S1.b Sincronizar ATS específico de inmediato (cuando la cuadrilla en la calle completa o actualiza el ATS)
+app.post('/api/sync/ats', (req, res) => {
+  try {
+    const { usuario, jornadaId, fecha, ats } = req.body || {};
+    if (!usuario || !usuario.legajo || !ats) {
+      return res.status(400).json({ error: 'Usuario, legajo y datos de ATS son requeridos' });
+    }
+
+    const legajo = String(usuario.legajo).trim();
+    const nombre = String(usuario.nombre || 'Operador').trim();
+    const zona = String(usuario.zona || '').trim();
+    const ahora = new Date().toISOString();
+    const fFecha = String(fecha || ats.fecha || ahora.split('T')[0]).trim();
+    const subId = String(jornadaId || ats.ot || 'activa').trim();
+    const k = `jornada__${legajo}__${fFecha}__${subId}`;
+
+    const dbJornadas = leerJornadasRemotas();
+    const jornadaMap = new Map();
+    dbJornadas.forEach(j => {
+      const key = j.syncId || normalizarClaveJornada(j, j.legajo);
+      jornadaMap.set(key, j);
+    });
+
+    let jornadaExistente = jornadaMap.get(k);
+    if (!jornadaExistente) {
+      for (const [key, j] of jornadaMap.entries()) {
+        if (String(j.legajo) === legajo && String(j.fecha) === fFecha) {
+          jornadaExistente = j;
+          break;
+        }
+      }
+    }
+
+    if (jornadaExistente) {
+      jornadaExistente.ats = ats;
+      jornadaExistente.sincronizadoEn = ahora;
+      jornadaMap.set(jornadaExistente.syncId || k, jornadaExistente);
+    } else {
+      const nuevaJornada = {
+        id: k,
+        syncId: k,
+        localId: jornadaId || k,
+        legajo,
+        nombreUsuario: nombre,
+        zona,
+        fecha: fFecha,
+        horaInicio: ats.hora || '08:00',
+        horaFin: '',
+        cerrada: false,
+        total: 0,
+        cantidadItems: 0,
+        cantidadRegistros: 0,
+        items: [],
+        tareas: [],
+        ats,
+        sincronizadoEn: ahora
+      };
+      jornadaMap.set(k, nuevaJornada);
+    }
+
+    guardarJornadasRemotas(Array.from(jornadaMap.values()));
+
+    // Actualizar o registrar usuario
+    const usuarios = leerUsuariosRemotos();
+    const uIdx = usuarios.findIndex(u => String(u.legajo) === legajo);
+    if (uIdx >= 0) {
+      usuarios[uIdx].ultimaConexion = ahora;
+    } else {
+      usuarios.push({
+        legajo,
+        nombre,
+        zona,
+        ultimaConexion: ahora,
+        totalJornadas: 1,
+        totalProduccion: 0
+      });
+    }
+    guardarUsuariosRemotos(usuarios);
+
+    console.log(`[Sync ATS] ATS sincronizado exitosamente para cuadrilla ${legajo} (${nombre}) - OT ${ats.ot || 'S/N'}`);
+    res.json({ ok: true, mensaje: 'ATS sincronizado correctamente en el servidor', syncId: k });
+  } catch (err) {
+    console.error('[Sync ATS] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// A1. Listar todos los ATS completados en el servidor para el panel de supervisión
+app.get('/api/admin/ats/todos', requireAdminAuth, (req, res) => {
+  try {
+    const { legajo, fecha, desde, hasta } = req.query || {};
+    const todasJornadas = leerJornadasRemotas();
+    const usuarios = leerUsuariosRemotos();
+    
+    let conAts = todasJornadas.filter(j => j.ats && (j.ats.completado || j.ats.ot || j.ats.trabajoAsignado));
+    
+    if (legajo && legajo !== 'todos') {
+      conAts = conAts.filter(j => String(j.legajo) === String(legajo));
+    }
+    if (fecha) {
+      conAts = conAts.filter(j => j.fecha === fecha || (j.ats && j.ats.fecha === fecha));
+    }
+    if (desde && hasta) {
+      conAts = conAts.filter(j => {
+        const f = j.ats?.fecha || j.fecha;
+        return f >= desde && f <= hasta;
+      });
+    }
+    
+    const lista = conAts.map(j => {
+      const u = usuarios.find(usr => String(usr.legajo) === String(j.legajo));
+      return {
+        id: j.id,
+        syncId: j.syncId,
+        legajo: j.legajo,
+        nombreUsuario: u?.nombre || j.nombreUsuario || 'Operador',
+        zona: u?.zona || j.zona || '-',
+        fecha: j.fecha,
+        horaInicio: j.horaInicio,
+        cerrada: j.cerrada,
+        ats: j.ats,
+        sincronizadoEn: j.sincronizadoEn
+      };
+    });
+    
+    res.json({ ok: true, total: lista.length, atsList: lista });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

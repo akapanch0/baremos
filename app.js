@@ -1084,7 +1084,7 @@ async function continuarInicio() {
         if (search.includes('ats=1')) {
           history.replaceState({}, '', window.location.pathname);
           setTimeout(() => {
-            if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
+            if (typeof abrirModalATS === 'function') abrirModalATS();
           }, 300);
         } else if (search.includes('avisos=1') || search.includes('vista=AvisosEmpresa')) {
           history.replaceState({}, '', window.location.pathname);
@@ -1394,11 +1394,11 @@ async function iniciarJornada() {
   try { iniciarAvisosLocales(); } catch (e) {}
   try { pedirPermisoNotificaciones(); } catch (e) {}
 
-  // Notificación y apertura del formulario ATS obligatorio antes de la primera tarea
+  // Actualizar banner de avisos para reflejar el estado del ATS en la jornada sin bloquear
   setTimeout(() => {
-    try { notificarAtsPendienteViaSW({ forzar: true }); } catch (e) {}
-    if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
-  }, 350);
+    try { if (typeof actualizarIndicadorAvisos === 'function') actualizarIndicadorAvisos(); } catch (e) {}
+    try { if (typeof renderATSStatus === 'function') renderATSStatus(); } catch (e) {}
+  }, 150);
 
   const inp = $('#baremoInput');
   if (inp) inp.focus();
@@ -1814,13 +1814,6 @@ function setupRegistro() {
       return;
     }
 
-    // Validación de ATS antes de iniciar la primera tarea del día
-    const cantTareasFinalizadas = (State.jornada.tareas || []).length;
-    if (cantTareasFinalizadas === 0 && (!State.jornada.ats || !State.jornada.ats.completado)) {
-      toast('⚠️ Debés completar el ATS antes de iniciar la primera tarea de la jornada', 'warn');
-      if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
-      return;
-    }
 
     const c = Math.max(1, parseInt(qtyInput.value) || 1);
     const newItem = {
@@ -2044,6 +2037,8 @@ function renderAll() {
   renderTotales();
   if (typeof renderTareas === 'function') renderTareas();
   if (typeof actualizarBotoneraJornada === 'function') actualizarBotoneraJornada();
+  if (typeof renderATSStatus === 'function') renderATSStatus();
+  if (typeof actualizarIndicadorAvisos === 'function') actualizarIndicadorAvisos();
 }
 
 /* ============================================================
@@ -4226,6 +4221,46 @@ function setupAdmin() {
     toast(`Reporte Excel generado: ${datos.length} jornadas`, 'success');
   };
 
+  const btnDescargarTodosATS = $('#btnAdminDescargarTodosATS');
+  if (btnDescargarTodosATS) {
+    btnDescargarTodosATS.onclick = async () => {
+      if (!window.jspdf) { toast('Librería PDF no disponible', 'error'); return; }
+      const { datos, periodoLabel } = await obtenerDatosReporteAdmin();
+      const conAts = (datos || []).filter(d => d.ats && (d.ats.completado || d.ats.ot || d.ats.trabajoAsignado));
+      if (!conAts.length) {
+        toast('No se encontraron formularios ATS completados en el período actual', 'warn');
+        return;
+      }
+      const ok = await confirmDialog(`¿Deseás descargar los ${conAts.length} formularios ATS encontrados en "${periodoLabel}" en archivos PDF individuales?`);
+      if (!ok) return;
+
+      btnDescargarTodosATS.disabled = true;
+      const textoOriginal = btnDescargarTodosATS.innerHTML;
+      btnDescargarTodosATS.innerHTML = '⏳ Descargando...';
+
+      let descargados = 0;
+      try {
+        for (const d of conAts) {
+          const atsData = Object.assign({}, d.ats);
+          if (!atsData.fecha && d.fecha) atsData.fecha = d.fecha;
+          if (!atsData.hora && d.horaInicio) atsData.hora = d.horaInicio;
+          if ((!atsData.cuadrilla || !atsData.cuadrilla.length) && d.nombreUsuario) {
+            atsData.cuadrilla = [{ nombre: d.nombreUsuario, dni: d.legajo, firma: atsData.firmaJefeImg || null }];
+          }
+          await exportarAtsPDF(atsData);
+          descargados++;
+          await new Promise(r => setTimeout(r, 450));
+        }
+        toast(`✅ ${descargados} formulario(s) ATS descargado(s) correctamente`, 'success');
+      } catch (err) {
+        toast(`Error durante la descarga: ${err.message}`, 'error');
+      } finally {
+        btnDescargarTodosATS.disabled = false;
+        btnDescargarTodosATS.innerHTML = textoOriginal;
+      }
+    };
+  }
+
   setupAdminPushEvents();
 }
 
@@ -4468,6 +4503,13 @@ async function cargarPanelAdminPush() {
       avisosCount.textContent = `(${avisos.length} comunicado${avisos.length === 1 ? '' : 's'})`;
     }
 
+    // Sincronizar inmediatamente el estado global y caché con lo obtenido del servidor
+    State.avisosEmpresa = avisos;
+    try {
+      localStorage.setItem('baremo_avisos_cache', JSON.stringify(avisos));
+    } catch (e) {}
+    actualizarIndicadorAvisos();
+
     if (avisosList) {
       if (avisos.length === 0) {
         avisosList.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:16px;">No hay comunicados activos en el servidor.</div>';
@@ -4512,53 +4554,44 @@ async function cargarPanelAdminPush() {
           `;
         }).join('');
 
-        // Delegación de eventos segura en avisosList para Eliminar y Reenviar
-        if (!avisosList._pushEventsWired) {
-          avisosList._pushEventsWired = true;
-          avisosList.addEventListener('click', async (e) => {
-            const btnDel = e.target.closest('.btn-eliminar-aviso');
-            if (btnDel) {
-              e.preventDefault();
-              e.stopPropagation();
-              const id = btnDel.dataset.id;
-              const targetAviso = (State.avisosEmpresa || []).find(x => String(x.id) === String(id));
-              const titulo = targetAviso ? targetAviso.titulo : (btnDel.dataset.titulo || 'este comunicado');
-              if (!await confirmDialog(`¿Eliminar "${titulo}" del servidor central?\n\nDesaparecerá automáticamente del banner de todos los celulares.`)) return;
-              btnDel.disabled = true;
-              btnDel.textContent = '⏳ Borrando...';
-              const ok = await eliminarAvisoRemoto(id);
-              if (!ok) {
-                btnDel.disabled = false;
-                btnDel.textContent = '🗑️ Eliminar';
-              }
-              return;
-            }
+        // Vinculación directa e infalible de manejadores para cada botón
+        avisosList.querySelectorAll('.btn-eliminar-aviso').forEach(btn => {
+          btn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await manejarAccionEliminarAvisoAdmin(btn);
+          };
+        });
 
-            const btnReenviar = e.target.closest('.btn-reenviar-push');
-            if (btnReenviar) {
-              e.preventDefault();
-              e.stopPropagation();
-              const id = btnReenviar.dataset.id;
-              const targetAviso = (State.avisosEmpresa || []).find(x => String(x.id) === String(id));
-              if (!targetAviso) return;
-              if (!await confirmDialog(`¿Reenviar notificación push de "${targetAviso.titulo}" a todos los celulares ahora mismo?`)) return;
-              btnReenviar.disabled = true;
-              btnReenviar.textContent = '⏳ Enviando...';
-              await enviarPushRemoto({
-                tipo: 'aviso_empresa',
-                titulo: targetAviso.titulo,
-                cuerpo: targetAviso.cuerpo,
-                prioridad: targetAviso.prioridad,
-                categoria: targetAviso.categoria,
-                destinatario: targetAviso.destinatario || 'todos',
-                crearAviso: false,
-                enviarPush: true
-              });
-              btnReenviar.disabled = false;
-              btnReenviar.textContent = '🔁 Reenviar';
-            }
-          });
-        }
+        avisosList.querySelectorAll('.btn-reenviar-push').forEach(btn => {
+          btn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await manejarAccionReenviarAvisoAdmin(btn);
+          };
+        });
+      }
+
+      // Delegación de eventos de respaldo en avisosList para máxima resiliencia
+      if (!avisosList._pushEventsWired) {
+        avisosList._pushEventsWired = true;
+        avisosList.addEventListener('click', async (e) => {
+          const btnDel = e.target.closest('.btn-eliminar-aviso');
+          if (btnDel) {
+            e.preventDefault();
+            e.stopPropagation();
+            await manejarAccionEliminarAvisoAdmin(btnDel);
+            return;
+          }
+
+          const btnReenviar = e.target.closest('.btn-reenviar-push');
+          if (btnReenviar) {
+            e.preventDefault();
+            e.stopPropagation();
+            await manejarAccionReenviarAvisoAdmin(btnReenviar);
+            return;
+          }
+        });
       }
     }
   } catch (err) {
@@ -4688,6 +4721,29 @@ function setupAdminPushEvents() {
       }
     };
   }
+
+  // Delegación de eventos para la lista de comunicados en el panel de supervisión
+  const avisosList = $('#adminAvisosList');
+  if (avisosList && !avisosList._pushEventsWired) {
+    avisosList._pushEventsWired = true;
+    avisosList.addEventListener('click', async (e) => {
+      const btnDel = e.target.closest('.btn-eliminar-aviso');
+      if (btnDel) {
+        e.preventDefault();
+        e.stopPropagation();
+        await manejarAccionEliminarAvisoAdmin(btnDel);
+        return;
+      }
+
+      const btnReenviar = e.target.closest('.btn-reenviar-push');
+      if (btnReenviar) {
+        e.preventDefault();
+        e.stopPropagation();
+        await manejarAccionReenviarAvisoAdmin(btnReenviar);
+        return;
+      }
+    });
+  }
 }
 
 function aplicarPlantillaAdminPush(tpl) {
@@ -4754,20 +4810,127 @@ async function enviarPushRemoto(payload) {
   }
 }
 
+async function manejarAccionEliminarAvisoAdmin(btnDel) {
+  if (!btnDel || btnDel.dataset.eliminando === 'true') return;
+  const id = btnDel.dataset.id;
+  if (!id) return;
+
+  const targetAviso = (State.avisosEmpresa || []).find(x => String(x.id) === String(id));
+  const titulo = targetAviso ? targetAviso.titulo : (btnDel.dataset.titulo || 'este comunicado');
+
+  const confirmado = await confirmDialog(`¿Eliminar "${titulo}" del servidor central?\n\nDesaparecerá automáticamente del banner de todos los celulares.`);
+  if (!confirmado) return;
+
+  btnDel.dataset.eliminando = 'true';
+  btnDel.disabled = true;
+  btnDel.textContent = '⏳ Borrando...';
+
+  // Guardar copia del aviso para posibilitar rollback si falla la base de datos
+  const avisoRespaldo = targetAviso || { id, titulo };
+
+  // 1. INMEDIATA ACTUALIZACIÓN DE INTERFAZ (OPTIMISTIC UI UPDATE)
+  // Atenuar y deshabilitar interacción en la tarjeta del panel o modal
+  const itemCard = btnDel.closest('.admin-aviso-item') || btnDel.closest('.aviso-card');
+  if (itemCard) {
+    itemCard.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    itemCard.style.opacity = '0.25';
+    itemCard.style.pointerEvents = 'none';
+  }
+
+  // 2. ACTUALIZACIÓN INMEDIATA DEL ESTADO LOCAL Y PERSISTENCIA
+  State.avisosEmpresa = (State.avisosEmpresa || []).filter(a => String(a.id) !== String(id));
+  try {
+    localStorage.setItem('baremo_avisos_cache', JSON.stringify(State.avisosEmpresa));
+  } catch (e) {}
+
+  // Actualizar contador del panel de supervisión de inmediato
+  const avisosCount = $('#adminAvisosCount');
+  if (avisosCount) {
+    const totalRestante = State.avisosEmpresa.length;
+    avisosCount.textContent = `(${totalRestante} comunicado${totalRestante === 1 ? '' : 's'})`;
+  }
+
+  // Actualizar banner en vivo inmediatamente (si no quedan, muestra 'No Hay Anuncios del Supervisor')
+  actualizarIndicadorAvisos();
+
+  // Si el modal está abierto, refrescarlo de inmediato
+  if (typeof renderAvisosEmpresaList === 'function') {
+    renderAvisosEmpresaList();
+  }
+
+  // 3. ACTUALIZACIÓN INMEDIATA EN LA BASE DE DATOS / SERVIDOR
+  const ok = await eliminarAvisoRemoto(id);
+  if (ok) {
+    if (itemCard && itemCard.parentNode) {
+      itemCard.remove();
+    }
+    const avisosList = $('#adminAvisosList');
+    if (avisosList && avisosList.querySelectorAll('.admin-aviso-item').length === 0) {
+      avisosList.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:16px;">No hay comunicados activos en el servidor.</div>';
+    }
+  } else {
+    // Si la llamada al backend falló, revertir UI y Estado
+    btnDel.dataset.eliminando = 'false';
+    btnDel.disabled = false;
+    btnDel.textContent = '🗑️ Eliminar';
+    if (itemCard) {
+      itemCard.style.opacity = '1';
+      itemCard.style.pointerEvents = 'auto';
+    }
+    if (avisoRespaldo && !State.avisosEmpresa.some(a => String(a.id) === String(id))) {
+      State.avisosEmpresa.unshift(avisoRespaldo);
+      try {
+        localStorage.setItem('baremo_avisos_cache', JSON.stringify(State.avisosEmpresa));
+      } catch (e) {}
+      actualizarIndicadorAvisos();
+      if (typeof renderAvisosEmpresaList === 'function') renderAvisosEmpresaList();
+    }
+  }
+}
+
+async function manejarAccionReenviarAvisoAdmin(btnReenviar) {
+  if (!btnReenviar || btnReenviar.disabled) return;
+  const id = btnReenviar.dataset.id;
+  const targetAviso = (State.avisosEmpresa || []).find(x => String(x.id) === String(id));
+  if (!targetAviso) {
+    toast('❌ No se encontró el comunicado en la memoria', 'warn');
+    return;
+  }
+  if (!await confirmDialog(`¿Reenviar notificación push de "${targetAviso.titulo}" a todos los celulares ahora mismo?`)) return;
+  btnReenviar.disabled = true;
+  btnReenviar.textContent = '⏳ Enviando...';
+  try {
+    await enviarPushRemoto({
+      tipo: 'aviso_empresa',
+      titulo: targetAviso.titulo,
+      cuerpo: targetAviso.cuerpo,
+      prioridad: targetAviso.prioridad,
+      categoria: targetAviso.categoria,
+      destinatario: targetAviso.destinatario || 'todos',
+      crearAviso: false,
+      enviarPush: true
+    });
+  } finally {
+    btnReenviar.disabled = false;
+    btnReenviar.textContent = '🔁 Reenviar';
+  }
+}
+
 async function eliminarAvisoRemoto(id) {
   try {
     const res = await fetchAdminAPI(`/api/admin/avisos/${encodeURIComponent(id)}`, {
       method: 'DELETE'
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok && data.ok) {
       toast('✓ Aviso eliminado del servidor central', 'success');
-      // Actualizar inmediatamente estado local y caché
+      // Asegurar sincronización en memoria y localStorage
       State.avisosEmpresa = (State.avisosEmpresa || []).filter(a => String(a.id) !== String(id));
-      localStorage.setItem('baremo_avisos_cache', JSON.stringify(State.avisosEmpresa));
+      try {
+        localStorage.setItem('baremo_avisos_cache', JSON.stringify(State.avisosEmpresa));
+      } catch (e) {}
       actualizarIndicadorAvisos();
       if (typeof renderAvisosEmpresaList === 'function') renderAvisosEmpresaList();
-      await cargarPanelAdminPush();
       return true;
     }
     toast(`❌ Error al eliminar: ${data.error || 'No autorizado'}`, 'error');
@@ -4864,12 +5027,15 @@ async function renderAdminReportesView() {
 
   // Barra de pestañas
   let tabsHtml = `
-    <div style="display:flex;gap:6px;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+    <div style="display:flex;gap:6px;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:8px;flex-wrap:wrap;">
       <button class="btn btn-sm ${_adminViewModo === 'jornadas' ? 'btn-primary' : 'btn-ghost'}" id="btnAdminTabJornadas" style="font-size:11px;padding:4px 10px;">
         📋 Lista de Jornadas de Todos los Dispositivos (${datos.length})
       </button>
       <button class="btn btn-sm ${_adminViewModo === 'cuadrillas' ? 'btn-primary' : 'btn-ghost'}" id="btnAdminTabCuadrillas" style="font-size:11px;padding:4px 10px;">
         👥 Resumen por Cuadrilla (${usuariosUnicos.length})
+      </button>
+      <button class="btn btn-sm ${_adminViewModo === 'ats' ? 'btn-primary' : 'btn-ghost'}" id="btnAdminTabAts" style="font-size:11px;padding:4px 10px;${_adminViewModo === 'ats' ? 'background:#059669;border-color:#059669;color:#fff;' : 'color:#059669;border:1px solid rgba(5,150,105,0.4);'}">
+        🛡️ Planillas ATS Realizadas (${totalAtsFirmados})
       </button>
     </div>
   `;
@@ -4883,7 +5049,7 @@ async function renderAdminReportesView() {
       const itemsList = Array.isArray(j.items) ? j.items : [];
       const cantItems = j.cantidadItems || itemsList.length || 0;
       const cantTareas = j.cantidadRegistros || (Array.isArray(dTareas => dTareas.length) ? j.tareas.length : (Array.isArray(j.tareas) ? j.tareas.length : 0)) || 0;
-      const tieneAts = j.ats && (j.ats.completado || j.ats.firmadoPor || j.ats.ot);
+      const tieneAts = j.ats && (j.ats.completado || j.ats.firmadoPor || j.ats.ot || j.ats.trabajoAsignado);
       const montoTotal = Number(j.total) || Number(j.totalEnCurso) || 0;
       const estadoBadge = j.cerrada 
         ? `<span style="background:rgba(22,163,74,0.12);color:#16a34a;font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:12px;">🟢 Cerrada</span>`
@@ -4892,7 +5058,7 @@ async function renderAdminReportesView() {
       detalleHtml += `
         <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
-            <div>
+            <div style="flex:1;min-width:220px;">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                 <span style="font-weight:700;font-size:12.5px;color:var(--text);">📅 ${fechaLegible(j.fecha)}</span>
                 ${estadoBadge}
@@ -4905,20 +5071,28 @@ async function renderAdminReportesView() {
                 ⏰ ${escapeHTML(j.horaInicio || '--:--')} a ${escapeHTML(j.horaFin || '--:--')} · ${cantItems} ítem(s) de baremo · ${cantTareas} tarea(s)
               </div>
               ${tieneAts ? `
-                <div style="font-size:11px;color:#16a34a;font-weight:600;margin-top:3px;display:flex;align-items:center;gap:4px;">
+                <div style="font-size:11px;color:#16a34a;font-weight:600;margin-top:3px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                   <span>✅ ATS: OT ${escapeHTML(j.ats.ot || 'S/N')}</span>
                   ${j.ats.obra ? `<span>· ${escapeHTML(j.ats.obra)}</span>` : ''}
+                  <span style="font-size:10px;background:rgba(22,163,74,0.1);padding:1px 6px;border-radius:8px;">${j.ats.completado ? 'Firmado' : 'Cargado'}</span>
                 </div>
               ` : `
                 <div style="font-size:11px;color:var(--text-soft);margin-top:3px;">⏳ Sin ficha ATS registrada</div>
               `}
             </div>
-            <div style="text-align:right;min-width:110px;">
+            <div style="text-align:right;min-width:125px;display:flex;flex-direction:column;align-items:flex-end;">
               <div style="font-size:10.5px;color:var(--text-soft);">Producción</div>
               <div style="font-size:16px;font-weight:800;color:var(--primary);">${fmt(montoTotal)}</div>
-              <button class="btn btn-ghost btn-sm btn-toggle-detalle-jornada" data-target="${jornadaKey}" style="margin-top:4px;padding:3px 8px;font-size:10.5px;border:1px solid var(--border);">
-                👁️ Ver Baremos y ATS
-              </button>
+              <div style="display:flex;gap:4px;flex-direction:column;width:100%;margin-top:4px;">
+                <button class="btn btn-ghost btn-sm btn-toggle-detalle-jornada" data-target="${jornadaKey}" style="padding:3px 8px;font-size:10.5px;border:1px solid var(--border);width:100%;">
+                  👁️ Ver Baremos y ATS
+                </button>
+                ${tieneAts ? `
+                  <button class="btn btn-success btn-sm btn-descargar-ats-directo" data-index="${idx}" style="padding:4px 8px;font-size:10.5px;background:#16a34a;color:#fff;border:none;width:100%;font-weight:700;display:flex;align-items:center;gap:4px;justify-content:center;" title="Descargar PDF oficial de este ATS">
+                    📄 Descargar ATS (PDF)
+                  </button>
+                ` : ''}
+              </div>
             </div>
           </div>
 
@@ -4959,21 +5133,35 @@ async function renderAdminReportesView() {
             `}
 
             ${tieneAts ? `
-              <div style="background:var(--bg);padding:8px 10px;border-radius:6px;border:1px solid var(--border);margin-top:6px;font-size:11px;">
-                <div style="font-weight:700;color:var(--primary);margin-bottom:4px;display:flex;justify-content:space-between;">
+              <div style="background:var(--bg);padding:10px 12px;border-radius:6px;border:1px solid var(--border);margin-top:8px;font-size:11px;">
+                <div style="font-weight:700;color:var(--primary);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
                   <span>📋 Ficha Técnica ATS (Análisis de Trabajo Seguro)</span>
-                  <span style="color:#16a34a;font-weight:600;">Firmado</span>
+                  <span style="color:#16a34a;font-weight:600;background:rgba(22,163,74,0.1);padding:2px 8px;border-radius:10px;">${j.ats.completado ? '✅ Firmado / Completo' : '🟡 Cargado'}</span>
                 </div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:4px;color:var(--text-soft);">
-                  <div><strong>OT:</strong> ${escapeHTML(j.ats.ot || '-')}</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:6px;color:var(--text-soft);margin-bottom:8px;">
+                  <div><strong>OT:</strong> <span style="color:var(--text);font-weight:600;">${escapeHTML(j.ats.ot || '-')}</span></div>
                   <div><strong>Obra:</strong> ${escapeHTML(j.ats.obra || '-')}</div>
                   <div><strong>Pedido:</strong> ${escapeHTML(j.ats.pedido || '-')}</div>
                   <div><strong>Sector:</strong> ${escapeHTML(j.ats.sector || '-')}</div>
-                  <div style="grid-column:1/-1;"><strong>Dirección:</strong> ${escapeHTML(j.ats.direccion || '-')}</div>
-                  <div style="grid-column:1/-1;"><strong>Trabajo Asignado:</strong> ${escapeHTML(j.ats.trabajo || '-')}</div>
+                  <div style="grid-column:1/-1;"><strong>Dirección:</strong> ${escapeHTML(j.ats.direccion || '-')} ${j.ats.localidad ? `(${escapeHTML(j.ats.localidad)})` : ''}</div>
+                  <div style="grid-column:1/-1;"><strong>Trabajo Asignado:</strong> ${escapeHTML(j.ats.trabajoAsignado || j.ats.trabajo || '-')}</div>
                   ${Array.isArray(j.ats.cuadrilla) && j.ats.cuadrilla.length > 0 ? `
                     <div style="grid-column:1/-1;"><strong>Cuadrilla Firmante:</strong> ${j.ats.cuadrilla.map(c => escapeHTML(c.nombre || c)).join(', ')}</div>
                   ` : ''}
+                  <div style="grid-column:1/-1;font-size:10.5px;color:var(--text-soft);">
+                    <strong>Firmas:</strong> 
+                    Jefe: ${j.ats.firmaJefe || j.ats.firmaJefeImg ? '✅' : '⏳'} · 
+                    Supervisor: ${j.ats.firmaSupervisor || j.ats.firmaSupervisorImg ? '✅' : '⏳'} · 
+                    Higiene: ${j.ats.firmaHigiene || j.ats.firmaHigieneImg ? '✅' : '⏳'}
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px dashed var(--border);padding-top:8px;">
+                  <button class="btn btn-success btn-sm btn-descargar-ats-directo" data-index="${idx}" style="font-size:11px;padding:5px 12px;background:#16a34a;color:#fff;border:none;font-weight:700;">
+                    📥 Descargar Formulario Oficial ATS (PDF)
+                  </button>
+                  <button class="btn btn-primary btn-sm btn-abrir-ats-modal" data-index="${idx}" style="font-size:11px;padding:5px 12px;">
+                    👁️ Abrir Planilla Completa / Inspeccionar
+                  </button>
                 </div>
               </div>
             ` : ''}
@@ -4982,6 +5170,97 @@ async function renderAdminReportesView() {
       `;
     });
     detalleHtml += `</div>`;
+  } else if (_adminViewModo === 'ats') {
+    // Modo 3: Planillas ATS Realizadas
+    const datosConAts = datos.filter(d => d.ats && (d.ats.completado || d.ats.ot || d.ats.trabajoAsignado));
+    if (!datosConAts.length) {
+      detalleHtml += `
+        <div style="text-align:center;padding:24px 16px;color:var(--text-soft);background:var(--bg);border-radius:8px;">
+          <div style="font-size:28px;margin-bottom:6px;">🛡️</div>
+          <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:4px;">No hay planillas ATS registradas en este período</div>
+          <div style="font-size:11.5px;color:var(--text-soft);margin-bottom:12px;">
+            Las planillas ATS completadas por los equipos en la calle se sincronizan automáticamente con el servidor central.
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btnAdminRefrescarAtsVacio" style="font-size:11.5px;padding:4px 10px;border:1px solid var(--border);">
+            🔄 Actualizar Nube
+          </button>
+        </div>
+      `;
+    } else {
+      detalleHtml += `
+        <div style="background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.3);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div style="font-weight:700;color:#047857;font-size:12.5px;">🛡️ ${datosConAts.length} Planilla(s) ATS Encontrada(s)</div>
+            <div style="font-size:11px;color:var(--text-soft);">Podés descargarlas de forma directa e individual o todas juntas en formato PDF oficial.</div>
+          </div>
+          <button class="btn btn-sm" id="btnAdminDescargarAtsTabTop" style="background:#059669;color:#fff;border:none;font-weight:700;font-size:11px;padding:6px 12px;">
+            📥 Descargar Todas (${datosConAts.length}) en PDF
+          </button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+      `;
+
+      datos.forEach((j, idx) => {
+        const tieneAts = j.ats && (j.ats.completado || j.ats.ot || j.ats.trabajoAsignado);
+        if (!tieneAts) return;
+        const ats = j.ats;
+        const riesgosCount = Array.isArray(ats.riesgos) ? ats.riesgos.length : 0;
+        const eppList = Array.isArray(ats.epp) ? ats.epp : [];
+        const cuadrillaCount = Array.isArray(ats.cuadrilla) ? ats.cuadrilla.length : 1;
+
+        detalleHtml += `
+          <div style="background:var(--card);border:1.5px solid rgba(5,150,105,0.25);border-radius:8px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px;">
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <span style="font-size:13.5px;font-weight:800;color:var(--text);">📋 OT: ${escapeHTML(ats.ot || 'S/N')}</span>
+                  ${ats.obra ? `<span style="font-size:12px;font-weight:600;color:var(--primary);">· ${escapeHTML(ats.obra)}</span>` : ''}
+                  <span style="background:rgba(22,163,74,0.12);color:#16a34a;font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:10px;">
+                    ${ats.completado ? '✅ Firmado / Completo' : '🟡 Cargado'}
+                  </span>
+                  ${j.cerrada 
+                    ? `<span style="background:rgba(22,163,74,0.12);color:#16a34a;font-size:10.5px;padding:2px 6px;border-radius:8px;">🟢 Jornada Cerrada</span>`
+                    : `<span style="background:rgba(234,179,8,0.15);color:#ca8a04;font-size:10.5px;padding:2px 6px;border-radius:8px;">🟡 Jornada en Calle (En curso)</span>`
+                  }
+                </div>
+                <div style="font-size:12px;color:var(--text);margin-top:4px;">
+                  👤 Cuadrilla: <strong>${escapeHTML(j.nombreUsuario || 'Operador')}</strong>
+                  <span style="color:var(--text-soft);font-size:11px;"> · Legajo ${escapeHTML(j.legajo)} · Zona ${escapeHTML(j.zona || '-')}</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-success btn-sm btn-descargar-ats-directo" data-index="${idx}" style="font-weight:700;font-size:11px;padding:6px 12px;background:#16a34a;color:#fff;border:none;" title="Descargar PDF de esta planilla">
+                  📄 Descargar PDF
+                </button>
+                <button class="btn btn-primary btn-sm btn-abrir-ats-modal" data-index="${idx}" style="font-size:11px;padding:6px 12px;" title="Ver o firmar la planilla en pantalla">
+                  👁️ Ver / Firmar
+                </button>
+              </div>
+            </div>
+
+            <!-- Datos técnicos del ATS -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:6px;font-size:11px;color:var(--text-soft);">
+              <div>📅 <strong>Fecha:</strong> ${fechaLegible(ats.fecha || j.fecha)} ${escapeHTML(ats.hora || j.horaInicio || '')}</div>
+              <div>🏢 <strong>Sector:</strong> ${escapeHTML(ats.sector || 'Distribución')}</div>
+              <div>📦 <strong>Pedido:</strong> ${escapeHTML(ats.pedido || '-')}</div>
+              <div style="grid-column:1/-1;">📍 <strong>Ubicación:</strong> ${escapeHTML(ats.direccion || '-')} ${ats.localidad ? `(${escapeHTML(ats.localidad)})` : ''}</div>
+              <div style="grid-column:1/-1;">⚡ <strong>Trabajo Asignado:</strong> <span style="color:var(--text);font-weight:600;">${escapeHTML(ats.trabajoAsignado || ats.trabajo || '-')}</span></div>
+              <div>⚠️ <strong>Riesgos detectados:</strong> ${riesgosCount} identificados</div>
+              <div>👥 <strong>Personal cuadrilla:</strong> ${cuadrillaCount} integrante(s)</div>
+              <div>🦺 <strong>EPP verificado:</strong> ${eppList.length} ítems</div>
+              <div style="grid-column:1/-1;border-top:1px dashed var(--border);padding-top:4px;margin-top:2px;">
+                ✍️ <strong>Estado de Firmas:</strong>
+                Jefe de Cuadrilla: <span style="color:${ats.firmaJefe || ats.firmaJefeImg ? '#16a34a' : '#ca8a04'};font-weight:600;">${ats.firmaJefe || ats.firmaJefeImg ? '✅ Firmado' : '⏳ Pendiente'}</span> · 
+                Supervisor: <span style="color:${ats.firmaSupervisor || ats.firmaSupervisorImg ? '#16a34a' : '#ca8a04'};font-weight:600;">${ats.firmaSupervisor || ats.firmaSupervisorImg ? '✅ Firmado' : '⏳ Pendiente'}</span> · 
+                Higiene & Seg.: <span style="color:${ats.firmaHigiene || ats.firmaHigieneImg ? '#16a34a' : '#ca8a04'};font-weight:600;">${ats.firmaHigiene || ats.firmaHigieneImg ? '✅ Firmado' : '⏳ Pendiente'}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      detalleHtml += `</div>`;
+    }
   } else {
     // Modo 2: Consolidado por Cuadrilla
     const porUsuario = {};
@@ -5061,8 +5340,23 @@ async function renderAdminReportesView() {
 
   const tabJornadas = $('#btnAdminTabJornadas');
   const tabCuadrillas = $('#btnAdminTabCuadrillas');
+  const tabAts = $('#btnAdminTabAts');
   if (tabJornadas) tabJornadas.onclick = () => { _adminViewModo = 'jornadas'; renderAdminReportesView(); };
   if (tabCuadrillas) tabCuadrillas.onclick = () => { _adminViewModo = 'cuadrillas'; renderAdminReportesView(); };
+  if (tabAts) tabAts.onclick = () => { _adminViewModo = 'ats'; renderAdminReportesView(); };
+
+  const btnTabTopAts = $('#btnAdminDescargarAtsTabTop');
+  if (btnTabTopAts) {
+    btnTabTopAts.onclick = () => {
+      const bMain = $('#btnAdminDescargarTodosATS');
+      if (bMain) bMain.click();
+    };
+  }
+
+  const btnRefAtsVacio = $('#btnAdminRefrescarAtsVacio');
+  if (btnRefAtsVacio) {
+    btnRefAtsVacio.onclick = () => renderAdminReportesView();
+  }
 
   $$('.btn-toggle-detalle-jornada').forEach(btn => {
     btn.onclick = () => {
@@ -5073,6 +5367,50 @@ async function renderAdminReportesView() {
         targetEl.style.display = isHidden ? 'block' : 'none';
         btn.textContent = isHidden ? '🔼 Ocultar Baremos' : '👁️ Ver Baremos y ATS';
       }
+    };
+  });
+
+  $$('.btn-descargar-ats-directo').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.index, 10);
+      const jor = datos[idx];
+      if (!jor || !jor.ats) {
+        toast('No se encontró información de ATS para esta jornada', 'warn');
+        return;
+      }
+      const atsData = Object.assign({}, jor.ats);
+      if (!atsData.fecha && jor.fecha) atsData.fecha = jor.fecha;
+      if (!atsData.hora && jor.horaInicio) atsData.hora = jor.horaInicio;
+      if ((!atsData.cuadrilla || !atsData.cuadrilla.length) && jor.nombreUsuario) {
+        atsData.cuadrilla = [{ nombre: jor.nombreUsuario, dni: jor.legajo, firma: atsData.firmaJefeImg || null }];
+      }
+
+      btn.disabled = true;
+      const oldHtml = btn.innerHTML;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        await exportarAtsPDF(atsData);
+        toast(`📄 ATS de ${jor.nombreUsuario} (OT ${atsData.ot || 'S/N'}) descargado con éxito`, 'success');
+      } catch (err) {
+        toast(`Error generando PDF: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+      }
+    };
+  });
+
+  $$('.btn-abrir-ats-modal').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.index, 10);
+      const jor = datos[idx];
+      if (!jor || !jor.ats) {
+        toast('No se encontró información de ATS para esta jornada', 'warn');
+        return;
+      }
+      abrirModalATS({ ats: jor.ats, jornada: jor, esSupervisor: true });
     };
   });
 }
@@ -5185,6 +5523,27 @@ async function obtenerDatosReporteAdmin() {
       });
     }
   });
+
+  // Si la jornada activa en memoria tiene ATS o actividad, incluirla para visibilidad del supervisor
+  if (State.jornada && State.user) {
+    const sj = State.jornada;
+    const matchUsuario = (usuarioSel === 'todos' || String(sj.legajo || State.user.legajo) === String(usuarioSel));
+    const matchEstado = (estadoSel === 'todos' || estadoSel === 'abiertas');
+    const matchTipo = (tipo === 'todos' || (sj.fecha >= fechaDesde && sj.fecha <= fechaHasta));
+    if (matchUsuario && matchEstado && matchTipo) {
+      const idKey = String(sj.id || sj.horaInicio || 'activa').trim();
+      const key = `jornada__${String(sj.legajo || State.user.legajo).trim()}__${String(sj.fecha).trim()}__${idKey}`;
+      if (!jornadasMap.has(key)) {
+        jornadasMap.set(key, {
+          ...sj,
+          legajo: sj.legajo || State.user.legajo,
+          nombreUsuario: State.user.nombre || 'Operador',
+          zona: State.user.zona || '-',
+          origenLocal: true
+        });
+      }
+    }
+  }
 
   const datos = Array.from(jornadasMap.values());
   datos.sort((a, b) => b.fecha.localeCompare(a.fecha) || String(a.legajo).localeCompare(String(b.legajo)));
@@ -6415,11 +6774,13 @@ async function finalizarTarea() {
   if (!State.jornada) { toast('▶️ Primero tocá "Iniciar jornada"', 'warn'); return; }
   if (State.jornada.cerrada) { toast('La jornada está cerrada', 'warn'); return; }
 
-  // Validación de ATS antes de finalizar la tarea
+  // Recordatorio amigable de ATS al finalizar la tarea si aún no se completó (no bloqueante)
   if (!State.jornada.ats || !State.jornada.ats.completado) {
-    toast('⚠️ Debés completar el ATS antes de registrar la tarea', 'warn');
-    if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
-    return;
+    const irAts = await confirmDialog('📋 Recordatorio de Seguridad:\n\nEl formulario ATS de la cuadrilla aún no ha sido completado.\n\n¿Deseás abrir la ventana modal para rellenarlo ahora?\n(Tocá Cancelar para continuar registrando la tarea)');
+    if (irAts) {
+      if (typeof abrirModalATS === 'function') abrirModalATS();
+      return;
+    }
   }
 
   const pend = itemsPendientes();
@@ -6985,7 +7346,7 @@ function iniciarRecordatorioDeCierre() {
         }
         if (ev.data.accion === 'abrir_ats') {
           setTimeout(() => {
-            if (typeof abrirModalATS === 'function') abrirModalATS({ obligatorio: true });
+            if (typeof abrirModalATS === 'function') abrirModalATS();
           }, 200);
         } else if (ev.data.accion === 'cerrar_jornada') {
           setTimeout(() => {
@@ -8069,16 +8430,23 @@ function renderATSStatus() {
 
   if (!completado) {
     banner.className = 'ats-banner pending';
-    if (tIco) tIco.textContent = '⚠️';
-    if (tTit) tTit.textContent = 'ATS Obligatorio: Pendiente';
-    if (tDesc) tDesc.textContent = 'Debés completar el Análisis de Trabajo Seguro antes de iniciar la primera tarea del día.';
+    if (tIco) tIco.textContent = '🛡️';
+    if (tTit) tTit.textContent = 'Análisis de Trabajo Seguro (ATS)';
+    if (tDesc) tDesc.textContent = 'Completá la planilla de seguridad en la ventana modal.';
     if (act) {
       act.innerHTML = '<button class="btn btn-warning-ats" id="btnAtsBannerAction" type="button">📋 Rellenar ATS</button>';
       const b = $('#btnAtsBannerAction');
-      if (b) b.onclick = () => abrirModalATS({ obligatorio: true });
+      if (b) b.onclick = () => abrirModalATS();
     }
+    banner.style.cursor = 'pointer';
+    banner.onclick = (e) => {
+      if (e.target.closest('#btnAtsBannerAction')) return;
+      abrirModalATS();
+    };
   } else {
     banner.className = 'ats-banner completed';
+    banner.onclick = null;
+    banner.style.cursor = 'default';
     if (tIco) tIco.textContent = '🛡️';
     if (tTit) tTit.textContent = 'ATS Completado';
     if (tDesc) {
@@ -8657,13 +9025,16 @@ function renderCuadrillaRows(lista) {
   });
 }
 
+let _atsEditandoJornada = null;
+
 function abrirModalATS(opciones = {}) {
   const modal = $('#modalATS');
   if (!modal) return;
 
-  const ats = (State.jornada && State.jornada.ats) ? State.jornada.ats : null;
-  const hoyStr = (State.jornada && State.jornada.fecha) ? State.jornada.fecha : hoy();
-  const horaActual = horaCorta();
+  _atsEditandoJornada = opciones.jornada || null;
+  const ats = opciones.ats || (_atsEditandoJornada && _atsEditandoJornada.ats) || ((State.jornada && State.jornada.ats) ? State.jornada.ats : null);
+  const hoyStr = (ats && ats.fecha) || (_atsEditandoJornada && _atsEditandoJornada.fecha) || ((State.jornada && State.jornada.fecha) ? State.jornada.fecha : hoy());
+  const horaActual = (ats && ats.hora) || (_atsEditandoJornada && _atsEditandoJornada.horaInicio) || horaCorta();
 
   // Datos Generales
   const fOT = $('#atsOT');
@@ -8683,8 +9054,8 @@ function abrirModalATS(opciones = {}) {
   if (fFecha) fFecha.value = ats ? (ats.fecha || hoyStr) : hoyStr;
   if (fHora) fHora.value = ats ? (ats.hora || horaActual) : horaActual;
   if (fDir) fDir.value = ats ? (ats.direccion || '') : '';
-  if (fLoc) fLoc.value = ats ? (ats.localidad || '') : (State.user ? State.user.zona || '' : '');
-  if (fTrab) fTrab.value = ats ? (ats.trabajoAsignado || '') : '';
+  if (fLoc) fLoc.value = ats ? (ats.localidad || '') : (_atsEditandoJornada ? _atsEditandoJornada.zona || '' : (State.user ? State.user.zona || '' : ''));
+  if (fTrab) fTrab.value = ats ? (ats.trabajoAsignado || ats.trabajo || '') : '';
 
   // Riesgos Potenciales
   const selRiesgos = (ats && Array.isArray(ats.riesgos)) ? ats.riesgos.map(Number) : [];
@@ -8739,9 +9110,29 @@ function abrirModalATS(opciones = {}) {
 
   // Firmas de Autoridades
   const fj = $('#atsFirmaJefe');
-  if (fj) fj.value = ats ? (ats.firmaJefe || '') : (State.user ? `${State.user.nombre} (Leg. ${State.user.legajo || State.user.dni || ''})` : '');
+  if (fj) {
+    if (ats && ats.firmaJefe) {
+      fj.value = ats.firmaJefe;
+    } else if (_atsEditandoJornada) {
+      fj.value = `${_atsEditandoJornada.nombreUsuario} (Leg. ${_atsEditandoJornada.legajo})`;
+    } else if (State.user) {
+      fj.value = `${State.user.nombre} (Leg. ${State.user.legajo || State.user.dni || ''})`;
+    } else {
+      fj.value = '';
+    }
+  }
+
   const fs = $('#atsFirmaSupervisor');
-  if (fs) fs.value = ats ? (ats.firmaSupervisor || '') : '';
+  if (fs) {
+    if (ats && ats.firmaSupervisor) {
+      fs.value = ats.firmaSupervisor;
+    } else if (opciones.esSupervisor && State.user) {
+      fs.value = `${State.user.nombre} (Sup. Leg. ${State.user.legajo || State.user.dni || ''})`;
+    } else {
+      fs.value = '';
+    }
+  }
+
   const fh = $('#atsFirmaHigiene');
   if (fh) fh.value = ats ? (ats.firmaHigiene || '') : '';
 
@@ -8751,10 +9142,11 @@ function abrirModalATS(opciones = {}) {
   actualizarVistaFirmasAutoridades();
 
   // Botón Exportar PDF en footer y header
+  const tieneAtsValido = ats && (ats.completado || ats.ot || ats.trabajoAsignado);
   const bExp = $('#btnAtsExportPDF');
-  if (bExp) bExp.style.display = ats && ats.completado ? 'inline-block' : 'none';
+  if (bExp) bExp.style.display = tieneAtsValido ? 'inline-block' : 'none';
   const bExpTop = $('#btnAtsQuickPdfTop');
-  if (bExpTop) bExpTop.style.display = ats && ats.completado ? 'inline-block' : 'none';
+  if (bExpTop) bExpTop.style.display = tieneAtsValido ? 'inline-block' : 'none';
 
   modal.classList.add('show');
   if (fOT && !fOT.value) fOT.focus();
@@ -8846,8 +9238,8 @@ function recolectarDatosATS() {
 }
 
 async function guardarATS(exportarDespues = false) {
-  if (!State.jornada) {
-    toast('Debés iniciar la jornada para guardar el ATS', 'warn');
+  if (!State.jornada && !_atsEditandoJornada) {
+    toast('Debés iniciar la jornada o seleccionar una jornada válida para guardar el ATS', 'warn');
     return;
   }
 
@@ -8863,12 +9255,47 @@ async function guardarATS(exportarDespues = false) {
     return;
   }
 
-  State.jornada.ats = ats;
-  await saveJornada();
+  if (_atsEditandoJornada) {
+    _atsEditandoJornada.ats = ats;
+  }
 
-  renderATSStatus();
+  if (State.jornada) {
+    State.jornada.ats = ats;
+    await saveJornada();
+    renderATSStatus();
+  }
+
+  // Sincronizar de forma inmediata con el servidor central
+  try {
+    const syncUsuario = {
+      legajo: (_atsEditandoJornada && _atsEditandoJornada.legajo) || (State.user && State.user.legajo) || '1',
+      nombre: (_atsEditandoJornada && _atsEditandoJornada.nombreUsuario) || (State.user && State.user.nombre) || 'Operador',
+      zona: (_atsEditandoJornada && _atsEditandoJornada.zona) || (State.user && State.user.zona) || ''
+    };
+    await fetch('/api/sync/ats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario: syncUsuario,
+        jornadaId: (_atsEditandoJornada && (_atsEditandoJornada.id || _atsEditandoJornada.syncId)) || (State.jornada && State.jornada.id) || null,
+        fecha: ats.fecha || hoy(),
+        ats: ats
+      })
+    });
+  } catch (err) {
+    console.warn('[ATS] Error de sincronización directa:', err);
+  }
+
+  // Sincronizar jornada completa en segundo plano si aplica
+  try {
+    if (typeof sincronizarJornadasAlServidor === 'function') {
+      sincronizarJornadasAlServidor();
+    }
+  } catch (e) {}
+
+  if (typeof actualizarIndicadorAvisos === 'function') actualizarIndicadorAvisos();
   try { await limpiarNotificacionATS(); } catch (e) {}
-  toast('✅ Formulario ATS guardado correctamente', 'success');
+  toast('✅ Formulario ATS guardado y sincronizado correctamente', 'success');
 
   const bExp = $('#btnAtsExportPDF');
   if (bExp) bExp.style.display = 'inline-block';
@@ -8876,6 +9303,11 @@ async function guardarATS(exportarDespues = false) {
   if (bExpTop) bExpTop.style.display = 'inline-block';
 
   cerrarModalATS();
+
+  // Si estamos en la vista de supervisión, refrescar para mostrar la actualización de inmediato
+  if (State.currentView === 'Admin' && typeof renderAdminReportesView === 'function') {
+    renderAdminReportesView();
+  }
 
   if (exportarDespues) {
     await exportarAtsPDF(ats);
@@ -10001,7 +10433,16 @@ function mostrarSlideAviso(indice, animar = true) {
   const elDots = $('#eabDots');
   const btnVer = $('#btnEabVer');
 
-  if (btnVer) btnVer.textContent = 'Ver comunicado';
+  const banner = $('#empresaAvisoBanner');
+  const esAtsSlide = aviso.esAts || aviso.id === '__ats_pendiente__';
+
+  if (esAtsSlide) {
+    if (banner) banner.classList.add('modo-ats');
+    if (btnVer) btnVer.textContent = '📋 Rellenar ATS';
+  } else {
+    if (banner) banner.classList.remove('modo-ats');
+    if (btnVer) btnVer.textContent = 'Ver comunicado';
+  }
 
   // Actualizar controles y contador
   if (_carruselAvisosList.length > 1) {
@@ -10029,26 +10470,42 @@ function mostrarSlideAviso(indice, animar = true) {
   }
 
   // Meta badges
-  if (elIco) elIco.textContent = obtenerIconoAviso(aviso.categoria);
-  if (elCat) elCat.textContent = aviso.categoria || 'General';
-  if (elPrio) {
-    if (aviso.prioridad === 'alta') {
-      elPrio.textContent = 'URGENTE';
+  if (esAtsSlide) {
+    if (elIco) elIco.textContent = '🛡️';
+    if (elCat) elCat.textContent = 'Seguridad ATS';
+    if (elPrio) {
+      elPrio.textContent = 'PENDIENTE';
+      elPrio.className = 'eab-badge-prio prio-ats';
       elPrio.style.display = 'inline-block';
-    } else {
-      elPrio.style.display = 'none';
     }
-  }
-
-  // Tiempo restante de vigencia en el banner (máximo 5 horas)
-  if (elExpira) {
-    const restante = calcularTiempoRestanteBanner(aviso);
-    if (restante && restante !== 'Vencido') {
-      elExpira.textContent = `⏳ ${restante}`;
+    if (elExpira) {
+      elExpira.textContent = '📝 Modal';
       elExpira.style.display = 'inline-block';
-      elExpira.title = `Aviso activo en el banner por 5 horas. Restante: ${restante}`;
-    } else {
-      elExpira.style.display = 'none';
+      elExpira.title = 'Tocá para abrir la ventana modal del ATS y rellenarlo';
+    }
+  } else {
+    if (elIco) elIco.textContent = obtenerIconoAviso(aviso.categoria);
+    if (elCat) elCat.textContent = aviso.categoria || 'General';
+    if (elPrio) {
+      elPrio.className = 'eab-badge-prio';
+      if (aviso.prioridad === 'alta') {
+        elPrio.textContent = 'URGENTE';
+        elPrio.style.display = 'inline-block';
+      } else {
+        elPrio.style.display = 'none';
+      }
+    }
+
+    // Tiempo restante de vigencia en el banner (máximo 5 horas)
+    if (elExpira) {
+      const restante = calcularTiempoRestanteBanner(aviso);
+      if (restante && restante !== 'Vencido') {
+        elExpira.textContent = `⏳ ${restante}`;
+        elExpira.style.display = 'inline-block';
+        elExpira.title = `Aviso activo en el banner por 5 horas. Restante: ${restante}`;
+      } else {
+        elExpira.style.display = 'none';
+      }
     }
   }
 
@@ -10108,7 +10565,25 @@ function actualizarIndicadorAvisos() {
   const banner = $('#empresaAvisoBanner');
   if (!banner) return;
 
-  const itemsParaBanner = noLeidos.length > 0 ? noLeidos : avisosVigentes;
+  const itemsParaBanner = noLeidos.length > 0 ? [...noLeidos] : [...avisosVigentes];
+
+  // Verificar si hay jornada abierta con ATS pendiente
+  const jornadaAbierta = !!(State.jornada && !State.jornada.cerrada);
+  const atsPendiente = jornadaAbierta && (!State.jornada.ats || !State.jornada.ats.completado);
+
+  if (atsPendiente) {
+    const avisoAts = {
+      id: '__ats_pendiente__',
+      esAts: true,
+      categoria: 'Seguridad ATS',
+      prioridad: 'alta',
+      titulo: '🛡️ Formulario ATS Pendiente',
+      cuerpo: 'Completá el Análisis de Trabajo Seguro de la cuadrilla. Tocá para abrir la ventana modal y rellenarlo.',
+      fecha: (State.jornada && State.jornada.fecha) ? State.jornada.fecha : new Date().toISOString()
+    };
+    // Prioridad: colocarlo al frente del carrusel en el banner
+    itemsParaBanner.unshift(avisoAts);
+  }
 
   if (itemsParaBanner && itemsParaBanner.length > 0) {
     banner.classList.remove('sin-avisos');
@@ -10120,7 +10595,7 @@ function actualizarIndicadorAvisos() {
     mostrarSlideAviso(_carruselAvisosIdx, false);
     iniciarTimerCarruselAvisos();
   } else {
-    // Si no hay avisos vigentes o vencieron, mostrar el mensaje dinámico solicitado
+    // Si no hay avisos vigentes ni ATS pendiente, mostrar el mensaje dinámico solicitado
     mostrarBannerSinAvisos();
   }
 }
@@ -10145,7 +10620,26 @@ function renderAvisosEmpresaList() {
 
   const filtrados = cat === 'todas' ? avisos : avisos.filter(a => a.categoria === cat);
 
-  if (filtrados.length === 0) {
+  const jornadaAbierta = !!(State.jornada && !State.jornada.cerrada);
+  const atsPendiente = jornadaAbierta && (!State.jornada.ats || !State.jornada.ats.completado);
+  let cardAtsHtml = '';
+  if (atsPendiente && (cat === 'todas' || cat === 'Seguridad' || cat.toLowerCase().includes('ats'))) {
+    cardAtsHtml = `
+      <div class="aviso-card aviso-unread" style="border: 1.5px solid #f59e0b; background: rgba(245, 158, 11, 0.06); margin-bottom: 12px;">
+        <div class="aviso-card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="aviso-badge-prio prio-ats" style="font-weight:800;">🛡️ SEGURIDAD ATS</span>
+            <span style="font-size:10px;background:rgba(245,158,11,0.2);color:#d97706;padding:2px 6px;border-radius:4px;font-weight:700;">⚠️ PENDIENTE</span>
+          </div>
+          <button type="button" class="btn btn-sm btn-warning-ats" id="btnModalAvisoRellenarAts" style="font-size:12px;padding:4px 10px;">📋 Rellenar en Modal</button>
+        </div>
+        <div class="aviso-title" style="margin-top:6px;font-size:15px;font-weight:800;color:var(--text);">Planilla de Análisis de Trabajo Seguro (ATS)</div>
+        <div class="aviso-body" style="font-size:13px;color:var(--text-soft);margin-top:4px;">Tu jornada se encuentra activa. Podés completar el ATS cuando lo dispongas desde la ventana modal sin interrumpir la carga de tareas.</div>
+      </div>
+    `;
+  }
+
+  if (filtrados.length === 0 && !cardAtsHtml) {
     container.innerHTML = `
       <div style="text-align:center; padding:32px 16px; color:var(--text-soft);">
         <div style="font-size:36px; margin-bottom:8px;">📭</div>
@@ -10156,7 +10650,7 @@ function renderAvisosEmpresaList() {
     return;
   }
 
-  container.innerHTML = filtrados.map(a => {
+  const cardsListHtml = filtrados.map(a => {
     const esNoLeido = !leidos.includes(a.id);
     const esAlta = a.prioridad === 'alta';
     const prioLabel = esAlta ? '🔴 ALTA PRIORIDAD' : '🟡 INFORMATIVO';
@@ -10194,20 +10688,21 @@ function renderAvisosEmpresaList() {
     `;
   }).join('');
 
+  container.innerHTML = cardAtsHtml + cardsListHtml;
+
+  const btnAtsModal = container.querySelector('#btnModalAvisoRellenarAts');
+  if (btnAtsModal) {
+    btnAtsModal.onclick = () => {
+      cerrarModalAvisosEmpresa();
+      setTimeout(() => { if (typeof abrirModalATS === 'function') abrirModalATS(); }, 150);
+    };
+  }
+
   // Delegar listener para eliminar en modal si es admin
   container.querySelectorAll('.btn-eliminar-aviso-modal').forEach(btn => {
     btn.onclick = async (e) => {
       e.stopPropagation();
-      const id = btn.dataset.id;
-      const titulo = btn.dataset.titulo || 'este comunicado';
-      if (!await confirmDialog(`¿Eliminar "${titulo}" del servidor central?`)) return;
-      btn.disabled = true;
-      btn.textContent = '⏳ Borrando...';
-      const ok = await eliminarAvisoRemoto(id);
-      if (!ok) {
-        btn.disabled = false;
-        btn.textContent = '🗑️ Eliminar';
-      }
+      await manejarAccionEliminarAvisoAdmin(btn);
     };
   });
 }
@@ -10462,7 +10957,12 @@ async function sincronizarJornadasAlServidor() {
   try {
     const todas = await dbGetAll('jornadas');
     const miLegajo = String(State.user.legajo);
-    const misJornadas = todas.filter(j => String(j.legajo) === miLegajo && j.cerrada);
+    // Sincronizar tanto jornadas cerradas como jornadas en curso (con ATS cargado o tareas)
+    // para que el supervisor pueda supervisar y descargar los ATS aun si la cuadrilla en calle todavía no cerró ni compartió la jornada
+    const misJornadas = todas.filter(j => String(j.legajo) === miLegajo);
+    if (State.jornada && !misJornadas.some(j => (j.id && j.id === State.jornada.id) || (j.fecha === State.jornada.fecha))) {
+      misJornadas.push(State.jornada);
+    }
 
     const res = await fetch('/api/sync/jornadas', {
       method: 'POST',
@@ -10657,6 +11157,10 @@ function inicializarEventosPushYAvisos() {
   if (btnEabVer) {
     btnEabVer.onclick = () => {
       const avisoActual = _carruselAvisosList[_carruselAvisosIdx];
+      if (avisoActual && (avisoActual.esAts || avisoActual.id === '__ats_pendiente__')) {
+        abrirModalATS();
+        return;
+      }
       abrirModalAvisosEmpresa(null, avisoActual ? avisoActual.id : null);
     };
   }
@@ -10678,12 +11182,16 @@ function inicializarEventosPushYAvisos() {
     };
   }
 
-  // Tocar el título del banner abre directamente el comunicado
+  // Tocar el título del banner abre directamente el comunicado o el ATS
   const elTitleBanner = $('#eabTitle');
   if (elTitleBanner) {
     elTitleBanner.style.cursor = 'pointer';
     elTitleBanner.onclick = () => {
       const avisoActual = _carruselAvisosList[_carruselAvisosIdx];
+      if (avisoActual && (avisoActual.esAts || avisoActual.id === '__ats_pendiente__')) {
+        abrirModalATS();
+        return;
+      }
       abrirModalAvisosEmpresa(null, avisoActual ? avisoActual.id : null);
     };
   }
