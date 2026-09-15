@@ -1,0 +1,18 @@
+[
+  {
+    "id": "sup_seed_1",
+    "nombre": "Ing. Marcelo Rossi",
+    "legajo": "SUP-4081",
+    "rol": "supervisor",
+    "firmaImg": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIwAAAAtCAYAAAB8gIN1AAABUElEQVR4nO2W2w3CMBAEXQKV0Rh9Ugd/EQp5OPY9NseM5F8y42wkWgMAAAAAAABhHs/X+/tk+8xAhzPrsUhKdlCloyl/wHuXLCfaQeWObKeFLSlZ2QMqdsg5n4lJSm9QpaOpu57JyS59RY9jlY40euWkIwY6KrSkcEVOOeQfO8K5KqcaM+JVqSWMETHFoCqDUXRaGJVTi5rxUWzJdthlRk7poqsMRsnlh1k5lTgLD4WOJuSxiYWcwmisBlOhww0ruexIy+dnv6zs5x9iKZc5GuvBVOgwx1ouK9bjuZVaTPASywiuMhjZsbSAwUSFez7rFh0Rgt4XEXXR3uOMHP/UYCJepvclVOuQ/cA8BTO+GM//F5U6pn57/UPWxzI6syP6/4Vsh7ScUAsdAYImcgItdAxIRgRx/I/5aK6QHc9hMJzKgwEAAAAAAAAAAAAAgDvxAV8PqsoDgfdjAAAAAElFTkSuQmCC",
+    "creadoEn": "2026-09-15T01:02:15.436Z"
+  },
+  {
+    "id": "sup_seed_2",
+    "nombre": "Lic. Laura Benítez",
+    "legajo": "MAT-2905",
+    "rol": "higiene",
+    "firmaImg": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIwAAAAtCAYAAAB8gIN1AAABYElEQVR4nO3YW66DMAxFUYbQkXVinWfH0Z8iIQQhMX5gZy+JXxKfHOi9LAsAAAAAAAAAAHiA1/vz3V7R+8GD7ctCcXCoVZSpizP18CdGyjJNboRwrieHqfLiyTk3Onv5vCSv25JBHJDOmy4raQm49B4YldJ4tS06zBkuyTmID1JSAsk6XLGFOToL8UFKiqBBcw8RB+BBe0+pS2MdRvbyWO0hZWks161QHOu1U5XGc72spfFYU6U0ZrsLWuuOqNJEPbxDc3qFkqUsW56liXijid+unr+bFve35FWayHxEP8cehbG4txePP9a17yvZw9ADYrHxzG+XPatZnpbPcGG0Nl+pLCurjDTuFUIzkPRhnNDKqMwDRRjX7s5XKh/C6COds2Q+hNFn9N9uz2877kYHKxvEhd4SlC7LqnfAKcJoaH38Gv6+kV1r4OnCaKAsG4TRh3w2CKMf2fxRFAAAAACl/AAiWDcKRlEBDQAAAABJRU5ErkJggg==",
+    "creadoEn": "2026-09-15T01:02:15.440Z"
+  }
+]

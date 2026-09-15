@@ -12,7 +12,16 @@ html { background: #4338ca; }
 html.piel-esmeralda { background: #0f766e; }
 html.piel-grafito { background: #1f2937; }</style>
 <script>/* v5.9.39: aplica la piel elegida antes de pintar, para que el arranque no parpadee */
-(function(){try{var v=["aurora","esmeralda","grafito"];var p=localStorage.getItem("baremo_piel");if(v.indexOf(p)<0)p="aurora";var h=document.documentElement;h.setAttribute("data-piel",p);h.className=(h.className||"").replace(/\bpiel-\w+\b/g,"").trim()+" piel-"+p;var m={aurora:"#4338ca",esmeralda:"#0f766e",grafito:"#1f2937"};var t=document.querySelector('meta[name="theme-color"]');if(t)t.setAttribute("content",m[p]);}catch(e){}})();</script>
+(function(){
+  window.addEventListener('error',function(e){
+    if(e&&e.message&&(e.message.indexOf('ResizeObserver loop')!==-1)){
+      if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+      if(e.preventDefault)e.preventDefault();
+      return true;
+    }
+  });
+  try{var v=["aurora","esmeralda","grafito"];var p=localStorage.getItem("baremo_piel");if(v.indexOf(p)<0)p="aurora";var h=document.documentElement;h.setAttribute("data-piel",p);h.className=(h.className||"").replace(/\bpiel-\w+\b/g,"").trim()+" piel-"+p;var m={aurora:"#4338ca",esmeralda:"#0f766e",grafito:"#1f2937"};var t=document.querySelector('meta[name="theme-color"]');if(t)t.setAttribute("content",m[p]);}catch(e){}
+})();</script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -945,6 +954,71 @@ html.piel-grafito { background: #1f2937; }</style>
           </div>
         </div>
 
+        <!-- GESTIÓN DE FIRMAS OFICIALES DE SUPERVISORES Y SEGURIDAD & HIGIENE -->
+        <div class="card" id="adminFirmasCard" style="margin-bottom:14px;border:1.5px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div class="card-title" style="margin:0;display:flex;align-items:center;gap:6px;">
+              <span>✍️</span> Firmas Oficiales de Supervisión y Seguridad
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnAdminNuevoSupervisor" type="button" style="font-size:11.5px;padding:5px 12px;">
+              ➕ Registrar Mi Firma Oficial
+            </button>
+          </div>
+          <p style="font-size:12px;color:var(--text-soft);margin-bottom:12px;line-height:1.45;">
+            <strong>Control reglamentario de firmas:</strong> El formulario ATS de las cuadrillas en la calle tiene bloqueada la firma manual en los campos de Supervisor y Seguridad e Higiene. Los operarios solo pueden adjuntar las firmas oficiales que registres en esta sección.
+          </p>
+
+          <!-- Formulario para registrar/editar firma de supervisor (oculto por defecto) -->
+          <div id="adminFormSupervisorBox" style="display:none;background:var(--bg);border:1.5px solid var(--primary);border-radius:10px;padding:14px;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--primary);display:flex;justify-content:space-between;align-items:center;">
+              <span id="adminFormSupervisorTitulo">✍️ Registrar Firma Oficial</span>
+              <button type="button" id="btnAdminCerrarFormSup" class="btn btn-ghost btn-sm" style="padding:2px 6px;">✕</button>
+            </div>
+            <input type="hidden" id="adminSupEditId" value="">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+              <div class="field" style="margin:0;">
+                <label style="font-size:11px;font-weight:700;">Rol / Cargo Oficial</label>
+                <select class="select" id="adminSupRol">
+                  <option value="supervisor">🛡️ Supervisor de Obra / Zona</option>
+                  <option value="higiene">🦺 Dto. Higiene & Seguridad</option>
+                  <option value="ambos">⭐ Supervisor & Higiene</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0;">
+                <label style="font-size:11px;font-weight:700;">N° de Legajo / Matrícula</label>
+                <input class="input" id="adminSupLegajo" type="text" placeholder="Ej: Leg. 45892 o Mat. 1204" required>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:10px;">
+              <label style="font-size:11px;font-weight:700;">Nombre y Apellido Completo</label>
+              <input class="input" id="adminSupNombre" type="text" placeholder="Ej: Ing. Marcelo Rossi" required>
+            </div>
+            
+            <div class="field" style="margin-bottom:12px;">
+              <label style="font-size:11px;font-weight:700;">Firma Digital Trazada</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <div id="adminSupPreviewFirma" style="flex:1;min-height:70px;background:#ffffff;border:1px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;padding:4px;">
+                  <span style="font-size:11px;color:var(--text-soft);" id="adminSupPreviewFirmaEmpty">Sin firma trazada aún</span>
+                  <img id="adminSupPreviewFirmaImg" style="max-height:60px;max-width:90%;display:none;object-fit:contain;" alt="Firma Oficial">
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnAdminTrazarFirmaSup" style="white-space:nowrap;padding:8px 12px;font-size:11.5px;font-weight:700;">
+                  ✍️ Trazar Firma
+                </button>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button type="button" class="btn btn-ghost btn-sm" id="btnAdminCancelarSup">Cancelar</button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnAdminGuardarSup">💾 Guardar Firma Oficial</button>
+            </div>
+          </div>
+
+          <!-- Lista de firmas de supervisores y seguridad registradas -->
+          <div id="adminSupervisoresFirmasList" style="display:flex;flex-direction:column;gap:8px;">
+            <div style="text-align:center;padding:12px;color:var(--text-soft);font-size:12px;">Cargando firmas oficiales...</div>
+          </div>
+        </div>
+
         <div class="card" style="margin-bottom:14px;border:1.5px solid var(--border);">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
             <div class="card-title" style="margin:0;display:flex;align-items:center;gap:6px;">
@@ -1428,42 +1502,68 @@ html.piel-grafito { background: #1f2937; }</style>
                 <div class="ats-doc-firma-foot">Firma y aclaración</div>
               </div>
 
-              <!-- Columna 2: Supervisor -->
-              <div class="ats-doc-firma-box ats-doc-border-left">
-                <div class="ats-doc-cargo-title">Supervisor</div>
+              <!-- Columna 2: Supervisor (Restringido a firmas oficiales registradas) -->
+              <div class="ats-doc-firma-box ats-doc-border-left" id="atsBoxColumnaSup">
+                <div class="ats-doc-cargo-title" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:4px;">
+                  <span>Supervisor</span>
+                  <span class="ats-badge-restringido" title="Campo restringido: solo permite adjuntar firmas oficiales registradas en el panel de supervisión">🔒 Restringido</span>
+                </div>
+
+                <!-- Selector de supervisor oficial registrado -->
+                <div class="ats-doc-sup-selector-wrap">
+                  <select class="ats-select-supervisor" id="atsSelectSupervisor" aria-label="Seleccionar Supervisor Oficial Registrado">
+                    <option value="">— Seleccionar Supervisor Registrado —</option>
+                  </select>
+                </div>
+
                 <div class="ats-doc-sign-zone" id="atsBoxSignSup">
                   <div class="ats-sign-placeholder" id="atsPlaceholderSup">
-                    <button type="button" class="ats-btn-firmar-pad" id="btnSignSup">✍️ Firmar Supervisor</button>
+                    <div style="font-size:10px;color:var(--text-soft);text-align:center;padding:8px 4px;line-height:1.35;">
+                      🔒 Seleccioná un supervisor arriba para adjuntar su firma oficial
+                    </div>
                   </div>
                   <div class="ats-sign-preview-wrap" id="atsWrapSignSup" style="display:none">
                     <img id="atsImgSignSup" class="ats-sign-display-img" alt="Firma Supervisor">
+                    <div class="ats-sup-badge-ok">🛡️ Firma Oficial Registrada</div>
                     <div class="ats-sign-preview-actions">
-                      <button type="button" class="ats-btn-resign" id="btnResignSup" title="Volver a firmar">✍️</button>
-                      <button type="button" class="ats-btn-delsign" id="btnDelSignSup" title="Borrar firma">✕</button>
+                      <button type="button" class="ats-btn-delsign" id="btnDelSignSup" title="Quitar firma de supervisor adjunta">✕ Quitar</button>
                     </div>
                   </div>
                 </div>
-                <input class="ats-cell-input ats-firma-aclaracion" id="atsFirmaSupervisor" placeholder="Aclaración: Nombre y Legajo">
-                <div class="ats-doc-firma-foot">Firma y aclaración</div>
+                <input class="ats-cell-input ats-firma-aclaracion" id="atsFirmaSupervisor" placeholder="Aclaración oficial protegida" readonly style="background:#f8fafc;cursor:not-allowed;font-weight:600;" title="Aclaración protegida vinculada a la firma">
+                <div class="ats-doc-firma-foot">Firma y aclaración oficial</div>
               </div>
 
-              <!-- Columna 3: Dto. Higiene & Seguridad -->
-              <div class="ats-doc-firma-box ats-doc-border-left">
-                <div class="ats-doc-cargo-title">Dto. de Higiene & Seguridad</div>
+              <!-- Columna 3: Dto. Higiene & Seguridad (Restringido a firmas oficiales registradas) -->
+              <div class="ats-doc-firma-box ats-doc-border-left" id="atsBoxColumnaHig">
+                <div class="ats-doc-cargo-title" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:4px;">
+                  <span>Dto. Higiene & Seg.</span>
+                  <span class="ats-badge-restringido" title="Campo restringido: solo permite adjuntar firmas oficiales registradas en el panel de supervisión">🔒 Restringido</span>
+                </div>
+
+                <!-- Selector de responsable de higiene oficial registrado -->
+                <div class="ats-doc-sup-selector-wrap">
+                  <select class="ats-select-supervisor" id="atsSelectHigiene" aria-label="Seleccionar Responsable de Higiene Oficial Registrado">
+                    <option value="">— Seleccionar Seg. e Higiene Registrado —</option>
+                  </select>
+                </div>
+
                 <div class="ats-doc-sign-zone" id="atsBoxSignHig">
                   <div class="ats-sign-placeholder" id="atsPlaceholderHig">
-                    <button type="button" class="ats-btn-firmar-pad" id="btnSignHig">✍️ Firmar Higiene</button>
+                    <div style="font-size:10px;color:var(--text-soft);text-align:center;padding:8px 4px;line-height:1.35;">
+                      🔒 Seleccioná un responsable arriba para adjuntar su firma oficial
+                    </div>
                   </div>
                   <div class="ats-sign-preview-wrap" id="atsWrapSignHig" style="display:none">
                     <img id="atsImgSignHig" class="ats-sign-display-img" alt="Firma Higiene">
+                    <div class="ats-sup-badge-ok">🛡️ Firma Oficial Registrada</div>
                     <div class="ats-sign-preview-actions">
-                      <button type="button" class="ats-btn-resign" id="btnResignHig" title="Volver a firmar">✍️</button>
-                      <button type="button" class="ats-btn-delsign" id="btnDelSignHig" title="Borrar firma">✕</button>
+                      <button type="button" class="ats-btn-delsign" id="btnDelSignHig" title="Quitar firma de higiene adjunta">✕ Quitar</button>
                     </div>
                   </div>
                 </div>
-                <input class="ats-cell-input ats-firma-aclaracion" id="atsFirmaHigiene" placeholder="Aclaración: Nombre y Matrícula">
-                <div class="ats-doc-firma-foot">Firma y aclaración</div>
+                <input class="ats-cell-input ats-firma-aclaracion" id="atsFirmaHigiene" placeholder="Aclaración oficial protegida" readonly style="background:#f8fafc;cursor:not-allowed;font-weight:600;" title="Aclaración protegida vinculada a la firma">
+                <div class="ats-doc-firma-foot">Firma y aclaración oficial</div>
               </div>
 
             </div>

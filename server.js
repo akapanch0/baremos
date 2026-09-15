@@ -4,6 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import webpush from 'web-push';
+import zlib from 'zlib';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +26,7 @@ const ADMIN_AUTH_FILE = path.join(__dirname, 'admin-auth.json');
 const LIVE_ALERTS_FILE = path.join(__dirname, 'push-live-alerts.json');
 const JORNADAS_REMOTAS_FILE = path.join(__dirname, 'jornadas-remotas.json');
 const USUARIOS_REMOTOS_FILE = path.join(__dirname, 'usuarios-remotos.json');
+const SUPERVISORES_FIRMAS_FILE = path.join(__dirname, 'supervisores-firmas.json');
 
 // ============================================================
 // GESTIÓN REMOTA DE CLAVE MAESTRA DE ADMINISTRADOR
@@ -309,6 +311,113 @@ function guardarUsuariosRemotos(usuarios) {
     fs.writeFileSync(USUARIOS_REMOTOS_FILE, JSON.stringify(usuarios, null, 2), 'utf8');
   } catch (e) {
     console.error('[Sync] Error guardando usuarios remotos:', e.message);
+  }
+}
+
+// Helper para generar firmas PNG de muestra
+function generarFirmaSeedPng(tipo) {
+  try {
+    const width = 140, height = 45;
+    const raw = Buffer.alloc(height * (1 + width * 4));
+    for (let y = 0; y < height; y++) {
+      const rowOffset = y * (1 + width * 4);
+      raw[rowOffset] = 0;
+      for (let x = 0; x < width; x++) {
+        const pxOffset = rowOffset + 1 + x * 4;
+        let isStroke = false;
+        if (tipo === 'supervisor') {
+          const cy = 22 + Math.sin(x / 8) * 11 + Math.cos(x / 4) * 4;
+          isStroke = Math.abs(y - cy) < 1.8 || (x > 15 && x < 125 && Math.abs(y - 32) < 1.2);
+        } else {
+          const cy = 24 + Math.sin(x / 11) * 9 - Math.cos(x / 6) * 5;
+          isStroke = Math.abs(y - cy) < 1.8 || (x > 25 && x < 115 && Math.abs(y - 18) < 1.3);
+        }
+        if (isStroke) {
+          raw[pxOffset] = 16;
+          raw[pxOffset + 1] = 78;
+          raw[pxOffset + 2] = 139;
+          raw[pxOffset + 3] = 230;
+        } else {
+          raw[pxOffset] = 0;
+          raw[pxOffset + 1] = 0;
+          raw[pxOffset + 2] = 0;
+          raw[pxOffset + 3] = 0;
+        }
+      }
+    }
+    const idatData = zlib.deflateSync(raw);
+    function crc32(buf) {
+      let c = ~0;
+      for (let i = 0; i < buf.length; i++) {
+        c ^= buf[i];
+        for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xEDB88320 & -(c & 1));
+      }
+      return ~c;
+    }
+    function chunk(type, data) {
+      const len = Buffer.alloc(4);
+      len.writeUInt32BE(data.length, 0);
+      const t = Buffer.from(type, 'ascii');
+      const crcBuf = Buffer.concat([t, data]);
+      const crcVal = Buffer.alloc(4);
+      crcVal.writeUInt32BE(crc32(crcBuf) >>> 0, 0);
+      return Buffer.concat([len, t, data, crcVal]);
+    }
+    const header = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(width, 0);
+    ihdr.writeUInt32BE(height, 4);
+    ihdr[8] = 8;
+    ihdr[9] = 6;
+    ihdr[10] = 0;
+    ihdr[11] = 0;
+    ihdr[12] = 0;
+    const png = Buffer.concat([header, chunk('IHDR', ihdr), chunk('IDAT', idatData), chunk('IEND', Buffer.alloc(0))]);
+    return 'data:image/png;base64,' + png.toString('base64');
+  } catch (e) {
+    console.error('[Firmas] Error generando seed PNG:', e.message);
+    return '';
+  }
+}
+
+function leerSupervisoresFirmas() {
+  try {
+    if (fs.existsSync(SUPERVISORES_FIRMAS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SUPERVISORES_FIRMAS_FILE, 'utf8'));
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch (e) {
+    console.warn('[Firmas] Error leyendo supervisores-firmas:', e.message);
+  }
+
+  // Semilla inicial pre-cargada para que el usuario pueda probar de inmediato
+  const inicial = [
+    {
+      id: 'sup_seed_1',
+      nombre: 'Ing. Marcelo Rossi',
+      legajo: 'SUP-4081',
+      rol: 'supervisor',
+      firmaImg: generarFirmaSeedPng('supervisor'),
+      creadoEn: new Date().toISOString()
+    },
+    {
+      id: 'sup_seed_2',
+      nombre: 'Lic. Laura Benítez',
+      legajo: 'MAT-2905',
+      rol: 'higiene',
+      firmaImg: generarFirmaSeedPng('higiene'),
+      creadoEn: new Date().toISOString()
+    }
+  ];
+  guardarSupervisoresFirmas(inicial);
+  return inicial;
+}
+
+function guardarSupervisoresFirmas(firmas) {
+  try {
+    fs.writeFileSync(SUPERVISORES_FIRMAS_FILE, JSON.stringify(firmas, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[Firmas] Error guardando supervisores-firmas:', e.message);
   }
 }
 
@@ -1108,6 +1217,88 @@ app.get('/api/admin/ats/todos', requireAdminAuth, (req, res) => {
     res.json({ ok: true, total: lista.length, atsList: lista });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// ENDPOINTS DE FIRMAS OFICIALES DE SUPERVISIÓN & HIGIENE
+// ============================================================
+
+// F1. Obtener lista de firmas oficiales de supervisores (accesible por cuadrillas en calle y supervisión)
+app.get('/api/supervisores-firmas', (req, res) => {
+  try {
+    const lista = leerSupervisoresFirmas();
+    res.json({ ok: true, total: lista.length, supervisores: lista });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// F2. Registrar o actualizar firma oficial de supervisor (Protegido por clave de supervisión)
+app.post('/api/admin/supervisores-firmas', requireAdminAuth, (req, res) => {
+  try {
+    const { id, nombre, legajo, rol, firmaImg } = req.body || {};
+    if (!nombre || !nombre.trim()) {
+      return res.status(400).json({ ok: false, error: 'El nombre y apellido son obligatorios' });
+    }
+    if (!legajo || !legajo.trim()) {
+      return res.status(400).json({ ok: false, error: 'El legajo o matrícula es obligatorio' });
+    }
+    if (!firmaImg || !firmaImg.trim()) {
+      return res.status(400).json({ ok: false, error: 'La firma digital es obligatoria' });
+    }
+
+    const lista = leerSupervisoresFirmas();
+    const ahora = new Date().toISOString();
+    const supId = id ? String(id).trim() : ('sup_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5));
+
+    const existenteIdx = lista.findIndex(s => s.id === supId || (s.legajo && String(s.legajo).trim().toLowerCase() === String(legajo).trim().toLowerCase() && s.rol === (rol || 'supervisor')));
+
+    const datosSup = {
+      id: supId,
+      nombre: String(nombre).trim(),
+      legajo: String(legajo).trim(),
+      rol: String(rol || 'supervisor').trim(), // 'supervisor', 'higiene', 'ambos'
+      firmaImg: String(firmaImg).trim(),
+      actualizadoEn: ahora
+    };
+
+    if (existenteIdx >= 0) {
+      lista[existenteIdx] = { ...lista[existenteIdx], ...datosSup };
+    } else {
+      lista.push({ ...datosSup, creadoEn: ahora });
+    }
+
+    guardarSupervisoresFirmas(lista);
+    console.log(`[Firmas] Firma oficial registrada: ${datosSup.nombre} (${datosSup.legajo}) - Rol: ${datosSup.rol}`);
+
+    res.json({
+      ok: true,
+      mensaje: 'Firma oficial de supervisión registrada con éxito',
+      supervisor: datosSup,
+      total: lista.length,
+      supervisores: lista
+    });
+  } catch (err) {
+    console.error('[Firmas] Error guardando supervisor:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// F3. Eliminar firma oficial de supervisor (Protegido por clave de supervisión)
+app.delete('/api/admin/supervisores-firmas/:id', requireAdminAuth, (req, res) => {
+  try {
+    const id = req.params.id;
+    let lista = leerSupervisoresFirmas();
+    const antes = lista.length;
+    lista = lista.filter(s => s.id !== id);
+    if (lista.length === antes) {
+      return res.status(404).json({ ok: false, error: 'Supervisor no encontrado' });
+    }
+    guardarSupervisoresFirmas(lista);
+    res.json({ ok: true, mensaje: 'Firma oficial eliminada con éxito', total: lista.length, supervisores: lista });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 

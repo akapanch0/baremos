@@ -9,6 +9,19 @@
    persistente, recordatorio de backup, librerias locales con respaldo
    en CDN, cache de geocodificacion y limpieza del service worker.
    ============================================================ */
+
+/* Supresión de notificación benigna de ResizeObserver loop del navegador */
+window.addEventListener('error', function (e) {
+  if (e && e.message && (
+    e.message.includes('ResizeObserver loop completed with undelivered notifications') ||
+    e.message.includes('ResizeObserver loop limit exceeded')
+  )) {
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    return true;
+  }
+});
+
 const APP_VERSION = '5.9.50';
 
 /* Control de versión de Términos y Condiciones */
@@ -35,7 +48,8 @@ const State = {
   pushSubscribed: false,
   pushPublicKey: null,
   avisosEmpresa: [],
-  avisosCategoriaFiltro: 'todas'
+  avisosCategoriaFiltro: 'todas',
+  supervisoresFirmas: []
 };
 
 const $ = (s, p = document) => p.querySelector(s);
@@ -3790,6 +3804,11 @@ async function renderAdmin() {
   await cargarPanelAdminPush();
   await actualizarEstadoSyncNube();
 
+  // Cargar y renderizar firmas oficiales de supervisores y seguridad
+  setupAdminFirmasEvents();
+  await cargarSupervisoresFirmas();
+  renderAdminSupervisoresFirmas();
+
   // Renderizar de inmediato el reporte multi-dispositivo consolidado
   await renderAdminReportesView();
 }
@@ -4262,6 +4281,7 @@ function setupAdmin() {
   }
 
   setupAdminPushEvents();
+  setupAdminFirmasEvents();
 }
 
 /* ============================================================
@@ -4938,6 +4958,348 @@ async function eliminarAvisoRemoto(id) {
   } catch (err) {
     toast(`❌ Error al conectar: ${err.message}`, 'error');
     return false;
+  }
+}
+
+/* ============================================================
+   GESTIÓN DE FIRMAS OFICIALES DE SUPERVISORES & HIGIENE (ADMIN & ATS)
+   ============================================================ */
+let tempSupervisorFirmaData = null;
+let adminFirmasEventsInitialized = false;
+
+async function cargarSupervisoresFirmas() {
+  try {
+    const cached = localStorage.getItem('supervisores_firmas_cache');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        State.supervisoresFirmas = parsed;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const res = await fetch('/api/supervisores-firmas');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.ok && Array.isArray(data.supervisores)) {
+        State.supervisoresFirmas = data.supervisores;
+        try {
+          localStorage.setItem('supervisores_firmas_cache', JSON.stringify(data.supervisores));
+        } catch (e) {}
+      }
+    }
+  } catch (err) {
+    console.warn('[Firmas] No se pudo conectar al servidor para actualizar firmas:', err.message);
+  }
+
+  actualizarSelectoresFirmasATS();
+
+  if (State.adminLoggedIn) {
+    renderAdminSupervisoresFirmas();
+  }
+
+  return State.supervisoresFirmas;
+}
+
+function actualizarSelectoresFirmasATS() {
+  const selSup = $('#atsSelectSupervisor');
+  const selHig = $('#atsSelectHigiene');
+  const lista = State.supervisoresFirmas || [];
+
+  if (selSup) {
+    const prevVal = selSup.value;
+    const sups = lista.filter(s => !s.rol || s.rol === 'supervisor' || s.rol === 'ambos');
+    let html = '<option value="">— Seleccionar Supervisor Registrado —</option>';
+    if (sups.length === 0) {
+      html += '<option value="" disabled>⚠️ Sin supervisores registrados (Registrar en Supervisión)</option>';
+    } else {
+      sups.forEach(s => {
+        const legText = s.legajo ? (s.legajo.toLowerCase().includes('leg') ? s.legajo : 'Leg. ' + s.legajo) : '';
+        html += `<option value="${escapeHTML(s.id)}">${escapeHTML(s.nombre)} ${legText ? '(' + escapeHTML(legText) + ')' : ''}</option>`;
+      });
+    }
+    selSup.innerHTML = html;
+    if (prevVal) selSup.value = prevVal;
+  }
+
+  if (selHig) {
+    const prevVal = selHig.value;
+    let higs = lista.filter(s => s.rol === 'higiene' || s.rol === 'ambos');
+    if (higs.length === 0) higs = lista;
+    let html = '<option value="">— Seleccionar Seg. e Higiene Registrado —</option>';
+    if (higs.length === 0) {
+      html += '<option value="" disabled>⚠️ Sin responsables de higiene registrados</option>';
+    } else {
+      higs.forEach(s => {
+        const matText = s.legajo ? (s.legajo.toLowerCase().includes('mat') || s.legajo.toLowerCase().includes('leg') ? s.legajo : 'Mat./Leg. ' + s.legajo) : '';
+        html += `<option value="${escapeHTML(s.id)}">${escapeHTML(s.nombre)} ${matText ? '(' + escapeHTML(matText) + ')' : ''}</option>`;
+      });
+    }
+    selHig.innerHTML = html;
+    if (prevVal) selHig.value = prevVal;
+  }
+}
+
+function renderAdminSupervisoresFirmas() {
+  const cont = $('#adminSupervisoresFirmasList');
+  if (!cont) return;
+
+  const lista = State.supervisoresFirmas || [];
+  if (lista.length === 0) {
+    cont.innerHTML = `
+      <div style="text-align:center;padding:16px;color:var(--text-soft);font-size:12px;background:var(--bg);border-radius:8px;border:1px dashed var(--border);">
+        <span style="font-size:20px;display:block;margin-bottom:6px;">✍️</span>
+        No hay firmas oficiales de supervisores registradas aún.<br>
+        Hacé clic en <strong>"➕ Registrar Mi Firma Oficial"</strong> arriba para registrar tu nombre, legajo y firma digital.
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  lista.forEach(s => {
+    const esHig = s.rol === 'higiene';
+    const esAmbos = s.rol === 'ambos';
+    const rolBadge = esAmbos
+      ? '<span style="background:#fef3c7;color:#92400e;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;">⭐ Supervisor & Higiene</span>'
+      : esHig
+        ? '<span style="background:#ecfdf5;color:#065f46;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;">🦺 Dto. Higiene & Seg.</span>'
+        : '<span style="background:#e0f2fe;color:#0369a1;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;">🛡️ Supervisor</span>';
+
+    const fechaFmt = s.actualizadoEn ? new Date(s.actualizadoEn).toLocaleDateString('es-AR') : (s.creadoEn ? new Date(s.creadoEn).toLocaleDateString('es-AR') : '');
+
+    html += `
+      <div class="admin-sup-item-card" data-id="${escapeHTML(s.id)}">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+          <div style="width:85px;height:48px;background:#ffffff;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+            ${s.firmaImg ? `<img src="${s.firmaImg}" style="max-height:42px;max-width:80px;object-fit:contain;" alt="Firma">` : '<span style="font-size:9px;color:var(--text-soft);">Sin firma</span>'}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+              <span style="font-size:13px;font-weight:700;color:var(--text);">${escapeHTML(s.nombre)}</span>
+              ${rolBadge}
+            </div>
+            <div style="font-size:11px;color:var(--text-soft);">
+              <span>${escapeHTML(s.legajo || 'S/L')}</span>
+              ${fechaFmt ? `<span style="margin-left:8px;font-size:10px;">• Reg: ${fechaFmt}</span>` : ''}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button type="button" class="btn btn-ghost btn-sm btn-edit-sup" data-id="${escapeHTML(s.id)}" title="Editar firma y datos" style="padding:4px 8px;font-size:11px;">
+            ✏️
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm btn-del-sup" data-id="${escapeHTML(s.id)}" title="Eliminar registro de firma" style="padding:4px 8px;font-size:11px;color:#ef4444;">
+            🗑️
+          </button>
+        </div>
+      </div>
+    `;
+  });
+
+  cont.innerHTML = html;
+
+  cont.querySelectorAll('.btn-edit-sup').forEach(btn => {
+    btn.onclick = () => {
+      editarSupervisorFirma(btn.dataset.id);
+    };
+  });
+
+  cont.querySelectorAll('.btn-del-sup').forEach(btn => {
+    btn.onclick = async () => {
+      await eliminarSupervisorFirma(btn.dataset.id);
+    };
+  });
+}
+
+function editarSupervisorFirma(id) {
+  const lista = State.supervisoresFirmas || [];
+  const sup = lista.find(s => s.id === id);
+  if (!sup) return;
+
+  const box = $('#adminFormSupervisorBox');
+  const tEl = $('#adminFormSupervisorTitulo');
+  const editId = $('#adminSupEditId');
+  const nomEl = $('#adminSupNombre');
+  const legEl = $('#adminSupLegajo');
+  const rolEl = $('#adminSupRol');
+  const imgEl = $('#adminSupPreviewFirmaImg');
+  const emptyEl = $('#adminSupPreviewFirmaEmpty');
+
+  if (editId) editId.value = sup.id;
+  if (tEl) tEl.textContent = `✏️ Modificar Firma de ${sup.nombre}`;
+  if (nomEl) nomEl.value = sup.nombre || '';
+  if (legEl) legEl.value = sup.legajo || '';
+  if (rolEl) rolEl.value = sup.rol || 'supervisor';
+
+  tempSupervisorFirmaData = sup.firmaImg || null;
+  if (tempSupervisorFirmaData) {
+    if (imgEl) { imgEl.src = tempSupervisorFirmaData; imgEl.style.display = 'block'; }
+    if (emptyEl) emptyEl.style.display = 'none';
+  } else {
+    if (imgEl) imgEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'block';
+  }
+
+  if (box) {
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+async function eliminarSupervisorFirma(id) {
+  const lista = State.supervisoresFirmas || [];
+  const sup = lista.find(s => s.id === id);
+  const nombre = sup ? sup.nombre : 'este registro';
+
+  const seguro = await confirmDialog(`¿Estás seguro de que deseás eliminar la firma oficial registrada de ${nombre}?\n\nLas cuadrillas en calle ya no podrán adjuntarla en nuevos ATS.`);
+  if (!seguro) return;
+
+  try {
+    const res = await fetchAdminAPI(`/api/admin/supervisores-firmas/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    });
+    if (res.ok) {
+      toast(`Firma de ${nombre} eliminada`, 'info');
+      await cargarSupervisoresFirmas();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast(`Error al eliminar: ${err.error || 'No autorizado'}`, 'error');
+    }
+  } catch (err) {
+    toast(`Error de conexión: ${err.message}`, 'error');
+  }
+}
+
+function setupAdminFirmasEvents() {
+  if (adminFirmasEventsInitialized) return;
+  adminFirmasEventsInitialized = true;
+
+  const btnNuevo = $('#btnAdminNuevoSupervisor');
+  const box = $('#adminFormSupervisorBox');
+  const btnCerrar = $('#btnAdminCerrarFormSup');
+  const btnCancelar = $('#btnAdminCancelarSup');
+  const btnTrazar = $('#btnAdminTrazarFirmaSup');
+  const btnGuardar = $('#btnAdminGuardarSup');
+
+  function resetFormSup() {
+    const editId = $('#adminSupEditId');
+    const tEl = $('#adminFormSupervisorTitulo');
+    const nomEl = $('#adminSupNombre');
+    const legEl = $('#adminSupLegajo');
+    const rolEl = $('#adminSupRol');
+    const imgEl = $('#adminSupPreviewFirmaImg');
+    const emptyEl = $('#adminSupPreviewFirmaEmpty');
+
+    if (editId) editId.value = '';
+    if (tEl) tEl.textContent = '✍️ Registrar Firma Oficial';
+    if (nomEl) nomEl.value = (State.user && State.user.nombre) ? State.user.nombre : '';
+    if (legEl) legEl.value = (State.user && State.user.legajo) ? `SUP-${State.user.legajo}` : '';
+    if (rolEl) rolEl.value = 'supervisor';
+    tempSupervisorFirmaData = null;
+    if (imgEl) { imgEl.src = ''; imgEl.style.display = 'none'; }
+    if (emptyEl) emptyEl.style.display = 'block';
+  }
+
+  if (btnNuevo) {
+    btnNuevo.onclick = () => {
+      resetFormSup();
+      if (box) {
+        box.style.display = 'block';
+        box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+  }
+
+  if (btnCerrar) {
+    btnCerrar.onclick = () => {
+      if (box) box.style.display = 'none';
+    };
+  }
+  if (btnCancelar) {
+    btnCancelar.onclick = () => {
+      if (box) box.style.display = 'none';
+    };
+  }
+
+  if (btnTrazar) {
+    btnTrazar.onclick = () => {
+      const nom = $('#adminSupNombre') ? $('#adminSupNombre').value.trim() : 'Supervisor';
+      abrirModalFirmaDigital({
+        titulo: `✍️ Trazar Firma Oficial de ${nom || 'Supervisor'}`,
+        onAceptar: (dataUrl) => {
+          tempSupervisorFirmaData = dataUrl;
+          const imgEl = $('#adminSupPreviewFirmaImg');
+          const emptyEl = $('#adminSupPreviewFirmaEmpty');
+          if (imgEl) {
+            imgEl.src = dataUrl;
+            imgEl.style.display = 'block';
+          }
+          if (emptyEl) emptyEl.style.display = 'none';
+        }
+      });
+    };
+  }
+
+  if (btnGuardar) {
+    btnGuardar.onclick = async () => {
+      const id = $('#adminSupEditId') ? $('#adminSupEditId').value.trim() : '';
+      const nombre = $('#adminSupNombre') ? $('#adminSupNombre').value.trim() : '';
+      const legajo = $('#adminSupLegajo') ? $('#adminSupLegajo').value.trim() : '';
+      const rol = $('#adminSupRol') ? $('#adminSupRol').value : 'supervisor';
+
+      if (!nombre) {
+        toast('El nombre y apellido son obligatorios', 'warn');
+        $('#adminSupNombre')?.focus();
+        return;
+      }
+      if (!legajo) {
+        toast('El legajo o matrícula es obligatorio', 'warn');
+        $('#adminSupLegajo')?.focus();
+        return;
+      }
+      if (!tempSupervisorFirmaData) {
+        toast('Debés trazar la firma digital antes de guardar', 'warn');
+        btnTrazar?.click();
+        return;
+      }
+
+      const payload = {
+        id: id || undefined,
+        nombre,
+        legajo,
+        rol,
+        firmaImg: tempSupervisorFirmaData
+      };
+
+      btnGuardar.disabled = true;
+      const textoOrig = btnGuardar.textContent;
+      btnGuardar.textContent = '⏳ Guardando...';
+
+      try {
+        const res = await fetchAdminAPI('/api/admin/supervisores-firmas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          toast('✅ Firma oficial registrada correctamente en el servidor', 'success');
+          if (box) box.style.display = 'none';
+          resetFormSup();
+          await cargarSupervisoresFirmas();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          toast(`Error al guardar: ${err.error || 'No autorizado'}`, 'error');
+        }
+      } catch (err) {
+        toast(`Error de conexión: ${err.message}`, 'error');
+      } finally {
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = textoOrig;
+      }
+    };
   }
 }
 
@@ -6952,20 +7314,40 @@ function renderTareas() {
 }
 
 /* Mantiene la barra "Buscar baremos" siempre visible bajo la cabecera al hacer scroll */
+let _hdrRafId = null;
+let _ultimoAltoHdr = 0;
+
 function ajustarStickyBusqueda() {
-  const h = document.querySelector('.app-header');
-  if (!h) return;
-  const alto = Math.round(h.getBoundingClientRect().height);
-  if (alto > 0) document.documentElement.style.setProperty('--hdr-h', alto + 'px');
+  if (_hdrRafId) cancelAnimationFrame(_hdrRafId);
+  _hdrRafId = requestAnimationFrame(() => {
+    _hdrRafId = null;
+    const h = document.querySelector('.app-header');
+    if (!h) return;
+    const alto = Math.round(h.getBoundingClientRect().height);
+    if (alto > 0 && alto !== _ultimoAltoHdr) {
+      _ultimoAltoHdr = alto;
+      document.documentElement.style.setProperty('--hdr-h', alto + 'px');
+    }
+  });
 }
-window.addEventListener('resize', ajustarStickyBusqueda);
-window.addEventListener('orientationchange', ajustarStickyBusqueda);
+
+window.addEventListener('resize', ajustarStickyBusqueda, { passive: true });
+window.addEventListener('orientationchange', ajustarStickyBusqueda, { passive: true });
 document.addEventListener('DOMContentLoaded', () => {
   ajustarStickyBusqueda();
   setTimeout(ajustarStickyBusqueda, 600);
   setTimeout(ajustarStickyBusqueda, 1800);
   const hd = document.querySelector('.app-header');
-  if (hd && window.ResizeObserver) { try { new ResizeObserver(ajustarStickyBusqueda).observe(hd); } catch (e) {} }
+  if (hd && window.ResizeObserver) {
+    try {
+      const ro = new ResizeObserver(() => {
+        window.requestAnimationFrame(() => {
+          ajustarStickyBusqueda();
+        });
+      });
+      ro.observe(hd);
+    } catch (e) {}
+  }
 });
 
 // Usa el sistema de confirmación existente: nunca elimina con un clic accidental
@@ -8844,75 +9226,80 @@ function initATS() {
     };
   }
 
-  // Supervisor
-  const bSignSup = $('#btnSignSup');
-  if (bSignSup) {
-    bSignSup.onclick = () => {
-      const nom = $('#atsFirmaSupervisor') ? $('#atsFirmaSupervisor').value.trim() : 'Supervisor';
-      abrirModalFirmaDigital({
-        titulo: `✍️ Firma de ${nom || 'Supervisor'}`,
-        onAceptar: (dataUrl) => {
-          atsFirmaSupervisorData = dataUrl;
-          actualizarVistaFirmasAutoridades();
-        }
-      });
-    };
-  }
-  const bResignSup = $('#btnResignSup');
-  if (bResignSup) {
-    bResignSup.onclick = () => {
-      const nom = $('#atsFirmaSupervisor') ? $('#atsFirmaSupervisor').value.trim() : 'Supervisor';
-      abrirModalFirmaDigital({
-        titulo: `✍️ Firma de ${nom || 'Supervisor'}`,
-        onAceptar: (dataUrl) => {
-          atsFirmaSupervisorData = dataUrl;
-          actualizarVistaFirmasAutoridades();
-        }
-      });
+  // Supervisor (Restringido - Solo firmas oficiales registradas)
+  const selSup = $('#atsSelectSupervisor');
+  if (selSup) {
+    selSup.onchange = () => {
+      const supId = selSup.value;
+      if (!supId) {
+        atsFirmaSupervisorData = null;
+        const fs = $('#atsFirmaSupervisor');
+        if (fs) fs.value = '';
+        actualizarVistaFirmasAutoridades();
+        return;
+      }
+      const lista = State.supervisoresFirmas || [];
+      const sup = lista.find(s => s.id === supId);
+      if (sup && sup.firmaImg) {
+        atsFirmaSupervisorData = sup.firmaImg;
+        const fs = $('#atsFirmaSupervisor');
+        const legText = sup.legajo ? (sup.legajo.toLowerCase().includes('leg') ? sup.legajo : 'Leg. ' + sup.legajo) : 'Supervisor Oficial';
+        if (fs) fs.value = `${sup.nombre} (${legText})`;
+        actualizarVistaFirmasAutoridades();
+        toast(`🛡️ Firma oficial adjuntada: ${sup.nombre}`, 'info');
+      }
     };
   }
   const bDelSignSup = $('#btnDelSignSup');
   if (bDelSignSup) {
     bDelSignSup.onclick = () => {
       atsFirmaSupervisorData = null;
+      if (selSup) selSup.value = '';
+      const fs = $('#atsFirmaSupervisor');
+      if (fs) fs.value = '';
       actualizarVistaFirmasAutoridades();
+      toast('Firma de supervisor retirada', 'info');
     };
   }
 
-  // Higiene
-  const bSignHig = $('#btnSignHig');
-  if (bSignHig) {
-    bSignHig.onclick = () => {
-      const nom = $('#atsFirmaHigiene') ? $('#atsFirmaHigiene').value.trim() : 'Higiene & Seguridad';
-      abrirModalFirmaDigital({
-        titulo: `✍️ Firma de ${nom || 'Higiene & Seguridad'}`,
-        onAceptar: (dataUrl) => {
-          atsFirmaHigieneData = dataUrl;
-          actualizarVistaFirmasAutoridades();
-        }
-      });
-    };
-  }
-  const bResignHig = $('#btnResignHig');
-  if (bResignHig) {
-    bResignHig.onclick = () => {
-      const nom = $('#atsFirmaHigiene') ? $('#atsFirmaHigiene').value.trim() : 'Higiene & Seguridad';
-      abrirModalFirmaDigital({
-        titulo: `✍️ Firma de ${nom || 'Higiene & Seguridad'}`,
-        onAceptar: (dataUrl) => {
-          atsFirmaHigieneData = dataUrl;
-          actualizarVistaFirmasAutoridades();
-        }
-      });
+  // Higiene & Seguridad (Restringido - Solo firmas oficiales registradas)
+  const selHig = $('#atsSelectHigiene');
+  if (selHig) {
+    selHig.onchange = () => {
+      const higId = selHig.value;
+      if (!higId) {
+        atsFirmaHigieneData = null;
+        const fh = $('#atsFirmaHigiene');
+        if (fh) fh.value = '';
+        actualizarVistaFirmasAutoridades();
+        return;
+      }
+      const lista = State.supervisoresFirmas || [];
+      const hig = lista.find(s => s.id === higId);
+      if (hig && hig.firmaImg) {
+        atsFirmaHigieneData = hig.firmaImg;
+        const fh = $('#atsFirmaHigiene');
+        const matText = hig.legajo ? (hig.legajo.toLowerCase().includes('mat') || hig.legajo.toLowerCase().includes('leg') ? hig.legajo : 'Mat. ' + hig.legajo) : 'Seguridad & Higiene';
+        if (fh) fh.value = `${hig.nombre} (${matText})`;
+        actualizarVistaFirmasAutoridades();
+        toast(`🦺 Firma oficial adjuntada: ${hig.nombre}`, 'info');
+      }
     };
   }
   const bDelSignHig = $('#btnDelSignHig');
   if (bDelSignHig) {
     bDelSignHig.onclick = () => {
       atsFirmaHigieneData = null;
+      if (selHig) selHig.value = '';
+      const fh = $('#atsFirmaHigiene');
+      if (fh) fh.value = '';
       actualizarVistaFirmasAutoridades();
+      toast('Firma de higiene retirada', 'info');
     };
   }
+
+  // Pre-cargar firmas oficiales en segundo plano
+  cargarSupervisoresFirmas().catch(() => {});
 
   // 7. Inicializar canvas de firmas
   initSignatureCanvas();
@@ -9027,7 +9414,7 @@ function renderCuadrillaRows(lista) {
 
 let _atsEditandoJornada = null;
 
-function abrirModalATS(opciones = {}) {
+async function abrirModalATS(opciones = {}) {
   const modal = $('#modalATS');
   if (!modal) return;
 
@@ -9122,23 +9509,43 @@ function abrirModalATS(opciones = {}) {
     }
   }
 
+  // Cargar lista oficial de supervisores y sincronizar selectores
+  await cargarSupervisoresFirmas();
+
   const fs = $('#atsFirmaSupervisor');
   if (fs) {
-    if (ats && ats.firmaSupervisor) {
-      fs.value = ats.firmaSupervisor;
-    } else if (opciones.esSupervisor && State.user) {
-      fs.value = `${State.user.nombre} (Sup. Leg. ${State.user.legajo || State.user.dni || ''})`;
-    } else {
-      fs.value = '';
-    }
+    fs.value = ats ? (ats.firmaSupervisor || '') : '';
   }
 
   const fh = $('#atsFirmaHigiene');
-  if (fh) fh.value = ats ? (ats.firmaHigiene || '') : '';
+  if (fh) {
+    fh.value = ats ? (ats.firmaHigiene || '') : '';
+  }
 
   atsFirmaJefeData = (ats && ats.firmaJefeImg) ? ats.firmaJefeImg : null;
   atsFirmaSupervisorData = (ats && ats.firmaSupervisorImg) ? ats.firmaSupervisorImg : null;
   atsFirmaHigieneData = (ats && ats.firmaHigieneImg) ? ats.firmaHigieneImg : null;
+
+  // Pre-seleccionar supervisor en selector si coincide
+  const selSup = $('#atsSelectSupervisor');
+  if (selSup) {
+    selSup.value = '';
+    if (atsFirmaSupervisorData && State.supervisoresFirmas?.length) {
+      const match = State.supervisoresFirmas.find(s => s.firmaImg === atsFirmaSupervisorData || (ats && ats.firmaSupervisor && s.nombre && ats.firmaSupervisor.includes(s.nombre)));
+      if (match) selSup.value = match.id;
+    }
+  }
+
+  // Pre-seleccionar higiene en selector si coincide
+  const selHig = $('#atsSelectHigiene');
+  if (selHig) {
+    selHig.value = '';
+    if (atsFirmaHigieneData && State.supervisoresFirmas?.length) {
+      const match = State.supervisoresFirmas.find(s => s.firmaImg === atsFirmaHigieneData || (ats && ats.firmaHigiene && s.nombre && ats.firmaHigiene.includes(s.nombre)));
+      if (match) selHig.value = match.id;
+    }
+  }
+
   actualizarVistaFirmasAutoridades();
 
   // Botón Exportar PDF en footer y header
