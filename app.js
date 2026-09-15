@@ -22,7 +22,7 @@ window.addEventListener('error', function (e) {
   }
 });
 
-const APP_VERSION = '5.9.50';
+const APP_VERSION = '5.9.51';
 
 /* Control de versión de Términos y Condiciones */
 const CURRENT_TERMS_VERSION = 1;
@@ -2488,20 +2488,29 @@ let _logoPDF = null;
 let _logoPDFIntentado = false;
 
 async function obtenerLogoPDF() {
-  if (_logoPDFIntentado) return _logoPDF;
+  if (_logoPDF) return _logoPDF;
   _logoPDFIntentado = true;
-  try {
-    const resp = await fetch('icons/icon-512.png?v=' + APP_VERSION, { cache: 'force-cache' });
-    if (!resp.ok) throw new Error('logo no disponible');
-    const blob = await resp.blob();
-    _logoPDF = await new Promise((res, rej) => {
-      const fr = new FileReader();
-      fr.onload = () => res(fr.result);
-      fr.onerror = () => rej(new Error('no se pudo leer el logo'));
-      fr.readAsDataURL(blob);
-    });
-  } catch (e) {
-    _logoPDF = null;
+  const intentos = [
+    'icons/icon-512.png?v=' + APP_VERSION,
+    'icons/logo.png?v=' + APP_VERSION,
+    'icons/icon-192.png?v=' + APP_VERSION,
+    'icons/icon-512.png',
+    'icons/logo.png'
+  ];
+  for (const url of intentos) {
+    try {
+      const resp = await fetch(url, { cache: 'force-cache' });
+      if (resp && resp.ok) {
+        const blob = await resp.blob();
+        _logoPDF = await new Promise((res, rej) => {
+          const fr = new FileReader();
+          fr.onload = () => res(fr.result);
+          fr.onerror = () => rej(new Error('no se pudo leer el logo'));
+          fr.readAsDataURL(blob);
+        });
+        if (_logoPDF) break;
+      }
+    } catch (e) {}
   }
   return _logoPDF;
 }
@@ -2673,19 +2682,20 @@ function bloquesJornadaPDF(doc, j, y) {
     String(a.correlativo || '').localeCompare(String(b.correlativo || '')));
 
   tareas.forEach(t => {
-    y = bloqueTareaPDF(doc, j, t, items.filter(it => it.tareaId === t.id), y);
+    y = bloqueTareaPDF(doc, j, t, items.filter(it => it.tareaId != null && String(it.tareaId) === String(t.id)), y);
   });
 
-  const sueltos = items.filter(it => !it.tareaId);
+  const sueltos = items.filter(it => !it.tareaId || !tareas.some(t => String(t.id) === String(it.tareaId)));
   if (sueltos.length) {
+    const esCerradaSinTareas = !tareas.length && j.cerrada;
     y = bloqueTareaPDF(doc, j, {
-      correlativo: 'SIN FINALIZAR',
-      tipoTrabajo: '',
+      correlativo: esCerradaSinTareas ? '1' : (tareas.length ? 'SIN FINALIZAR' : 'TAREA 1'),
+      tipoTrabajo: esCerradaSinTareas ? 'Producción Registrada' : '',
       fecha: j.fecha,
-      hora: '',
+      hora: j.horaInicio || '',
       zona: j.zona || '',
-      tipoUbicacion: 'ninguna',
-      direccion: 'Tarea sin finalizar: estos baremos no integran el total'
+      tipoUbicacion: j.tipoUbicacion || 'ninguna',
+      direccion: esCerradaSinTareas ? (j.direccion || 'Ubicación de la jornada') : (tareas.length ? 'Tarea sin finalizar: estos baremos no integran el total' : (j.direccion || 'Ubicación no registrada'))
     }, sueltos, y);
   }
 
@@ -2770,34 +2780,39 @@ async function compartirPDFWhatsApp(doc, nombre, texto) {
   toast('PDF descargado: adjuntalo en WhatsApp', 'warn');
 }
 
-async function exportarJornadaPDF(id, compartir) {
-  let j = await dbGet('jornadas', id);
-  if (!j && typeof id === 'string' && !isNaN(Number(id))) {
-    j = await dbGet('jornadas', Number(id));
-  }
-  if (!j && _nubeJornadasMap && _nubeJornadasMap.has(String(id))) {
-    j = _nubeJornadasMap.get(String(id));
+async function exportarJornadaPDF(idOrObj, compartir) {
+  let j = null;
+  if (idOrObj && typeof idOrObj === 'object') {
+    j = idOrObj;
+  } else {
+    j = await dbGet('jornadas', idOrObj);
+    if (!j && typeof idOrObj === 'string' && !isNaN(Number(idOrObj))) {
+      j = await dbGet('jornadas', Number(idOrObj));
+    }
+    if (!j && _nubeJornadasMap && _nubeJornadasMap.has(String(idOrObj))) {
+      j = _nubeJornadasMap.get(String(idOrObj));
+    }
   }
   if (!j || !window.jspdf) return;
   const { jsPDF } = window.jspdf;
   await obtenerLogoPDF();
   const doc = new jsPDF();
 
-  const nombreOp = j.nombreUsuario || j.usuario || State.user.nombre;
-  const legajoOp = j.legajo || State.user.legajo;
-  const zonaOp = j.zona || State.user.zona || '-';
+  const nombreOp = j.nombreUsuario || j.usuario || (State.user ? State.user.nombre : 'Operario');
+  const legajoOp = j.legajo || (State.user ? State.user.legajo : '-');
+  const zonaOp = j.zona || (State.user ? State.user.zona : '-') || '-';
 
   drawElegantHeader(doc, 'BAREMO', 'Jornada del ' + fechaLegible(j.fecha),
     nombreOp, 'Legajo: ' + legajoOp + ' | Zona: ' + zonaOp);
 
   const tareas = Array.isArray(j.tareas) ? j.tareas : [];
   const finalizados = (j.items || []).filter(it => it.tareaId);
-  const totalDia = tareas.length
+  const totalDia = Number(j.total) || (tareas.length
     ? finalizados.reduce((a, i) => a + (i.subtotal || 0), 0)
-    : (j.total || 0);
+    : (j.items || []).reduce((a, i) => a + (i.subtotal || 0), 0));
 
   let y = drawResumenPDF(doc, 46, [
-    { lbl: 'Tareas', val: tareas.length },
+    { lbl: 'Tareas', val: tareas.length || 1 },
     { lbl: 'Baremos', val: finalizados.length || (j.items || []).length },
     { lbl: 'Ítems', val: (finalizados.length ? finalizados : (j.items || [])).reduce((a, i) => a + (i.cantidad || 0), 0) },
     { lbl: 'Total del día', val: fmt(totalDia) }
@@ -2808,7 +2823,7 @@ async function exportarJornadaPDF(id, compartir) {
   drawTotalPDF(doc, y, 'TOTAL DEL DÍA', fmt(totalDia));
   drawPiePDF(doc);
 
-  const nombre = 'baremos_' + j.fecha + '_' + j.legajo + '.pdf';
+  const nombre = 'baremos_' + j.fecha + '_' + legajoOp + '.pdf';
   if (compartir) {
     await compartirPDFWhatsApp(doc, nombre, textoReporteJornada(j, totalDia));
     return;
@@ -4099,98 +4114,7 @@ function setupAdmin() {
     toast('✓ Reportes consolidados actualizados', 'success');
   };
   $('#btnAdminPDF').onclick = async () => {
-    if (!window.jspdf) { toast('jsPDF no disponible', 'error'); return; }
-    const { datos, periodoLabel, fechaDesde, fechaHasta, tipo } = await obtenerDatosReporteAdmin();
-    if (!datos.length) { toast('Sin datos para el período', 'warn'); return; }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    drawElegantHeader(doc, "REPORTE ADMINISTRATIVO", periodoLabel, "BAREMO", `Generado: ${fechaCorta(hoy())}`);
-    
-    const totalProduccion = datos.reduce((a, d) => a + (Number(d.total) || Number(d.totalEnCurso) || 0), 0);
-    const totalItems = datos.reduce((a, d) => a + (Number(d.cantidadItems) || (Array.isArray(d.items) ? d.items.length : 0) || 0), 0);
-    const usuariosUnicos = [...new Set(datos.map(d => d.legajo))].length;
-    
-    doc.setTextColor(0);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text('Resumen Ejecutivo', 14, 48);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(`• Total jornadas: ${datos.length}`, 14, 55);
-    doc.text(`• Usuarios: ${usuariosUnicos}`, 14, 61);
-    doc.text(`• Ítems totales: ${totalItems}`, 14, 67);
-    doc.text(`• Producción total: ${fmt(totalProduccion)}`, 14, 73);
-    
-    const body = datos.map((d, i) => [
-      i + 1,
-      fechaCorta(d.fecha),
-      d.nombreUsuario,
-      d.legajo,
-      d.zona,
-      d.cantidadRegistros || (Array.isArray(d.tareas) ? d.tareas.length : 0) || 0,
-      d.cantidadItems || (Array.isArray(d.items) ? d.items.length : 0) || 0,
-      fmt(Number(d.total) || Number(d.totalEnCurso) || 0)
-    ]);
-    doc.autoTable({
-      startY: 80,
-      head: [['#', 'Fecha', 'Usuario', 'Legajo', 'Zona', 'Regs', 'Ítems', 'Total']],
-      body,
-      theme: 'grid',
-      styles: { fontSize: 7 },
-      headStyles: { fillColor: [11, 61, 145], fontSize: 7 },
-      columnStyles: {
-        0: { cellWidth: 8 }, 1: { cellWidth: 20 }, 2: { cellWidth: 35 }, 3: { cellWidth: 15 },
-        4: { cellWidth: 25 }, 5: { cellWidth: 12, halign: 'center' },
-        6: { cellWidth: 12, halign: 'center' }, 7: { cellWidth: 25, halign: 'right' }
-      }
-    });
-    
-    const usuariosAgrupados = {};
-    datos.forEach(d => {
-      if (!usuariosAgrupados[d.legajo]) usuariosAgrupados[d.legajo] = { nombre: d.nombreUsuario, jornadas: [] };
-      usuariosAgrupados[d.legajo].jornadas.push(d);
-    });
-    for (const [leg, info] of Object.entries(usuariosAgrupados)) {
-      doc.addPage();
-      drawElegantHeader(doc, "DETALLE POR USUARIO", `${info.nombre} (Legajo ${leg})`, "BAREMO", periodoLabel);
-      
-      let currentY = 45;
-      for (const jornada of info.jornadas) {
-        if (currentY > 250) { 
-            doc.addPage(); 
-            drawElegantHeader(doc, "DETALLE POR USUARIO (Cont.)", `${info.nombre} (Legajo ${leg})`, "BAREMO", periodoLabel);
-            currentY = 45; 
-        }
-        doc.setFillColor(240, 243, 249);
-        doc.rect(14, currentY, 182, 8, 'F');
-        doc.setTextColor(11, 61, 145);
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "bold");
-        doc.text(`▶ Jornada ${fechaLegible(jornada.fecha)} - Total: ${fmt(jornada.total || 0)}`, 16, currentY + 6);
-        currentY += 10;
-        
-        const detalle = (jornada.items || []).map((it, idx) => [idx + 1, it.codigo, it.descripcion, it.cantidad, fmt(it.precio), fmt(it.subtotal)]);
-        doc.autoTable({
-          startY: currentY,
-          head: [['#', 'Código', 'Descripción', 'Cant', 'Precio', 'Subtotal']],
-          body: detalle,
-          theme: 'striped',
-          styles: { fontSize: 6 },
-          headStyles: { fillColor: [37, 99, 201], fontSize: 6 },
-          columnStyles: {
-            0: { cellWidth: 8 }, 1: { cellWidth: 18 }, 2: { cellWidth: 75 },
-            3: { cellWidth: 12, halign: 'center' }, 4: { cellWidth: 22, halign: 'right' },
-            5: { cellWidth: 22, halign: 'right' }
-          },
-          margin: { left: 14, right: 14 }
-        });
-        currentY = doc.lastAutoTable.finalY + 6;
-      }
-    }
-    const fileName = `reporte_${tipo}_${fechaDesde}_${fechaHasta}.pdf`.replace(/ /g, '_');
-    doc.save(fileName);
-    avisarPDFGenerado(`${tipo} con ${datos.length} jornada(s)`);
+    await exportarReporteAdminPDF();
   };
   $('#btnAdminExcel').onclick = async () => {
     if (!window.XLSX) { toast('XLSX no disponible', 'error'); return; }
@@ -5446,6 +5370,9 @@ async function renderAdminReportesView() {
               <div style="font-size:10.5px;color:var(--text-soft);">Producción</div>
               <div style="font-size:16px;font-weight:800;color:var(--primary);">${fmt(montoTotal)}</div>
               <div style="display:flex;gap:4px;flex-direction:column;width:100%;margin-top:4px;">
+                <button class="btn btn-primary btn-sm btn-descargar-jornada-pdf" data-index="${idx}" style="padding:4px 8px;font-size:10.5px;font-weight:700;display:flex;align-items:center;gap:4px;justify-content:center;width:100%;" title="Descargar reporte oficial en PDF de esta jornada (idéntico al de cuadrilla)">
+                  📄 PDF Jornada
+                </button>
                 <button class="btn btn-ghost btn-sm btn-toggle-detalle-jornada" data-target="${jornadaKey}" style="padding:3px 8px;font-size:10.5px;border:1px solid var(--border);width:100%;">
                   👁️ Ver Baremos y ATS
                 </button>
@@ -5656,6 +5583,7 @@ async function renderAdminReportesView() {
               <th style="padding:6px 8px;text-align:center;">Ítems</th>
               <th style="padding:6px 8px;text-align:right;">Producción</th>
               <th style="padding:6px 8px;text-align:right;">Promedio/Jornada</th>
+              <th style="padding:6px 8px;text-align:center;">Reporte PDF</th>
             </tr>
           </thead>
           <tbody>
@@ -5674,6 +5602,11 @@ async function renderAdminReportesView() {
                   <td style="padding:6px 8px;text-align:center;">${uInfo.items}</td>
                   <td style="padding:6px 8px;text-align:right;font-weight:700;color:#16a34a;">${fmt(uInfo.total)}</td>
                   <td style="padding:6px 8px;text-align:right;color:var(--text-soft);">${fmt(prom)}</td>
+                  <td style="padding:6px 8px;text-align:center;">
+                    <button class="btn btn-primary btn-sm btn-descargar-cuadrilla-pdf" data-legajo="${escapeHTML(leg)}" style="padding:3px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="Descargar reporte oficial en PDF de ${escapeHTML(uInfo.nombre)} (idéntico al de cuadrilla)">
+                      📄 PDF
+                    </button>
+                  </td>
                 </tr>
               `;
             }).join('')}
@@ -5683,6 +5616,11 @@ async function renderAdminReportesView() {
               <td style="padding:8px;text-align:center;">${totalItems}</td>
               <td style="padding:8px;text-align:right;color:#16a34a;">${fmt(totalProduccionCerrada + totalProduccionEnCurso)}</td>
               <td style="padding:8px;text-align:right;">${fmt(datos.length > 0 ? Math.round((totalProduccionCerrada + totalProduccionEnCurso) / datos.length) : 0)}</td>
+              <td style="padding:8px;text-align:center;">
+                <button class="btn btn-primary btn-sm btn-descargar-todas-cuadrillas-pdf" style="padding:4px 9px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="Descargar reporte oficial consolidado de todas las cuadrillas">
+                  📄 Consolidado
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -5763,6 +5701,64 @@ async function renderAdminReportesView() {
     };
   });
 
+  $$('.btn-descargar-jornada-pdf').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.index, 10);
+      const jor = datos[idx];
+      if (!jor) {
+        toast('No se encontró la jornada seleccionada', 'warn');
+        return;
+      }
+      btn.disabled = true;
+      const oldText = btn.innerHTML;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        await exportarJornadaPDF(jor);
+      } catch (err) {
+        toast(`Error generando PDF: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldText;
+      }
+    };
+  });
+
+  $$('.btn-descargar-cuadrilla-pdf').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const legajo = btn.dataset.legajo;
+      btn.disabled = true;
+      const oldText = btn.innerHTML;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        await exportarReporteAdminPDF(legajo);
+      } catch (err) {
+        toast(`Error generando PDF: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldText;
+      }
+    };
+  });
+
+  $$('.btn-descargar-todas-cuadrillas-pdf').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      btn.disabled = true;
+      const oldText = btn.innerHTML;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        await exportarReporteAdminPDF('todos');
+      } catch (err) {
+        toast(`Error generando PDF: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldText;
+      }
+    };
+  });
+
   $$('.btn-abrir-ats-modal').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
@@ -5777,9 +5773,248 @@ async function renderAdminReportesView() {
   });
 }
 
-async function obtenerDatosReporteAdmin() {
+/* ============================================================
+   REPORTE OFICIAL EN PDF PARA EL SUPERVISOR (v5.9.51)
+   Genera el reporte con EXACTAMENTE el mismo membrete, logo,
+   tipografía, resumen ejecutivo, ordenamiento cronológico por jornada,
+   bloques de tareas con desglose de baremos, subtotales y ubicaciones
+   que genera la aplicación para la cuadrilla.
+   Soporta exportación diaria, semanal, quincenal, mensual o histórica
+   por operario/cuadrilla o consolidado general.
+   ============================================================ */
+async function exportarReporteAdminPDF(filtroLegajo = null) {
+  if (!window.jspdf) {
+    toast('jsPDF no disponible', 'error');
+    return;
+  }
+
+  const { datos, periodoLabel, fechaDesde, fechaHasta, tipo } = await obtenerDatosReporteAdmin(filtroLegajo);
+  if (!datos || !datos.length) {
+    toast('Sin datos para el período o cuadrilla seleccionada', 'warn');
+    return;
+  }
+
+  toast('⏳ Generando reporte oficial en PDF...', 'info');
+  await obtenerLogoPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Agrupar jornadas por legajo de cuadrilla/operario
+  const cuadrillasMap = new Map();
+  datos.forEach(d => {
+    const leg = String(d.legajo || 'S/L').trim();
+    if (!cuadrillasMap.has(leg)) {
+      cuadrillasMap.set(leg, {
+        legajo: leg,
+        nombre: d.nombreUsuario || d.usuario || 'Operario',
+        zona: d.zona || '-',
+        jornadas: []
+      });
+    }
+    cuadrillasMap.get(leg).jornadas.push(d);
+  });
+
+  let labelPeriodo = 'de Producción';
+  if (tipo === 'diario') labelPeriodo = 'Diario';
+  else if (tipo === 'semanal') labelPeriodo = 'Semanal';
+  else if (tipo === 'quincenal') labelPeriodo = 'Quincenal';
+  else if (tipo === 'mensual') labelPeriodo = 'Mensual';
+  else if (tipo === 'todos') labelPeriodo = 'Histórico';
+
+  // CASO 1: Reporte de UNA SOLA cuadrilla (seleccionada en el filtro o botón de fila)
+  if (cuadrillasMap.size === 1) {
+    const info = Array.from(cuadrillasMap.values())[0];
+    info.jornadas.sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+    const totalGeneral = info.jornadas.reduce((a, j) => a + (Number(j.total) || Number(j.totalEnCurso) || (typeof totalFinalizadoDe === 'function' ? totalFinalizadoDe(j) : 0)), 0);
+    const tareasTotales = info.jornadas.reduce((a, j) => a + (Array.isArray(j.tareas) ? j.tareas.length : 0), 0);
+
+    // Si es 1 sola jornada (ej. reporte diario o jornada individual)
+    if (info.jornadas.length === 1) {
+      const j = info.jornadas[0];
+      const subDia = Number(j.total) || Number(j.totalEnCurso) || (typeof totalFinalizadoDe === 'function' ? totalFinalizadoDe(j) : 0);
+      const tareas = Array.isArray(j.tareas) ? j.tareas : [];
+      const finalizados = (j.items || []).filter(it => it.tareaId);
+
+      drawElegantHeader(doc, 'BAREMO', 'Jornada del ' + fechaLegible(j.fecha),
+        info.nombre, 'Legajo: ' + info.legajo + ' | Zona: ' + info.zona);
+
+      let currentY = drawResumenPDF(doc, 46, [
+        { lbl: 'Tareas', val: tareas.length || 1 },
+        { lbl: 'Baremos', val: finalizados.length || (j.items || []).length },
+        { lbl: 'Ítems', val: (finalizados.length ? finalizados : (j.items || [])).reduce((a, i) => a + (i.cantidad || 0), 0) },
+        { lbl: 'Total del día', val: fmt(subDia) }
+      ]);
+
+      currentY = bloquesJornadaPDF(doc, j, currentY);
+      drawTotalPDF(doc, currentY, 'TOTAL DEL DÍA', fmt(subDia));
+      drawPiePDF(doc);
+
+      const nombreArchivo = `baremos_${j.fecha}_${info.legajo}.pdf`;
+      doc.save(nombreArchivo);
+      avisarPDFGenerado(`de la jornada de ${info.nombre} (${fechaLegible(j.fecha)})`);
+      return;
+    }
+
+    // Múltiples jornadas de la misma cuadrilla (semanal, quincenal, mensual, histórico)
+    const subtituloPeriodo = periodoLabel.replace(/^Reporte (Diario|Semanal|Mensual|Quincenal|Histórico) -? ?/i, '');
+    drawElegantHeader(doc, 'BAREMO', `Reporte ${labelPeriodo}: ${subtituloPeriodo}`,
+      info.nombre, `Legajo: ${info.legajo} | Zona: ${info.zona}`);
+
+    let currentY = drawResumenPDF(doc, 46, [
+      { lbl: 'Jornadas', val: info.jornadas.length },
+      { lbl: 'Tareas', val: tareasTotales },
+      { lbl: 'Promedio x día', val: fmt(Math.round(totalGeneral / info.jornadas.length)) },
+      { lbl: 'Total acumulado', val: fmt(totalGeneral) }
+    ]);
+
+    let totalAcu = 0;
+    for (const j of info.jornadas) {
+      if (currentY > 236) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      const subDia = Number(j.total) || Number(j.totalEnCurso) || (typeof totalFinalizadoDe === 'function' ? totalFinalizadoDe(j) : 0);
+      totalAcu += subDia;
+
+      doc.setFillColor(232, 239, 250);
+      doc.setDrawColor(206, 221, 244);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(14, currentY, 182, 9, 2, 2, 'FD');
+      doc.setTextColor(11, 61, 145);
+      doc.setFontSize(9.8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('JORNADA · ' + fechaLegible(j.fecha) + (j.cerrada ? '' : ' (EN CURSO)'), 18, currentY + 6.2);
+      doc.text('Total del día: ' + fmt(subDia), 192, currentY + 6.2, { align: 'right' });
+      currentY += 12;
+
+      currentY = bloquesJornadaPDF(doc, j, currentY);
+      currentY += 2;
+    }
+
+    drawTotalPDF(doc, currentY, 'TOTAL ACUMULADO', fmt(totalAcu));
+    drawPiePDF(doc);
+
+    const nomArchivo = `baremos_${tipo}_${info.legajo}_${fechaDesde}_${fechaHasta}.pdf`.replace(/ /g, '_');
+    doc.save(nomArchivo);
+    avisarPDFGenerado(`del operario ${info.nombre} (${info.jornadas.length} jornadas)`);
+    return;
+  }
+
+  // CASO 2: CONSOLIDADO DE TODAS LAS CUADRILLAS
+  drawElegantHeader(doc, 'BAREMO', `Reporte ${labelPeriodo} Consolidado`,
+    'Supervisión Central', `Cuadrillas: ${cuadrillasMap.size} | Período: ${fechaCorta(fechaDesde)} al ${fechaCorta(fechaHasta)}`);
+
+  const totalGeneral = datos.reduce((a, d) => a + (Number(d.total) || Number(d.totalEnCurso) || 0), 0);
+  const tareasTotales = datos.reduce((a, d) => a + (Array.isArray(d.tareas) ? d.tareas.length : (Number(d.cantidadRegistros) || 0)), 0);
+  const itemsTotales = datos.reduce((a, d) => a + (Array.isArray(d.items) ? d.items.length : (Number(d.cantidadItems) || 0)), 0);
+
+  let currentY = drawResumenPDF(doc, 46, [
+    { lbl: 'Cuadrillas', val: cuadrillasMap.size },
+    { lbl: 'Jornadas', val: datos.length },
+    { lbl: 'Tareas', val: tareasTotales },
+    { lbl: 'Total Producción', val: fmt(totalGeneral) }
+  ]);
+
+  const tablaCuadrillas = Array.from(cuadrillasMap.values()).map((c, i) => {
+    const cTotal = c.jornadas.reduce((a, j) => a + (Number(j.total) || Number(j.totalEnCurso) || 0), 0);
+    const cTareas = c.jornadas.reduce((a, j) => a + (Array.isArray(j.tareas) ? j.tareas.length : (Number(j.cantidadRegistros) || 0)), 0);
+    const cItems = c.jornadas.reduce((a, j) => a + (Array.isArray(j.items) ? j.items.length : (Number(j.cantidadItems) || 0)), 0);
+    const cProm = c.jornadas.length ? Math.round(cTotal / c.jornadas.length) : 0;
+    return [
+      i + 1,
+      c.nombre,
+      c.legajo,
+      c.zona,
+      c.jornadas.length,
+      cTareas,
+      cItems,
+      fmt(cTotal),
+      fmt(cProm)
+    ];
+  });
+
+  doc.autoTable({
+    startY: currentY,
+    head: [['#', 'Cuadrilla / Operario', 'Legajo', 'Zona', 'Jorn.', 'Tareas', 'Ítems', 'Total', 'Prom/Día']],
+    body: tablaCuadrillas,
+    theme: 'grid',
+    styles: { fontSize: 7.5, cellPadding: 2, lineColor: [220, 230, 244], textColor: [40, 50, 66] },
+    headStyles: { fillColor: [11, 61, 145], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+    foot: [['', 'TOTAL CONSOLIDADO', '', '', datos.length, tareasTotales, itemsTotales, fmt(totalGeneral), fmt(datos.length ? Math.round(totalGeneral / datos.length) : 0)]],
+    footStyles: { fillColor: [235, 241, 250], textColor: [11, 61, 145], fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: [250, 252, 255] },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' },
+      1: { cellWidth: 42 },
+      2: { cellWidth: 16 },
+      3: { cellWidth: 18 },
+      4: { cellWidth: 14, halign: 'center' },
+      5: { cellWidth: 14, halign: 'center' },
+      6: { cellWidth: 14, halign: 'center' },
+      7: { cellWidth: 28, halign: 'right' },
+      8: { cellWidth: 28, halign: 'right' }
+    },
+    margin: { left: 14, right: 14, bottom: 22 }
+  });
+
+  // Detalle completo idéntico al de la cuadrilla para cada una de las cuadrillas
+  for (const c of Array.from(cuadrillasMap.values())) {
+    doc.addPage();
+    c.jornadas.sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+    const cTotal = c.jornadas.reduce((a, j) => a + (Number(j.total) || Number(j.totalEnCurso) || 0), 0);
+    const cTareas = c.jornadas.reduce((a, j) => a + (Array.isArray(j.tareas) ? j.tareas.length : (Number(j.cantidadRegistros) || 0)), 0);
+    const cItems = c.jornadas.reduce((a, j) => a + (Array.isArray(j.items) ? j.items.length : (Number(j.cantidadItems) || 0)), 0);
+
+    drawElegantHeader(doc, 'BAREMO', `Reporte ${labelPeriodo}: ${fechaCorta(fechaDesde)} al ${fechaCorta(fechaHasta)}`,
+      c.nombre, `Legajo: ${c.legajo} | Zona: ${c.zona}`);
+
+    let cY = drawResumenPDF(doc, 46, [
+      { lbl: 'Jornadas', val: c.jornadas.length },
+      { lbl: 'Tareas', val: cTareas },
+      { lbl: c.jornadas.length > 1 ? 'Promedio x día' : 'Baremos', val: c.jornadas.length > 1 ? fmt(Math.round(cTotal / c.jornadas.length)) : cItems },
+      { lbl: c.jornadas.length > 1 ? 'Total acumulado' : 'Total del día', val: fmt(cTotal) }
+    ]);
+
+    let cAcu = 0;
+    for (const j of c.jornadas) {
+      if (cY > 236) {
+        doc.addPage();
+        cY = 20;
+      }
+      const subDia = Number(j.total) || Number(j.totalEnCurso) || (typeof totalFinalizadoDe === 'function' ? totalFinalizadoDe(j) : 0);
+      cAcu += subDia;
+
+      doc.setFillColor(232, 239, 250);
+      doc.setDrawColor(206, 221, 244);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(14, cY, 182, 9, 2, 2, 'FD');
+      doc.setTextColor(11, 61, 145);
+      doc.setFontSize(9.8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('JORNADA · ' + fechaLegible(j.fecha) + (j.cerrada ? '' : ' (EN CURSO)'), 18, cY + 6.2);
+      doc.text('Total del día: ' + fmt(subDia), 192, cY + 6.2, { align: 'right' });
+      cY += 12;
+
+      cY = bloquesJornadaPDF(doc, j, cY);
+      cY += 2;
+    }
+
+    drawTotalPDF(doc, cY, c.jornadas.length > 1 ? 'TOTAL ACUMULADO' : 'TOTAL DEL DÍA', fmt(cAcu));
+  }
+
+  drawPiePDF(doc);
+
+  const nombreArchivo = `reporte_${tipo}_${fechaDesde}_${fechaHasta}_consolidado.pdf`.replace(/ /g, '_');
+  doc.save(nombreArchivo);
+  avisarPDFGenerado(`consolidado con ${cuadrillasMap.size} cuadrillas y ${datos.length} jornadas`);
+}
+
+async function obtenerDatosReporteAdmin(filtroLegajo = null) {
   const tipo = State.adminReportType || 'todos';
-  const usuarioSel = $('#adminUsuario')?.value || 'todos';
+  const usuarioSel = (filtroLegajo && filtroLegajo !== 'todos') ? String(filtroLegajo).trim() : ($('#adminUsuario')?.value || 'todos');
   const estadoSel = $('#adminEstadoJornada')?.value || 'todos';
   const fechaInputVal = $('#adminFecha')?.value || hoy();
   const quincenaSel = $('#adminQuincenaSel')?.value || '1';
@@ -7460,7 +7695,11 @@ if (document.readyState === 'loading') {
 function textoUbicacionTarea(t) {
   if (!t) return 'Ubicación no registrada';
   if (t.direccion) {
-    return t.direccion + (t.tipoUbicacion === 'manual' ? ' (manual)' : '');
+    let s = t.direccion + (t.tipoUbicacion === 'manual' ? ' (manual)' : '');
+    if (t.lat != null && t.lon != null) {
+      s += ' [Lat: ' + Number(t.lat).toFixed(5) + ', Lon: ' + Number(t.lon).toFixed(5) + ']';
+    }
+    return s;
   }
   if (t.lat != null && t.lon != null) {
     return 'Lat ' + Number(t.lat).toFixed(5) + ' / Lon ' + Number(t.lon).toFixed(5);

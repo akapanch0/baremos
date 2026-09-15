@@ -1497,7 +1497,7 @@ app.get('/api/admin/reportes/datos', requireAdminAuth, (req, res) => {
 
 // API health endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', app: 'BAREMO', version: '5.9.50' });
+  res.json({ status: 'ok', app: 'BAREMO', version: '5.9.51' });
 });
 
 // Servir archivos estáticos

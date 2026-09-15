@@ -36,7 +36,7 @@
    Se mantiene el control del usuario: el service worker nuevo espera y
    la cache vieja recien se reemplaza cuando se acepta actualizar.
    ------------------------------------------------------------ */
-const SHELL_CACHE = 'baremo-shell-5.9.50';
+const SHELL_CACHE = 'baremo-shell-5.9.51';
 
 // Se guardan las dos formas de cada pagina (con y sin .html) porque el
 // hosting puede entrar por cualquiera de las dos.
@@ -45,37 +45,37 @@ const PAGINAS = ['./', './index.html', './index', './landing.html', './landing']
 // Copias locales de las librerias (si estan en ./vendor). Si no existen, se
 // omiten en silencio y la app usa el CDN, que tambien queda cacheado.
 const VENDOR_ASSETS = [
-  './vendor/chart.umd.min.js?v=5.9.50',
-  './vendor/jspdf.umd.min.js?v=5.9.50',
-  './vendor/jspdf.plugin.autotable.min.js?v=5.9.50',
-  './vendor/xlsx.full.min.js?v=5.9.50'
+  './vendor/chart.umd.min.js?v=5.9.51',
+  './vendor/jspdf.umd.min.js?v=5.9.51',
+  './vendor/jspdf.plugin.autotable.min.js?v=5.9.51',
+  './vendor/xlsx.full.min.js?v=5.9.51'
 ];
 
 const ASSETS = [
-  './landing.css?v=5.9.50',
-  './styles.css?v=5.9.50',
-  './main.js?v=5.9.50',
-  './brand.js?v=5.9.50',
-  './app.js?v=5.9.50',
-  './db.js?v=5.9.50',
+  './landing.css?v=5.9.51',
+  './styles.css?v=5.9.51',
+  './main.js?v=5.9.51',
+  './brand.js?v=5.9.51',
+  './app.js?v=5.9.51',
+  './db.js?v=5.9.51',
   './baremo.json',
-  './manifest.json?v=5.9.50',
-  './icons/logo.png?v=5.9.50',
-  './icons/icon-192.png?v=5.9.50',
-  './icons/icon-512.png?v=5.9.50',
-  './icons/icon-any-192.png?v=5.9.50',
-  './icons/icon-any-512.png?v=5.9.50',
-  './icons/icon-maskable-192.png?v=5.9.50',
-  './icons/icon-maskable-512.png?v=5.9.50',
-  './icons/apple-touch-icon-180.png?v=5.9.50',
+  './manifest.json?v=5.9.51',
+  './icons/logo.png?v=5.9.51',
+  './icons/icon-192.png?v=5.9.51',
+  './icons/icon-512.png?v=5.9.51',
+  './icons/icon-any-192.png?v=5.9.51',
+  './icons/icon-any-512.png?v=5.9.51',
+  './icons/icon-maskable-192.png?v=5.9.51',
+  './icons/icon-maskable-512.png?v=5.9.51',
+  './icons/apple-touch-icon-180.png?v=5.9.51',
   './maps/trujui.png', './maps/cuartelv.png', './maps/moreno.png',
   './maps/gralrodriguez.png', './maps/tigre.png', './maps/sanmartin.png',
   './maps/olivos.png', './maps/pilarescobar.png',
-  './help/baremos-1.png?v=5.9.50',
-  './help/baremos-2.png?v=5.9.50',
-  './help/baremos-3.png?v=5.9.50',
-  './help/baremos-4.png?v=5.9.50',
-  './help/baremos-5.png?v=5.9.50'
+  './help/baremos-1.png?v=5.9.51',
+  './help/baremos-2.png?v=5.9.51',
+  './help/baremos-3.png?v=5.9.51',
+  './help/baremos-4.png?v=5.9.51',
+  './help/baremos-5.png?v=5.9.51'
 ];
 
 const CDN_ASSETS = [
@@ -448,8 +448,8 @@ self.addEventListener('push', event => {
   const titulo = data.titulo || defaultTitulo;
   const cuerpo = data.cuerpo || data.mensaje || 'Aviso importante para el equipo de trabajo.';
   const tag = data.tag || (`baremo-${tipo}-${data.id || Date.now()}`);
-  const icon = data.icon || './icons/icon-192.png?v=5.9.50';
-  const badge = data.badge || './icons/icon-192.png?v=5.9.50';
+  const icon = data.icon || './icons/icon-192.png?v=5.9.51';
+  const badge = data.badge || './icons/icon-192.png?v=5.9.51';
   const esPrioridadAlta = data.prioridad === 'alta' || tipo === 'jornada_pendiente' || tipo === 'ats_pendiente';
   const vibrar = data.vibrate || (esPrioridadAlta ? [300, 150, 300, 150, 300] : [200, 100, 200]);
 

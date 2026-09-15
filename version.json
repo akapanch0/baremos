@@ -1,7 +1,11 @@
 {
-  "version": "5.9.49",
-  "fecha": "2026-09-11",
+  "version": "5.9.51",
+  "fecha": "2026-09-14",
   "cambios": [
+    "Reportes del supervisor unificados con el formato oficial de la cuadrilla: membrete elegante con degradado azul marino, logo institucional, tarjetas de resumen métrico y desglose ordenado cronológicamente por jornadas, tareas con sus códigos de baremo, precios unitarios, subtotales y ubicaciones exactas (dirección y coordenadas GPS)",
+    "Descarga flexible para el supervisor: exportación de reportes diarios, semanales, quincenales o mensuales por cuadrilla/legajo individual o consolidado de todas las cuadrillas",
+    "Descarga directa e individual de reportes PDF por cuadrilla desde la tabla 'Resumen por Cuadrilla' y por jornada individual desde 'Lista de Jornadas de Todos los Dispositivos' en el panel de administración",
+    "Actualización integral de versión a la 5.9.51, renovación de Service Worker (baremo-shell-5.9.51) y purga de caché para garantizar la actualización inmediata en todos los dispositivos",
     "Diseño de alta fidelidad para el Análisis de Trabajo Seguro (ATS): la interfaz dentro de la aplicación ahora replica con exactitud la cuadrícula, tipografía y estructura visual de la planilla física reglamentaria",
     "Firma digital interactiva para el equipo: cada integrante de la cuadrilla cuenta con captura de firma táctil y de puntero en pantalla con recorte inteligente y previsualización en miniatura",
     "Firmas digitales de autoridades: recuadros dedicados para Jefe de cuadrilla, Supervisor y Dpto. de Higiene y Seguridad con firma digital opcional y aclaración",

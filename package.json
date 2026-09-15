@@ -1,6 +1,6 @@
 {
   "name": "baremos",
-  "version": "5.9.50",
+  "version": "5.9.51",
   "description": "Registro de baremos para contratistas",
   "private": true,
   "type": "module",
