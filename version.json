@@ -1,7 +1,8 @@
 {
-  "version": "5.9.51",
-  "fecha": "2026-09-14",
+  "version": "5.9.52",
+  "fecha": "2026-09-15",
   "cambios": [
+    "Eliminación completa de solicitudes y bloqueos de llenado de ATS en la aplicación: el ATS se completa físicamente en soporte papel en la vía pública por lo que ya no se solicita antes de iniciar o finalizar tareas en la aplicación ni mediante avisos automáticos locales; se preservan los comunicados y mensajes directos que envía el supervisor desde su panel de control",
     "Reportes del supervisor unificados con el formato oficial de la cuadrilla: membrete elegante con degradado azul marino, logo institucional, tarjetas de resumen métrico y desglose ordenado cronológicamente por jornadas, tareas con sus códigos de baremo, precios unitarios, subtotales y ubicaciones exactas (dirección y coordenadas GPS)",
     "Descarga flexible para el supervisor: exportación de reportes diarios, semanales, quincenales o mensuales por cuadrilla/legajo individual o consolidado de todas las cuadrillas",
     "Descarga directa e individual de reportes PDF por cuadrilla desde la tabla 'Resumen por Cuadrilla' y por jornada individual desde 'Lista de Jornadas de Todos los Dispositivos' en el panel de administración",

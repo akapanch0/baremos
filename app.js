@@ -22,7 +22,7 @@ window.addEventListener('error', function (e) {
   }
 });
 
-const APP_VERSION = '5.9.51';
+const APP_VERSION = '5.9.52';
 
 /* Control de versión de Términos y Condiciones */
 const CURRENT_TERMS_VERSION = 1;
@@ -1113,11 +1113,6 @@ async function continuarInicio() {
         }
       }
     } catch (e) {}
-
-    // Recordatorio local de ATS al abrir la aplicación si no se ha completado
-    setTimeout(() => {
-      try { revisarRecordatorioATSAlAbrir(); } catch (e) {}
-    }, 700);
 
     // Inicializaciones de notificaciones push, verificación de jornadas pendientes y avisos de empresa
     setTimeout(() => {
@@ -7371,15 +7366,6 @@ async function finalizarTarea() {
   if (!State.jornada) { toast('▶️ Primero tocá "Iniciar jornada"', 'warn'); return; }
   if (State.jornada.cerrada) { toast('La jornada está cerrada', 'warn'); return; }
 
-  // Recordatorio amigable de ATS al finalizar la tarea si aún no se completó (no bloqueante)
-  if (!State.jornada.ats || !State.jornada.ats.completado) {
-    const irAts = await confirmDialog('📋 Recordatorio de Seguridad:\n\nEl formulario ATS de la cuadrilla aún no ha sido completado.\n\n¿Deseás abrir la ventana modal para rellenarlo ahora?\n(Tocá Cancelar para continuar registrando la tarea)');
-    if (irAts) {
-      if (typeof abrirModalATS === 'function') abrirModalATS();
-      return;
-    }
-  }
-
   const pend = itemsPendientes();
   if (!pend.length) { toast('Agregá al menos un baremo para finalizar la tarea', 'warn'); return; }
 
@@ -8853,100 +8839,25 @@ function iniciarAvisosLocales() {
     });
     window.addEventListener('focus', () => {
       revisarAvisosProgramados();
-      revisarRecordatorioATSAlAbrir();
     });
 
     // Revision periodica mientras la app este abierta.
     setInterval(() => {
       revisarAvisosProgramados();
-      revisarRecordatorioATSAlAbrir();
     }, 60 * 1000);
   } catch (e) {}
 }
 
 /* ============================================================
    SERVICIO DE NOTIFICACIONES LOCALES VÍA SERVICE WORKER - ATS
+   (Desactivado para tareas: el ATS se completa físicamente en papel)
    ============================================================ */
 const TAG_ATS_RECORDATORIO = 'baremo-ats-recordatorio';
 let _ultimoAvisoAts = 0;
 
 async function notificarAtsPendienteViaSW(opciones = {}) {
-  const ahoraMs = Date.now();
-  if (!opciones.forzar && ahoraMs - _ultimoAvisoAts < 25 * 1000) {
-    return;
-  }
-  _ultimoAvisoAts = ahoraMs;
-
-  const titulo = '⚠️ ATS Pendiente - Seguridad en el Trabajo';
-  const cuerpo = 'Recordá completar el Análisis de Trabajo Seguro (ATS) obligatorio antes de iniciar las tareas del día.';
-
-  // Pedir permiso al sistema si aún no fue concedido ni bloqueado
-  try {
-    if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission();
-    }
-  } catch (e) {}
-
-  let notificadoPorSW = false;
-
-  // 1) Notificación nativa del sistema mediante el Service Worker
-  try {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      let reg = swRegistration;
-      if (!reg && navigator.serviceWorker) {
-        reg = await navigator.serviceWorker.getRegistration();
-      }
-      if (reg && reg.showNotification) {
-        await reg.showNotification(titulo, {
-          body: cuerpo,
-          tag: TAG_ATS_RECORDATORIO,
-          renotify: true,
-          requireInteraction: true,
-          silent: false,
-          icon: './icons/icon-192.png?v=' + APP_VERSION,
-          badge: './icons/icon-192.png?v=' + APP_VERSION,
-          vibrate: [300, 150, 300, 150, 300],
-          timestamp: ahoraMs,
-          data: { tipo: 'ats-recordatorio', accion: 'abrir_ats', vista: 'Registro' }
-        });
-        notificadoPorSW = true;
-      }
-    }
-  } catch (e) {
-    console.warn('[SW Notif ATS]', e);
-  }
-
-  // 2) Canal directo por postMessage al Service Worker (activo/controller)
-  try {
-    const swTarget = (swRegistration && swRegistration.active) || (navigator.serviceWorker && navigator.serviceWorker.controller);
-    if (swTarget && typeof swTarget.postMessage === 'function') {
-      swTarget.postMessage({
-        tipo: 'NOTIFICAR_ATS',
-        titulo: titulo,
-        cuerpo: cuerpo
-      });
-    }
-  } catch (e) {}
-
-  // 3) Respaldo si no hay Service Worker activo pero hay Notification tradicional
-  if (!notificadoPorSW) {
-    try {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(titulo, {
-          body: cuerpo,
-          tag: TAG_ATS_RECORDATORIO,
-          icon: './icons/icon-192.png?v=' + APP_VERSION
-        });
-      }
-    } catch (e) {}
-  }
-
-  // 4) Aviso complementario en pantalla si la app está visible
-  if (document.visibilityState === 'visible') {
-    try {
-      toast('⚠️ Recordá rellenar el ATS antes de iniciar tareas', 'warn');
-    } catch (e) {}
-  }
+  // El ATS se completa en soporte físico en la vía pública; no se solicita en la app.
+  return;
 }
 
 async function limpiarNotificacionATS() {
@@ -8972,33 +8883,8 @@ async function limpiarNotificacionATS() {
 }
 
 async function revisarRecordatorioATSAlAbrir(forzar = false) {
-  try {
-    if (!State.user) return;
-
-    // Caso A: Hay jornada activa abierta
-    if (State.jornada && !State.jornada.cerrada) {
-      if (State.jornada.ats && State.jornada.ats.completado) {
-        await limpiarNotificacionATS();
-        return;
-      }
-      // ATS pendiente en jornada abierta
-      await notificarAtsPendienteViaSW({ forzar });
-      return;
-    }
-
-    // Caso B: No hay jornada abierta, verificar si se completó el ATS hoy en alguna jornada previa
-    const jornadasHoy = await dbGetByIndex('jornadas', 'fechaLegajo', [hoy(), State.user.legajo]);
-    const completadoHoy = Array.isArray(jornadasHoy) && jornadasHoy.some(j => j.ats && j.ats.completado);
-
-    if (completadoHoy) {
-      await limpiarNotificacionATS();
-    } else {
-      // El usuario abrió la app y hoy todavía no tiene el ATS completado
-      await notificarAtsPendienteViaSW({ forzar });
-    }
-  } catch (e) {
-    console.warn('[revisarRecordatorioATSAlAbrir]', e);
-  }
+  // El ATS se completa físicamente; nos aseguramos de que no queden notificaciones pendientes.
+  try { await limpiarNotificacionATS(); } catch (e) {}
 }
 
 /* ============================================================
@@ -9035,56 +8921,41 @@ function renderATSStatus() {
   if (!banner) return;
 
   const abierta = !!(State.jornada && !State.jornada.cerrada);
-  if (!abierta) {
+  const ats = State.jornada?.ats;
+  const completado = !!(ats && ats.completado);
+
+  // El ATS se llena físicamente por lo que no se solicita llenarlo en la aplicación
+  if (!abierta || !completado) {
     banner.style.display = 'none';
     return;
   }
 
   banner.style.display = 'flex';
-  const ats = State.jornada.ats;
-  const completado = !!(ats && ats.completado);
+  banner.className = 'ats-banner completed';
+  banner.onclick = null;
+  banner.style.cursor = 'default';
 
   const tIco = $('#atsBannerIco');
   const tTit = $('#atsBannerTitle');
   const tDesc = $('#atsBannerDesc');
   const act = $('#atsBannerActions');
 
-  if (!completado) {
-    banner.className = 'ats-banner pending';
-    if (tIco) tIco.textContent = '🛡️';
-    if (tTit) tTit.textContent = 'Análisis de Trabajo Seguro (ATS)';
-    if (tDesc) tDesc.textContent = 'Completá la planilla de seguridad en la ventana modal.';
-    if (act) {
-      act.innerHTML = '<button class="btn btn-warning-ats" id="btnAtsBannerAction" type="button">📋 Rellenar ATS</button>';
-      const b = $('#btnAtsBannerAction');
-      if (b) b.onclick = () => abrirModalATS();
-    }
-    banner.style.cursor = 'pointer';
-    banner.onclick = (e) => {
-      if (e.target.closest('#btnAtsBannerAction')) return;
-      abrirModalATS();
-    };
-  } else {
-    banner.className = 'ats-banner completed';
-    banner.onclick = null;
-    banner.style.cursor = 'default';
-    if (tIco) tIco.textContent = '🛡️';
-    if (tTit) tTit.textContent = 'ATS Completado';
-    if (tDesc) {
-      const otTxt = ats.ot ? `OT: ${escapeHtml(ats.ot)}` : 'Sin OT';
-      const fechaTxt = ats.fecha ? `${fechaCorta(ats.fecha)} ${ats.hora || ''}` : '';
-      tDesc.textContent = `${otTxt} · ${fechaTxt} · ${escapeHtml(ats.trabajoAsignado || 'Trabajo registrado')}`;
-    }
-    if (act) {
-      act.innerHTML = `
-        <button class="btn btn-success-ats" id="btnAtsVer" type="button">👁️ Ver ATS</button>
-        <button class="btn btn-success-ats" id="btnAtsQuickPdf" type="button" title="Exportar PDF">📄 PDF</button>
-      `;
-      const bv = $('#btnAtsVer');
-      if (bv) bv.onclick = () => abrirModalATS();
-      const bp = $('#btnAtsQuickPdf');
-      if (bp) bp.onclick = () => exportarAtsPDF(ats);
-    }
+  if (tIco) tIco.textContent = '🛡️';
+  if (tTit) tTit.textContent = 'Ficha ATS';
+  if (tDesc) {
+    const otTxt = ats.ot ? `OT: ${escapeHtml(ats.ot)}` : 'Sin OT';
+    const fechaTxt = ats.fecha ? `${fechaCorta(ats.fecha)} ${ats.hora || ''}` : '';
+    tDesc.textContent = `${otTxt} · ${fechaTxt} · ${escapeHtml(ats.trabajoAsignado || 'Trabajo registrado')}`;
+  }
+  if (act) {
+    act.innerHTML = `
+      <button class="btn btn-success-ats" id="btnAtsVer" type="button">👁️ Ver ATS</button>
+      <button class="btn btn-success-ats" id="btnAtsQuickPdf" type="button" title="Exportar PDF">📄 PDF</button>
+    `;
+    const bv = $('#btnAtsVer');
+    if (bv) bv.onclick = () => abrirModalATS();
+    const bp = $('#btnAtsQuickPdf');
+    if (bp) bp.onclick = () => exportarAtsPDF(ats);
   }
 }
 
@@ -11213,24 +11084,6 @@ function actualizarIndicadorAvisos() {
 
   const itemsParaBanner = noLeidos.length > 0 ? [...noLeidos] : [...avisosVigentes];
 
-  // Verificar si hay jornada abierta con ATS pendiente
-  const jornadaAbierta = !!(State.jornada && !State.jornada.cerrada);
-  const atsPendiente = jornadaAbierta && (!State.jornada.ats || !State.jornada.ats.completado);
-
-  if (atsPendiente) {
-    const avisoAts = {
-      id: '__ats_pendiente__',
-      esAts: true,
-      categoria: 'Seguridad ATS',
-      prioridad: 'alta',
-      titulo: '🛡️ Formulario ATS Pendiente',
-      cuerpo: 'Completá el Análisis de Trabajo Seguro de la cuadrilla. Tocá para abrir la ventana modal y rellenarlo.',
-      fecha: (State.jornada && State.jornada.fecha) ? State.jornada.fecha : new Date().toISOString()
-    };
-    // Prioridad: colocarlo al frente del carrusel en el banner
-    itemsParaBanner.unshift(avisoAts);
-  }
-
   if (itemsParaBanner && itemsParaBanner.length > 0) {
     banner.classList.remove('sin-avisos');
     _carruselAvisosList = itemsParaBanner;
@@ -11241,7 +11094,7 @@ function actualizarIndicadorAvisos() {
     mostrarSlideAviso(_carruselAvisosIdx, false);
     iniciarTimerCarruselAvisos();
   } else {
-    // Si no hay avisos vigentes ni ATS pendiente, mostrar el mensaje dinámico solicitado
+    // Si no hay avisos vigentes, mostrar el mensaje dinámico solicitado
     mostrarBannerSinAvisos();
   }
 }
@@ -11265,25 +11118,7 @@ function renderAvisosEmpresaList() {
   } catch (e) {}
 
   const filtrados = cat === 'todas' ? avisos : avisos.filter(a => a.categoria === cat);
-
-  const jornadaAbierta = !!(State.jornada && !State.jornada.cerrada);
-  const atsPendiente = jornadaAbierta && (!State.jornada.ats || !State.jornada.ats.completado);
   let cardAtsHtml = '';
-  if (atsPendiente && (cat === 'todas' || cat === 'Seguridad' || cat.toLowerCase().includes('ats'))) {
-    cardAtsHtml = `
-      <div class="aviso-card aviso-unread" style="border: 1.5px solid #f59e0b; background: rgba(245, 158, 11, 0.06); margin-bottom: 12px;">
-        <div class="aviso-card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="aviso-badge-prio prio-ats" style="font-weight:800;">🛡️ SEGURIDAD ATS</span>
-            <span style="font-size:10px;background:rgba(245,158,11,0.2);color:#d97706;padding:2px 6px;border-radius:4px;font-weight:700;">⚠️ PENDIENTE</span>
-          </div>
-          <button type="button" class="btn btn-sm btn-warning-ats" id="btnModalAvisoRellenarAts" style="font-size:12px;padding:4px 10px;">📋 Rellenar en Modal</button>
-        </div>
-        <div class="aviso-title" style="margin-top:6px;font-size:15px;font-weight:800;color:var(--text);">Planilla de Análisis de Trabajo Seguro (ATS)</div>
-        <div class="aviso-body" style="font-size:13px;color:var(--text-soft);margin-top:4px;">Tu jornada se encuentra activa. Podés completar el ATS cuando lo dispongas desde la ventana modal sin interrumpir la carga de tareas.</div>
-      </div>
-    `;
-  }
 
   if (filtrados.length === 0 && !cardAtsHtml) {
     container.innerHTML = `
