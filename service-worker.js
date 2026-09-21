@@ -36,7 +36,7 @@
    Se mantiene el control del usuario: el service worker nuevo espera y
    la cache vieja recien se reemplaza cuando se acepta actualizar.
    ------------------------------------------------------------ */
-const SHELL_CACHE = 'baremo-shell-5.9.52';
+const SHELL_CACHE = 'baremo-shell-5.9.53';
 
 // Se guardan las dos formas de cada pagina (con y sin .html) porque el
 // hosting puede entrar por cualquiera de las dos.
@@ -45,37 +45,37 @@ const PAGINAS = ['./', './index.html', './index', './landing.html', './landing']
 // Copias locales de las librerias (si estan en ./vendor). Si no existen, se
 // omiten en silencio y la app usa el CDN, que tambien queda cacheado.
 const VENDOR_ASSETS = [
-  './vendor/chart.umd.min.js?v=5.9.52',
-  './vendor/jspdf.umd.min.js?v=5.9.52',
-  './vendor/jspdf.plugin.autotable.min.js?v=5.9.52',
-  './vendor/xlsx.full.min.js?v=5.9.52'
+  './vendor/chart.umd.min.js?v=5.9.53',
+  './vendor/jspdf.umd.min.js?v=5.9.53',
+  './vendor/jspdf.plugin.autotable.min.js?v=5.9.53',
+  './vendor/xlsx.full.min.js?v=5.9.53'
 ];
 
 const ASSETS = [
-  './landing.css?v=5.9.52',
-  './styles.css?v=5.9.52',
-  './main.js?v=5.9.52',
-  './brand.js?v=5.9.52',
-  './app.js?v=5.9.52',
-  './db.js?v=5.9.52',
+  './landing.css?v=5.9.53',
+  './styles.css?v=5.9.53',
+  './main.js?v=5.9.53',
+  './brand.js?v=5.9.53',
+  './app.js?v=5.9.53',
+  './db.js?v=5.9.53',
   './baremo.json',
-  './manifest.json?v=5.9.52',
-  './icons/logo.png?v=5.9.52',
-  './icons/icon-192.png?v=5.9.52',
-  './icons/icon-512.png?v=5.9.52',
-  './icons/icon-any-192.png?v=5.9.52',
-  './icons/icon-any-512.png?v=5.9.52',
-  './icons/icon-maskable-192.png?v=5.9.52',
-  './icons/icon-maskable-512.png?v=5.9.52',
-  './icons/apple-touch-icon-180.png?v=5.9.52',
+  './manifest.json?v=5.9.53',
+  './icons/logo.png?v=5.9.53',
+  './icons/icon-192.png?v=5.9.53',
+  './icons/icon-512.png?v=5.9.53',
+  './icons/icon-any-192.png?v=5.9.53',
+  './icons/icon-any-512.png?v=5.9.53',
+  './icons/icon-maskable-192.png?v=5.9.53',
+  './icons/icon-maskable-512.png?v=5.9.53',
+  './icons/apple-touch-icon-180.png?v=5.9.53',
   './maps/trujui.png', './maps/cuartelv.png', './maps/moreno.png',
   './maps/gralrodriguez.png', './maps/tigre.png', './maps/sanmartin.png',
   './maps/olivos.png', './maps/pilarescobar.png',
-  './help/baremos-1.png?v=5.9.52',
-  './help/baremos-2.png?v=5.9.52',
-  './help/baremos-3.png?v=5.9.52',
-  './help/baremos-4.png?v=5.9.52',
-  './help/baremos-5.png?v=5.9.52'
+  './help/baremos-1.png?v=5.9.53',
+  './help/baremos-2.png?v=5.9.53',
+  './help/baremos-3.png?v=5.9.53',
+  './help/baremos-4.png?v=5.9.53',
+  './help/baremos-5.png?v=5.9.53'
 ];
 
 const CDN_ASSETS = [
@@ -124,9 +124,8 @@ self.addEventListener('install', event => {
     for (const url of ASSETS) await guardarSiFalta(cache, url);
     for (const url of VENDOR_ASSETS) await guardarSiFalta(cache, url);
     for (const url of CDN_ASSETS) await guardarSiFalta(cache, url);
-    // v5.9.39: sin esto la version nueva quedaba "esperando" y el usuario
-    // seguia viendo la anterior (con los colores viejos) al abrir la app.
-    try { await self.skipWaiting(); } catch (e) {}
+    // El Service Worker se instala y espera la señal SKIP_WAITING enviada cuando
+    // el usuario pulsa Actualizar en la barra de actualización o se autoriza la recarga.
   })());
 });
 
@@ -265,7 +264,11 @@ self.addEventListener('fetch', event => {
 self.addEventListener('message', event => {
   const data = event.data;
 
-  if (data === 'SKIP_WAITING' || data === 'APLICAR_ACTUALIZACION') {
+  if (
+    data === 'SKIP_WAITING' ||
+    data === 'APLICAR_ACTUALIZACION' ||
+    (data && (data.type === 'SKIP_WAITING' || data.action === 'skipWaiting' || data.action === 'SKIP_WAITING'))
+  ) {
     event.waitUntil((async () => {
       try {
         const keys = await caches.keys();
@@ -448,8 +451,8 @@ self.addEventListener('push', event => {
   const titulo = data.titulo || defaultTitulo;
   const cuerpo = data.cuerpo || data.mensaje || 'Aviso importante para el equipo de trabajo.';
   const tag = data.tag || (`baremo-${tipo}-${data.id || Date.now()}`);
-  const icon = data.icon || './icons/icon-192.png?v=5.9.52';
-  const badge = data.badge || './icons/icon-192.png?v=5.9.52';
+  const icon = data.icon || './icons/icon-192.png?v=5.9.53';
+  const badge = data.badge || './icons/icon-192.png?v=5.9.53';
   const esPrioridadAlta = data.prioridad === 'alta' || tipo === 'jornada_pendiente' || tipo === 'ats_pendiente';
   const vibrar = data.vibrate || (esPrioridadAlta ? [300, 150, 300, 150, 300] : [200, 100, 200]);
 

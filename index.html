@@ -31,34 +31,34 @@ html.piel-grafito { background: #1f2937; }</style>
 <meta property="og:title" content="BAREMO">
 <meta property="og:description" content="Registro de baremos y producción diaria para cuadrillas con alertas push de jornadas pendientes, comunicados oficiales de la empresa, control de tareas geolocalizadas y formulario ATS.">
 <title>BAREMO</title>
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.52">
-<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.52">
-<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.52">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.52">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.52">
-<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.52">
-<link rel="manifest" href="manifest.json?v=5.9.52">
-<link rel="stylesheet" href="styles.css?v=5.9.52">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.53">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.53">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.53">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.53">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.53">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.53">
+<link rel="manifest" href="manifest.json?v=5.9.53">
+<link rel="stylesheet" href="styles.css?v=5.9.53">
 <!-- GATE PWA: la app completa se abre en modo standalone; desde el navegador
      se redirige a landing.html. El contenido se oculta SOLO mientras dura la
      redireccion; si esta no ocurre, main.js quita el atributo y la app se ve.
      Nunca se detiene la carga de la pagina: no puede quedar en gris. -->
 <style>html[data-gate="redirecting"] body { visibility: hidden; }</style>
-<script src="main.js?v=5.9.52"></script>
-<script src="brand.js?v=5.9.52"></script>
+<script src="main.js?v=5.9.53"></script>
+<script src="brand.js?v=5.9.53"></script>
 <!-- Librerias externas (v5.9.29): primero la copia local de ./vendor y, solo si
      falta o falla, el CDN. Asi la app instalada nunca se queda sin graficos,
      sin PDF ni sin Excel. Ver vendor/README.txt -->
-<script src="vendor/chart.umd.min.js?v=5.9.52" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/chart.umd.min.js?v=5.9.53" onerror="this.dataset.fallo='1'"></script>
 <script>window.Chart||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/jspdf.umd.min.js?v=5.9.52" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/jspdf.umd.min.js?v=5.9.53" onerror="this.dataset.fallo='1'"></script>
 <script>window.jspdf||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/jspdf.plugin.autotable.min.js?v=5.9.52" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js?v=5.9.53" onerror="this.dataset.fallo='1'"></script>
 <script>(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API&&window.jspdf.jsPDF.API.autoTable)||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.6.0/dist/jspdf.plugin.autotable.min.js"><\/scr'+'ipt>');</script>
 
-<script src="vendor/xlsx.full.min.js?v=5.9.52" onerror="this.dataset.fallo='1'"></script>
+<script src="vendor/xlsx.full.min.js?v=5.9.53" onerror="this.dataset.fallo='1'"></script>
 <script>window.XLSX||document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/scr'+'ipt>');</script>
 </head>
 <body>
@@ -106,7 +106,7 @@ html.piel-grafito { background: #1f2937; }</style>
     <div class="header-actions">
       <button class="btn-install-pwa" id="btnInstallApp" type="button" title="Instalar BAREMO en tu dispositivo" aria-label="Instalar app" hidden><span class="bip-ico" aria-hidden="true">📲</span><span class="bip-txt">Instalar</span></button>
       <button class="icon-btn btn-avisos-empresa" id="btnAvisosEmpresa" type="button" title="Avisos Importantes de la Empresa y Seguridad" aria-label="Avisos de la Empresa">
-        <span aria-hidden="true">📢</span>
+        <span class="btn-avisos-icon" aria-hidden="true">📢</span>
         <span class="badge-unread-notif" id="badgeAvisosUnread" style="display:none;">0</span>
       </button>
       <button class="btn-ayuda" id="btnHelp" title="Menú de Ayuda">AYUDA</button>
@@ -483,8 +483,8 @@ html.piel-grafito { background: #1f2937; }</style>
             </div>
           </div>
           <div class="eab-slide-wrapper">
-            <div class="jpb-title eab-title" id="eabTitle">Aviso importante de la empresa</div>
-            <div class="jpb-desc eab-desc" id="eabDesc">Nuevo comunicado para el personal de cuadrilla.</div>
+            <div class="jpb-title eab-title" id="eabTitle">Por Ahora No Hay Anuncios</div>
+            <div class="jpb-desc eab-desc" id="eabDesc">Sin comunicados activos para el personal en este momento.</div>
           </div>
           <div class="eab-dots" id="eabDots" style="display:none;"></div>
         </div>
@@ -1206,6 +1206,66 @@ html.piel-grafito { background: #1f2937; }</style>
   </div>
 </div>
 
+<!-- Modal de Notificaciones Push Requeridas al Inicio (Bloqueante / Por Única Vez) -->
+<div class="modal-backdrop" id="modalPushOnboarding" style="z-index: 99998;">
+  <div class="modal push-onboarding-modal">
+    <div class="push-onboarding-icon" id="pushOnboardingIcon">🔔</div>
+    <h2 class="push-onboarding-title" id="pushOnboardingTitle">Notificaciones Push del Sistema</h2>
+    <div class="push-onboarding-subtitle" id="pushOnboardingSub">Configuración requerida de inicio</div>
+    
+    <div class="push-onboarding-card">
+      <p class="push-onboarding-desc" id="pushOnboardingDesc">
+        Para operar en <strong>BAREMO</strong>, el sistema requiere la activación obligatoria de las Notificaciones Push para recibir alertas operativas y directivas de seguridad en tiempo real.
+      </p>
+      <div class="push-onboarding-features">
+        <div class="pob-feat">
+          <span class="pob-feat-ico">📢</span>
+          <div class="pob-feat-txt">
+            <strong>Avisos Oficiales y Normativas</strong>
+            <span>Comunicados urgentes de la empresa y directivas operativas.</span>
+          </div>
+        </div>
+        <div class="pob-feat">
+          <span class="pob-feat-ico">⏰</span>
+          <div class="pob-feat-txt">
+            <strong>Cierre Oportuno de Jornadas</strong>
+            <span>Alertas automáticas para resguardar tus baremos antes del vencimiento.</span>
+          </div>
+        </div>
+        <div class="pob-feat">
+          <span class="pob-feat-ico">🛡️</span>
+          <div class="pob-feat-txt">
+            <strong>Seguridad en Vía Pública</strong>
+            <span>Notificaciones de contingencia y advertencias de supervisión central.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mensaje de bloqueo en caso de que esté denegado en el navegador -->
+    <div class="push-denied-box" id="pushDeniedBox" style="display: none;">
+      <div class="pdb-icon">⚠️</div>
+      <div class="pdb-text">
+        <strong>Notificaciones bloqueadas en el navegador</strong>
+        <p>Para ingresar a la app, debés habilitar los permisos de notificación para este sitio en los ajustes del navegador o del teléfono.</p>
+      </div>
+    </div>
+
+    <div class="push-onboarding-actions">
+      <button type="button" class="btn btn-primary push-btn-primary" id="btnExigirPushActivar">
+        <span class="push-btn-ico">🔔</span> ACTIVAR NOTIFICACIONES PUSH
+      </button>
+      <button type="button" class="btn btn-secondary push-btn-retry" id="btnExigirPushReintentar" style="display: none;">
+        🔄 Ya las habilité · Reintentar Verificación
+      </button>
+    </div>
+    
+    <div class="push-onboarding-footnote">
+      🔒 Se configura por única vez al instalar la aplicación en este dispositivo.
+    </div>
+  </div>
+</div>
+
 <!-- Modal de Información Legal / Contacto -->
 <div class="modal-backdrop" id="modalInfo" style="z-index: 9999;">
   <div class="modal info-modal">
@@ -1745,7 +1805,7 @@ html.piel-grafito { background: #1f2937; }</style>
   </div>
 </div>
 
-<script src="db.js?v=5.9.52"></script>
-<script src="app.js?v=5.9.52"></script>
+<script src="db.js?v=5.9.53"></script>
+<script src="app.js?v=5.9.53"></script>
 </body>
 </html>

@@ -22,7 +22,7 @@ window.addEventListener('error', function (e) {
   }
 });
 
-const APP_VERSION = '5.9.52';
+const APP_VERSION = '5.9.53';
 
 /* Control de versión de Términos y Condiciones */
 const CURRENT_TERMS_VERSION = 1;
@@ -710,17 +710,34 @@ let swRegistration = null;
 async function registerSW() {
   if (!('serviceWorker' in navigator)) return;
   try {
-    swRegistration = await navigator.serviceWorker.register('./service-worker.js');
+    if (window.__swRegistration) {
+      swRegistration = window.__swRegistration;
+    } else {
+      swRegistration = await navigator.serviceWorker.register('./service-worker.js');
+      window.__swRegistration = swRegistration;
+    }
     
+    // Si ya hay un Service Worker en espera listo para activar
     if (swRegistration.waiting) {
-        checkForUpdate(true);
+      State.updateAvailable = true;
+      State.remoteVersion = State.remoteVersion || APP_VERSION;
+      showUpdateNotification(false);
+      checkForUpdate(true);
     }
 
+    // Escuchar cuando se descarga un Service Worker nuevo
     swRegistration.addEventListener('updatefound', () => {
       const newWorker = swRegistration.installing;
+      if (!newWorker) return;
       newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          checkForUpdate(true);
+        // Solo disparar cuando esté instalado y haya un controller activo (actualización)
+        if (newWorker.state === 'installed') {
+          if (navigator.serviceWorker.controller) {
+            State.updateAvailable = true;
+            State.remoteVersion = State.remoteVersion || APP_VERSION;
+            showUpdateNotification(false);
+            checkForUpdate(true);
+          }
         }
       });
     });
@@ -769,7 +786,7 @@ function dismissUpdate(version) {
 function showUpdateNotification(forzado) {
   if (!State.updateAvailable) return;
   if (document.getElementById('updateNotification')) return;
-  const remota = State.remoteVersion || '';
+  const remota = State.remoteVersion || APP_VERSION || '';
   if (!forzado && updateDismissed(remota)) return;
 
   // El aviso se muestra DENTRO de la app: si todavia esta el splash, la
@@ -777,8 +794,9 @@ function showUpdateNotification(forzado) {
   const splashVisible = document.querySelector('.splash:not(.hide)');
   const pantallaBloqueada = document.documentElement.hasAttribute('data-gate');
   const terminosAbiertos = document.querySelector('#modalTerms.show');
-  if (splashVisible || pantallaBloqueada || terminosAbiertos) {
-    setTimeout(() => showUpdateNotification(forzado), 1500);
+  const pushOnboardingAbierto = document.querySelector('#modalPushOnboarding.show');
+  if (splashVisible || pantallaBloqueada || terminosAbiertos || pushOnboardingAbierto) {
+    setTimeout(() => showUpdateNotification(forzado), 1200);
     return;
   }
 
@@ -814,16 +832,21 @@ function showUpdateNotification(forzado) {
       guardarVersionInstalada(remota || APP_VERSION);
       try { localStorage.removeItem(dismissKeyFor(remota)); } catch (e) {}
 
-      // Notificar al Service Worker que tome el control
-      if (swRegistration && swRegistration.waiting) {
-        swRegistration.waiting.postMessage('APLICAR_ACTUALIZACION');
-        swRegistration.waiting.postMessage('SKIP_WAITING');
-      } else if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage('APLICAR_ACTUALIZACION');
-        navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
+      // Si main.js provee el orquestador del ciclo de vida del Service Worker
+      if (typeof window.aplicarActualizacionSW === 'function') {
+        await window.aplicarActualizacionSW();
+        return;
       }
 
-      // Vaciar cachés locales de la app
+      // Fallback directo sobre swRegistration
+      const worker = (swRegistration && swRegistration.waiting) || (navigator.serviceWorker && navigator.serviceWorker.controller);
+      if (worker) {
+        worker.postMessage({ type: 'SKIP_WAITING' });
+        worker.postMessage('SKIP_WAITING');
+        worker.postMessage('APLICAR_ACTUALIZACION');
+      }
+
+      // Vaciar cachés locales de versiones previas
       if (window.caches && caches.keys) {
         const keys = await caches.keys();
         await Promise.all(
@@ -831,12 +854,6 @@ function showUpdateNotification(forzado) {
             .filter(k => /^baremos?[-_]/i.test(k))
             .map(k => caches.delete(k).catch(() => false))
         );
-      }
-
-      // Desregistrar service workers para garantizar descarga fresca de la nueva versión
-      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.unregister().catch(() => false)));
       }
     } catch (e) {
       console.warn('[Actualizar]', e);
@@ -857,6 +874,20 @@ function showUpdateNotification(forzado) {
     }
   };
 }
+
+// Exponer funciones del sistema de actualización para main.js y control global
+window.showUpdateNotification = showUpdateNotification;
+window.checkForUpdate = checkForUpdate;
+window.State = State;
+
+// Escuchar evento personalizado disparado por main.js ante updatefound / waiting
+window.addEventListener('swUpdateAvailable', e => {
+  State.updateAvailable = true;
+  if (e && e.detail && e.detail.worker) {
+    window.__swWaitingWorker = e.detail.worker;
+  }
+  showUpdateNotification(false);
+});
 
 /* La version INSTALADA (la que el usuario acepto) se guarda aparte de la
    version de los archivos. Asi, si los archivos nuevos llegaran al telefono
@@ -912,18 +943,48 @@ function loadVersion() {
 async function checkForUpdate(silent = false) {
   if (!silent) toast('Buscando actualizaciones...', 'info');
   try {
-    if (swRegistration) await swRegistration.update();
+    if (swRegistration) {
+      try {
+        await swRegistration.update();
+      } catch (swErr) {
+        console.warn('[SW update check warning]', swErr);
+      }
+    }
     
-    const r = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
-    const remoteData = await r.json();
+    let remoteVersion = null;
+    try {
+      const r = await fetch('./version.json?t=' + Date.now(), { 
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
+      });
+      if (r.ok) {
+        const remoteData = await r.json();
+        remoteVersion = remoteData && remoteData.version;
+      }
+    } catch (eJson) {
+      console.warn('[Version.json fetch warning]', eJson);
+    }
+
+    if (!remoteVersion) {
+      try {
+        const r2 = await fetch('./api/version?t=' + Date.now(), { cache: 'no-store' });
+        if (r2.ok) {
+          const d2 = await r2.json();
+          remoteVersion = d2 && d2.version;
+        }
+      } catch (e2) {}
+    }
     
     // Se compara contra la version INSTALADA, no contra los archivos.
-    const local = State.currentVersion || versionInstalada() || APP_VERSION;
+    const instalada = versionInstalada();
+    const local = State.currentVersion || instalada || APP_VERSION;
+    const versionObjetivo = remoteVersion || APP_VERSION;
 
-    if (isNewerVersion(remoteData.version, local)) {
+    if (isNewerVersion(versionObjetivo, local) || (remoteVersion && isNewerVersion(remoteVersion, APP_VERSION)) || (instalada && isNewerVersion(APP_VERSION, instalada))) {
       State.updateAvailable = true;
-      State.remoteVersion = remoteData.version;
+      State.remoteVersion = versionObjetivo;
       showUpdateNotification(!silent);
+      if (!silent) toast(`Nueva versión disponible: v${versionObjetivo}`, 'success');
     } else {
       State.updateAvailable = false;
       State.remoteVersion = null;
@@ -957,7 +1018,9 @@ async function chequeoAutomaticoDeVersion(motivo) {
     return;
   }
   const ahoraMs = Date.now();
-  if (ahoraMs - _ultimoChequeoUpdate < VIGILANCIA_MIN_ENTRE_CHEQUEOS_MS) return;
+  if (motivo !== 'sw' && motivo !== 'arranque' && (ahoraMs - _ultimoChequeoUpdate < VIGILANCIA_MIN_ENTRE_CHEQUEOS_MS)) {
+    return;
+  }
   _ultimoChequeoUpdate = ahoraMs;
   try { await checkForUpdate(true); } catch (e) {}
 }
@@ -1048,7 +1111,7 @@ async function init() {
     if (acceptedVersion < CURRENT_TERMS_VERSION) {
       mostrarPopupTerminos();
     } else {
-      continuarInicio();
+      verificarPermisoPushInicial();
     }
   }, 2150);
   
@@ -3671,7 +3734,7 @@ function renderAjustes() {
   if (!lst) return;
   lst.innerHTML = `
     <div class="ajuste-item" data-act="update"><div class="aj-ico">🔄</div><div class="aj-text"><div class="aj-title">Actualizaciones</div><div class="aj-desc">Tenés la v${State.currentVersion || '?'} · tocá para buscar una nueva</div><button type="button" class="aj-sub" data-sub="forzar">🧹 ¿Quedó trabada? Forzar actualización</button></div><div class="aj-arrow">›</div></div>
-    <div class="ajuste-item" data-act="push"><div class="aj-ico">📡</div><div class="aj-text"><div class="aj-title">Notificaciones Push (Service Worker)</div><div class="aj-desc" id="ajPushDesc">Alertas de jornadas pendientes y avisos de empresa</div></div><div class="aj-arrow">›</div></div>
+    <div class="ajuste-item" data-act="push"><div class="aj-ico">📡</div><div class="aj-text"><div class="aj-title">Notificaciones Push del Sistema</div><div class="aj-desc" id="ajPushDesc">Configuradas al inicio · Alertas en tiempo real</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="avisos"><div class="aj-ico">📢</div><div class="aj-text"><div class="aj-title">Avisos de la Empresa</div><div class="aj-desc">Comunicados oficiales y normativas de seguridad</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="validar"><div class="aj-ico">🧮</div><div class="aj-text"><div class="aj-title">Validar totales del historial</div><div class="aj-desc">Recalcula jornadas que quedaron en $0</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="baremo"><div class="aj-ico">📥</div><div class="aj-text"><div class="aj-title">Cargar Baremos actualizados</div><div class="aj-desc">Archivo JSON, Excel o CSV</div></div><div class="aj-arrow">›</div></div>
@@ -4789,7 +4852,7 @@ async function manejarAccionEliminarAvisoAdmin(btnDel) {
     avisosCount.textContent = `(${totalRestante} comunicado${totalRestante === 1 ? '' : 's'})`;
   }
 
-  // Actualizar banner en vivo inmediatamente (si no quedan, muestra 'No Hay Anuncios del Supervisor')
+  // Actualizar banner en vivo inmediatamente (si no quedan, muestra 'Por Ahora No Hay Anuncios')
   actualizarIndicadorAvisos();
 
   // Si el modal está abierto, refrescarlo de inmediato
@@ -6684,9 +6747,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnAcceptTerms.onclick = async () => {
       setAcceptedTermsVersion();
       $('#modalTerms').classList.remove('show');
-      await continuarInicio();
+      verificarPermisoPushInicial();
     };
   }
+
+  const btnExigirPushActivar = $('#btnExigirPushActivar');
+  if (btnExigirPushActivar) btnExigirPushActivar.onclick = activarPushOnboarding;
+
+  const btnExigirPushReintentar = $('#btnExigirPushReintentar');
+  if (btnExigirPushReintentar) btnExigirPushReintentar.onclick = reintentarVerificacionPush;
   
   const btnChangeZona = $('#btnChangeZona');
   if (btnChangeZona) {
@@ -6734,7 +6803,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   $$('.modal-backdrop').forEach(m => {
     m.addEventListener('click', e => { 
-        if (e.target === m && m.id !== 'modalTerms' && m.id !== 'modalConfirm') m.classList.remove('show'); 
+        if (e.target === m && m.id !== 'modalTerms' && m.id !== 'modalConfirm' && m.id !== 'modalPushOnboarding') m.classList.remove('show'); 
     });
   });
   $('#btnInfoClose')?.addEventListener('click', () => $('#modalInfo').classList.remove('show'));
@@ -10436,6 +10505,193 @@ async function obtenerVapidPublicKey() {
   return null;
 }
 
+/* ============================================================
+   NOTIFICACIONES PUSH REQUERIDAS AL INICIO (ONBOARDING OBLIGATORIO)
+   Las notificaciones push deben ser aceptadas al inicio por
+   única vez al instalar la app, no deben ser permitidas
+   manualmente desde un menú, sino exigidas desde el primer
+   inicio de la aplicación.
+   ============================================================ */
+const LS_PUSH_ONBOARDING_ACCEPTED = 'baremo_push_onboarding_accepted';
+
+function debeExigirPushAlInicio() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    return false;
+  }
+  if (Notification.permission === 'granted') {
+    try { localStorage.setItem(LS_PUSH_ONBOARDING_ACCEPTED, '1'); } catch (e) {}
+    return false;
+  }
+  return true;
+}
+
+function mostrarModalPushOnboarding() {
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $$('.tab-btn').forEach(b => b.classList.remove('active'));
+  
+  const modal = $('#modalPushOnboarding');
+  if (!modal) {
+    console.error('CRÍTICO: No se encontró #modalPushOnboarding en el DOM.');
+    continuarInicio();
+    return;
+  }
+  
+  actualizarUIModalPushOnboarding();
+  modal.classList.add('show');
+}
+
+function actualizarUIModalPushOnboarding() {
+  const perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+  const deniedBox = $('#pushDeniedBox');
+  const btnActivar = $('#btnExigirPushActivar');
+  const btnReintentar = $('#btnExigirPushReintentar');
+  const icon = $('#pushOnboardingIcon');
+
+  if (perm === 'denied') {
+    if (deniedBox) deniedBox.style.display = 'flex';
+    if (btnActivar) btnActivar.style.display = 'none';
+    if (btnReintentar) btnReintentar.style.display = 'block';
+    if (icon) icon.textContent = '🚫';
+  } else {
+    if (deniedBox) deniedBox.style.display = 'none';
+    if (btnActivar) {
+      btnActivar.style.display = 'flex';
+      btnActivar.disabled = false;
+      btnActivar.innerHTML = '<span class="push-btn-ico">🔔</span> ACTIVAR NOTIFICACIONES PUSH';
+    }
+    if (btnReintentar) btnReintentar.style.display = 'none';
+    if (icon) icon.textContent = '🔔';
+  }
+}
+
+async function activarPushOnboarding() {
+  const btn = $('#btnExigirPushActivar');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Solicitando permiso...';
+  }
+
+  try {
+    let perm = 'default';
+    if ('Notification' in window && Notification.requestPermission) {
+      perm = await Notification.requestPermission();
+    }
+
+    if (perm === 'granted') {
+      if (btn) btn.textContent = 'Vinculando servicio Push...';
+
+      try {
+        if ('serviceWorker' in navigator && 'PushManager' in window) {
+          const reg = await navigator.serviceWorker.ready;
+          let sub = await reg.pushManager.getSubscription();
+          if (!sub) {
+            const key = await obtenerVapidPublicKey();
+            if (key) {
+              const convertedKey = urlB64ToUint8Array(key);
+              sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: convertedKey
+              });
+            }
+          }
+          if (sub) {
+            State.pushSubscribed = true;
+            await fetch('/api/push/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                subscription: sub,
+                user: {
+                  legajo: State.user ? State.user.legajo : 'anonimo',
+                  nombre: State.user ? State.user.nombre : 'Operador'
+                }
+              })
+            }).catch(() => {});
+          }
+        }
+      } catch (errSub) {
+        console.warn('[Push Onboarding Subscribe]', errSub);
+      }
+
+      try { localStorage.setItem(LS_PUSH_ONBOARDING_ACCEPTED, '1'); } catch (e) {}
+      toast('🔔 Notificaciones Push activadas y vinculadas con éxito', 'success');
+      const modal = $('#modalPushOnboarding');
+      if (modal) modal.classList.remove('show');
+      pintarEstadoPush();
+      await continuarInicio();
+      return;
+    } else if (perm === 'denied') {
+      actualizarUIModalPushOnboarding();
+      toast('Debes permitir las notificaciones para utilizar BAREMO', 'warn');
+    } else {
+      actualizarUIModalPushOnboarding();
+    }
+  } catch (err) {
+    console.error('[Push Onboarding Error]', err);
+    toast('Error al solicitar notificaciones: ' + (err.message || err), 'error');
+  } finally {
+    if (btn && (!('Notification' in window) || Notification.permission !== 'granted')) {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="push-btn-ico">🔔</span> ACTIVAR NOTIFICACIONES PUSH';
+    }
+  }
+}
+
+async function reintentarVerificacionPush() {
+  const perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+  if (perm === 'granted') {
+    try { localStorage.setItem(LS_PUSH_ONBOARDING_ACCEPTED, '1'); } catch (e) {}
+    toast('✓ Permiso concedido. Configurando servicio...', 'success');
+    
+    try {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          const key = await obtenerVapidPublicKey();
+          if (key) {
+            const convertedKey = urlB64ToUint8Array(key);
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: convertedKey
+            });
+          }
+        }
+        if (sub) {
+          State.pushSubscribed = true;
+          await fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscription: sub,
+              user: {
+                legajo: State.user ? State.user.legajo : 'anonimo',
+                nombre: State.user ? State.user.nombre : 'Operador'
+              }
+            })
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+
+    const modal = $('#modalPushOnboarding');
+    if (modal) modal.classList.remove('show');
+    pintarEstadoPush();
+    await continuarInicio();
+  } else {
+    toast('Las notificaciones aún no están permitidas en el navegador', 'error');
+    actualizarUIModalPushOnboarding();
+  }
+}
+
+function verificarPermisoPushInicial() {
+  if (debeExigirPushAlInicio()) {
+    mostrarModalPushOnboarding();
+  } else {
+    continuarInicio();
+  }
+}
+
 async function inicializarPushNotifications() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     console.info('[Push] Web Push API no disponible en este dispositivo/navegador.');
@@ -10578,10 +10834,10 @@ function pintarEstadoPush() {
     el.textContent = 'Bloqueadas desde los permisos del dispositivo';
     return;
   }
-  if (State.pushSubscribed) {
-    el.textContent = 'Activas · recibirás alertas de jornadas y avisos de empresa';
+  if (State.pushSubscribed || (typeof Notification !== 'undefined' && Notification.permission === 'granted')) {
+    el.textContent = 'Configuradas y activas · Alertas en tiempo real';
   } else {
-    el.textContent = 'Desactivadas · tocá para activar alertas inmediatas';
+    el.textContent = 'Requeridas por el sistema · Estado sincronizado';
   }
 }
 
@@ -10881,16 +11137,19 @@ function mostrarBannerSinAvisos() {
   const btnVer = $('#btnEabVer');
 
   if (elIco) elIco.textContent = '📢';
-  if (elCat) elCat.textContent = 'Supervisión';
+  if (elCat) elCat.style.display = 'none';
   if (elPrio) elPrio.style.display = 'none';
   if (elExpira) elExpira.style.display = 'none';
   if (elControls) elControls.style.display = 'none';
   if (elDots) elDots.style.display = 'none';
 
-  // Mensaje dinámico exacto solicitado por el usuario:
-  if (elTitle) elTitle.textContent = 'No Hay Anuncios del Supervisor';
-  if (elDesc) elDesc.textContent = 'Sin comunicados activos para el personal en este momento.';
-  if (btnVer) btnVer.textContent = 'Ver comunicados';
+  // Solo debe decir: "Por Ahora No Hay Anuncios"
+  if (elTitle) elTitle.textContent = 'Por Ahora No Hay Anuncios';
+  if (elDesc) elDesc.style.display = 'none';
+  if (btnVer) {
+    btnVer.style.display = 'inline-flex';
+    btnVer.textContent = 'Ver comunicados';
+  }
 }
 
 let _carruselAvisosTimer = null;
@@ -10951,6 +11210,10 @@ function mostrarSlideAviso(indice, animar = true) {
   const btnVer = $('#btnEabVer');
 
   const banner = $('#empresaAvisoBanner');
+  if (banner) banner.classList.remove('sin-avisos');
+  if (elDesc) elDesc.style.display = '';
+  if (elCat) elCat.style.display = '';
+
   const esAtsSlide = aviso.esAts || aviso.id === '__ats_pendiente__';
 
   if (esAtsSlide) {
@@ -11057,6 +11320,17 @@ function avanzarCarruselAvisos(pasos = 1, porUsuario = true) {
   }
 }
 
+let _cantAvisosNoLeidosPrev = -1;
+let _idsAvisosNoLeidosPrev = new Set();
+
+function animarIconoAvisoNuevo() {
+  const btn = $('#btnAvisosEmpresa');
+  if (!btn) return;
+  btn.classList.remove('anim-new-arrival');
+  void btn.offsetWidth; // Forzar reflow para reiniciar la animación suavemente
+  btn.classList.add('anim-new-arrival');
+}
+
 function actualizarIndicadorAvisos() {
   const avisos = State.avisosEmpresa || [];
   let leidos = [];
@@ -11069,6 +11343,8 @@ function actualizarIndicadorAvisos() {
 
   const noLeidos = avisosVigentes.filter(a => !leidos.includes(a.id));
   const badge = $('#badgeAvisosUnread');
+  const btnAvisos = $('#btnAvisosEmpresa');
+
   if (badge) {
     if (noLeidos.length > 0) {
       badge.textContent = noLeidos.length > 9 ? '9+' : String(noLeidos.length);
@@ -11078,7 +11354,26 @@ function actualizarIndicadorAvisos() {
     }
   }
 
-  // Banner en inicio: si no hay avisos vigentes (< 5h), mostrar mensaje dinámico "No Hay Anuncios del Supervisor"
+  // Actualizar animación e indicadores en el botón de avisos (#btnAvisosEmpresa)
+  if (btnAvisos) {
+    if (noLeidos.length > 0) {
+      btnAvisos.classList.add('has-unread');
+
+      // Detectar llegada de un nuevo comunicado no leído para activar la animación de llamada de atención
+      const idsActuales = noLeidos.map(a => String(a.id));
+      const hayNuevo = idsActuales.some(id => !_idsAvisosNoLeidosPrev.has(id));
+      if (hayNuevo && _cantAvisosNoLeidosPrev !== -1) {
+        animarIconoAvisoNuevo();
+      }
+      _idsAvisosNoLeidosPrev = new Set(idsActuales);
+    } else {
+      btnAvisos.classList.remove('has-unread', 'anim-new-arrival');
+      _idsAvisosNoLeidosPrev.clear();
+    }
+  }
+  _cantAvisosNoLeidosPrev = noLeidos.length;
+
+  // Banner en inicio: si no hay avisos vigentes (< 5h), mostrar mensaje dinámico "Por Ahora No Hay Anuncios"
   const banner = $('#empresaAvisoBanner');
   if (!banner) return;
 
@@ -11269,50 +11564,58 @@ async function actualizarUIPushConfig() {
   const btn = $('#btnTogglePushSub');
   const bannerOptIn = $('#pushActivarBanner');
 
+  if (bannerOptIn) bannerOptIn.style.display = 'none';
+
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     if (txtStatus) txtStatus.textContent = 'Push no disponible';
     if (txtSub) txtSub.textContent = 'Este navegador no soporta el estándar PushManager de Service Workers.';
     if (icon) icon.textContent = '❌';
-    if (btn) { btn.disabled = true; btn.textContent = 'No soportado'; }
-    if (bannerOptIn) bannerOptIn.style.display = 'none';
+    if (btn) { btn.disabled = true; btn.textContent = 'No soportado en este navegador'; }
     return;
   }
 
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.getSubscription();
+  const perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
 
-  if (sub) {
+  if (sub || perm === 'granted') {
     State.pushSubscribed = true;
     if (txtStatus) txtStatus.textContent = 'Push Activo y Vinculado';
-    if (txtSub) txtSub.textContent = 'Este dispositivo recibe alertas inmediatas de jornadas pendientes y comunicados de empresa.';
+    if (txtSub) txtSub.textContent = 'Configuradas al inicio de la app. Este dispositivo recibe alertas inmediatas de jornadas y avisos de empresa.';
     if (icon) icon.textContent = '🟢';
     if (btn) {
       btn.disabled = false;
-      btn.className = 'btn btn-ghost';
-      btn.textContent = '🔕 Desactivar Notificaciones Push';
+      btn.className = 'btn btn-secondary';
+      btn.textContent = '✓ Notificaciones Push Activas en el Sistema';
+      btn.onclick = () => {
+        toast('Las notificaciones push están activas y vinculadas con el servidor', 'info');
+      };
     }
-    if (bannerOptIn) bannerOptIn.style.display = 'none';
+  } else if (perm === 'denied') {
+    State.pushSubscribed = false;
+    if (txtStatus) txtStatus.textContent = 'Permiso Bloqueado en Navegador';
+    if (txtSub) txtSub.textContent = 'Las notificaciones fueron bloqueadas en la configuración del navegador o dispositivo.';
+    if (icon) icon.textContent = '🚫';
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn btn-primary';
+      btn.textContent = '🔄 Reintentar Verificación de Permisos';
+      btn.onclick = () => {
+        reintentarVerificacionPush();
+      };
+    }
   } else {
     State.pushSubscribed = false;
-    const perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
-    if (perm === 'denied') {
-      if (txtStatus) txtStatus.textContent = 'Permiso Bloqueado';
-      if (txtSub) txtSub.textContent = 'Las notificaciones fueron bloqueadas en la configuración del navegador.';
-      if (icon) icon.textContent = '🚫';
-      if (btn) { btn.disabled = true; btn.textContent = 'Desbloquear en Ajustes'; }
-      if (bannerOptIn) bannerOptIn.style.display = 'none';
-    } else {
-      if (txtStatus) txtStatus.textContent = 'Push Inactivo';
-      if (txtSub) txtSub.textContent = 'Activá las notificaciones para recibir avisos de jornadas sin cerrar y comunicados urgentes.';
-      if (icon) icon.textContent = '📡';
-      if (btn) {
-        btn.disabled = false;
-        btn.className = 'btn btn-primary';
-        btn.textContent = '🔔 Activar Notificaciones Push';
-      }
-      if (bannerOptIn && !sessionStorage.getItem('push_banner_dismissed')) {
-        bannerOptIn.style.display = 'flex';
-      }
+    if (txtStatus) txtStatus.textContent = 'Push Requerido al Inicio';
+    if (txtSub) txtSub.textContent = 'Las notificaciones push deben ser permitidas para operar en la aplicación.';
+    if (icon) icon.textContent = '📡';
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn btn-primary';
+      btn.textContent = '🔔 Habilitar Notificaciones Requeridas';
+      btn.onclick = () => {
+        activarPushOnboarding();
+      };
     }
   }
 }
@@ -11476,7 +11779,12 @@ async function sincronizarJornadasAlServidor() {
 function inicializarEventosPushYAvisos() {
   // Botón header avisos de empresa
   const btnAvisos = $('#btnAvisosEmpresa');
-  if (btnAvisos) btnAvisos.onclick = () => abrirModalAvisosEmpresa();
+  if (btnAvisos) {
+    btnAvisos.onclick = () => {
+      btnAvisos.classList.remove('anim-new-arrival');
+      abrirModalAvisosEmpresa();
+    };
+  }
 
   const btnAvisosClose = $('#btnAvisosEmpresaClose');
   if (btnAvisosClose) btnAvisosClose.onclick = cerrarModalAvisosEmpresa;
@@ -11495,7 +11803,18 @@ function inicializarEventosPushYAvisos() {
   if (btnPushAceptar) btnPushAceptar.onclick = cerrarModalPushConfig;
 
   const btnTogglePush = $('#btnTogglePushSub');
-  if (btnTogglePush) btnTogglePush.onclick = alternarSuscripcionPush;
+  if (btnTogglePush) {
+    btnTogglePush.onclick = () => {
+      const perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+      if (perm === 'granted') {
+        toast('Las notificaciones push del sistema ya están activas y vinculadas con el dispositivo', 'info');
+      } else if (perm === 'denied') {
+        reintentarVerificacionPush();
+      } else {
+        activarPushOnboarding();
+      }
+    };
+  }
 
   const btnRefrescarPush = $('#btnRefrescarPushStatus');
   if (btnRefrescarPush) btnRefrescarPush.onclick = actualizarUIPushConfig;

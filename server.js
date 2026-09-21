@@ -1497,7 +1497,19 @@ app.get('/api/admin/reportes/datos', requireAdminAuth, (req, res) => {
 
 // API health endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', app: 'BAREMO', version: '5.9.52' });
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.json({ status: 'ok', app: 'BAREMO', version: '5.9.53' });
+});
+
+// API version endpoint dedicado para redundancia
+app.get('/api/version', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, 'version.json'), 'utf8');
+    res.type('application/json').send(raw);
+  } catch (e) {
+    res.json({ version: '5.9.53' });
+  }
 });
 
 // Servir archivos estáticos
