@@ -1,459 +1,222 @@
 /* ============================================================
-   BAREMO - Landing de presentacion
-   v5.9.39 - misma piel Aurora que la aplicacion: indigo, violeta y cian
-   sobre un fondo oscuro. Ya no queda nada del azul electrico anterior.
-   Minimalista: logo enmascarado, descripcion, funciones clave
-   y un unico boton Instalar aplicacion.
+   BAREMO — Landing Page Profesional
+   Piel Aurora: índigo, violeta y cian sobre fondo ultra-oscuro.
+   Diseño de alta ingeniería para cuadrillas y contratistas técnicos.
+   Acceso exclusivo a la app completa en modo PWA Standalone.
    ============================================================ */
 
 :root {
-  /* Piel Aurora, los mismos colores que usa la app por defecto. */
   --electric: #6d5cf5;
   --electric-soft: #a78bfa;
   --brand-1: #4338ca;
   --brand-2: #7c3aed;
   --accent: #22d3ee;
+  --accent-soft: rgba(34, 211, 238, 0.15);
   --brand-rgb: 99, 91, 255;
   --bg: #05030f;
+  --bg-card: rgba(14, 11, 33, 0.78);
+  --bg-card-hover: rgba(22, 17, 50, 0.88);
   --gray: #e4e2f7;
   --gray-soft: #9a95bd;
-  --border: rgba(255, 255, 255, .09);
+  --gray-dim: #6b668f;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(99, 91, 255, 0.45);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 30px;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
 
-html, body { min-height: 100%; }
+html {
+  scroll-behavior: smooth;
+}
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: var(--bg);
   color: var(--gray);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  line-height: 1.5;
 }
 
-/* ---------- Layout centrado ---------- */
-.landing {
-  position: relative;
-  min-height: 100svh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
-  overflow: hidden;
-}
-
-/* Halos de luz azul electrico, decorativos, con respiracion lenta */
+/* ---------- HALOS DE LUZ AMBIENTAL ---------- */
 .glow {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px);
+  filter: blur(100px);
   pointer-events: none;
-  opacity: .5;
-  animation: breathe 9s ease-in-out infinite;
+  opacity: 0.45;
+  animation: breathe 10s ease-in-out infinite;
+  z-index: 0;
 }
 .glow-a {
-  width: 460px; height: 460px;
-  top: -180px; left: -140px;
-  background: radial-gradient(circle, rgba(var(--brand-rgb), .55) 0%, transparent 70%);
+  width: 580px;
+  height: 580px;
+  top: -160px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(var(--brand-rgb), 0.48) 0%, transparent 70%);
 }
 .glow-b {
-  width: 520px; height: 520px;
-  bottom: -220px; right: -160px;
-  background: radial-gradient(circle, rgba(34, 211, 238, .3) 0%, transparent 70%);
-  animation-delay: -4.5s;
+  width: 650px;
+  height: 650px;
+  top: 780px;
+  right: -180px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, transparent 70%);
+  animation-delay: -5s;
+}
+.glow-c {
+  width: 550px;
+  height: 550px;
+  bottom: 300px;
+  left: -160px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.25) 0%, transparent 70%);
+  animation-delay: -2.5s;
 }
 @keyframes breathe {
-  0%, 100% { opacity: .38; transform: scale(1); }
-  50%      { opacity: .62; transform: scale(1.07); }
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 0.58; transform: scale(1.08); }
 }
 
-/* ---------- Tarjeta ---------- */
-.card {
+/* ---------- CONTENEDOR PRINCIPAL ---------- */
+.landing-wrap {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 410px;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 18px;
-  padding: 34px 26px 30px;
-  background: linear-gradient(180deg, rgba(20, 16, 44, .92) 0%, rgba(9, 7, 24, .96) 100%);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .65), 0 0 0 1px rgba(var(--brand-rgb), .07) inset;
-  animation: rise .55s cubic-bezier(.22, 1, .36, 1) both;
-}
-@keyframes rise {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: none; }
 }
 
-/* ============================================================
-   MARCA - logo enmascarado en lugar del texto Baremo
-   La silueta de icons/logo.png se usa como mascara y el relleno es el
-   degradado de la landing (blanco a azul electrico), igual que en el
-   encabezado de la app. Fondo 100% transparente: nunca hay recuadro,
-   borde ni halo blanco alrededor del logo.
-   ============================================================ */
-.brand {
-  display: block;
+.container {
   width: 100%;
-  margin: 2px 0;
-  font-size: 0;
-  line-height: 0;
-  animation: rise .6s .05s cubic-bezier(.22, 1, .36, 1) both;
-}
-.brand-logo {
-  /* Medidas del logo de la landing. La tecnica de integracion la define
-     brand.js segun como este exportado icons/logo.png.
-     v5.9.28 - el logo es circular: se le da alto suficiente para que el
-     metalico radiante del interior se aprecie sin achatarse. */
-  width: clamp(150px, 56%, 210px);
-  height: clamp(150px, 56vw, 210px);
+  max-width: 1200px;
   margin: 0 auto;
-  animation: brandFloat 3.6s ease-in-out infinite;
-  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, .45));
+  padding: 0 24px;
 }
 
-/* Latido suave del logo animado de la landing */
-@keyframes brandFloat {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-7px) scale(1.025); }
+/* ---------- NAVBAR SUPERIOR ---------- */
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(5, 3, 15, 0.75);
+  border-bottom: 1px solid var(--border);
+  transition: all 0.25s ease;
 }
-@media (prefers-reduced-motion: reduce) {
-  .brand-logo { animation: none; }
-}
-
-/* ---------- Descripcion ---------- */
-.desc {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--gray-soft);
-  max-width: 34ch;
-  animation: rise .6s .12s cubic-bezier(.22, 1, .36, 1) both;
-}
-
-/* ---------- Funciones mas importantes ---------- */
-.features {
-  list-style: none;
-  width: 100%;
+.landing-nav .container {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
-  animation: rise .6s .18s cubic-bezier(.22, 1, .36, 1) both;
+  align-items: center;
+  justify-content: space-between;
+  height: 68px;
 }
-.features li {
+.nav-brand {
   display: flex;
-  align-items: flex-start;
-  gap: 11px;
-  padding: 9px 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, .05);
-  list-style: none;
-}
-.features li:last-child { border-bottom: none; }
-.f-ico {
-  flex: 0 0 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  font-size: 13px;
-  border-radius: 8px;
-  background: rgba(var(--brand-rgb), .12);
-  border: 1px solid rgba(var(--brand-rgb), .22);
-}
-.f-txt {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--gray-soft);
-  min-width: 0;
-}
-.f-txt b {
-  display: block;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--gray);
-  margin-bottom: 1px;
-}
-
-/* ============================================================
-   BOTON INSTALAR - unico llamado a la accion
-   ============================================================ */
-.btn-install {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  width: 100%;
-  max-width: 300px;
-  margin-top: 4px;
-  padding: 16px 26px;
-  font-family: inherit;
-  font-size: 15.5px;
-  font-weight: 700;
-  letter-spacing: .2px;
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 62%, #9d6bf5 100%);
-  border: none;
-  border-radius: 999px;
-  cursor: pointer;
-  box-shadow: 0 10px 30px rgba(var(--brand-rgb), .3);
-  animation: rise .6s .24s cubic-bezier(.22, 1, .36, 1) both, halo 2.8s 1s ease-out infinite;
-  transition: transform .18s cubic-bezier(.22, 1, .36, 1), box-shadow .18s ease, filter .18s ease;
-}
-.btn-install:hover  { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(var(--brand-rgb), .46); }
-.btn-install:active { transform: translateY(0) scale(.98); }
-.btn-install:focus-visible { outline: 2px solid #ffffff; outline-offset: 3px; }
-
-.bi-label { position: relative; z-index: 2; }
-
-/* Halo pulsante que nace del borde del boton */
-@keyframes halo {
-  0%   { box-shadow: 0 10px 30px rgba(var(--brand-rgb), .3), 0 0 0 0 rgba(var(--brand-rgb), .45); }
-  70%  { box-shadow: 0 10px 30px rgba(var(--brand-rgb), .3), 0 0 0 14px rgba(var(--brand-rgb), 0); }
-  100% { box-shadow: 0 10px 30px rgba(var(--brand-rgb), .3), 0 0 0 0 rgba(var(--brand-rgb), 0); }
-}
-
-/* Brillo diagonal que barre el boton */
-.bi-sheen {
-  position: absolute;
-  top: -60%;
-  left: -40%;
-  width: 40%;
-  height: 220%;
-  z-index: 1;
-  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, .55) 50%, transparent 100%);
-  transform: rotate(14deg);
-  animation: sheen 3.6s 1.4s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes sheen {
-  0%        { left: -45%; opacity: 0; }
-  12%       { opacity: 1; }
-  38%, 100% { left: 115%; opacity: 0; }
-}
-
-/* Estados del boton */
-.btn-install.listo { box-shadow: 0 12px 34px rgba(var(--brand-rgb), .42); }
-.btn-install.cargando { filter: saturate(.8) brightness(.95); pointer-events: none; }
-.btn-install.ok {
-  background: linear-gradient(135deg, #16a34a 0%, #34d399 100%);
-  color: #00210f;
-  animation: rise .4s both;
-  pointer-events: none;
-}
-.btn-install.ok .bi-sheen { display: none; }
-.btn-install.shake { animation: shake .45s ease both; }
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%      { transform: translateX(-6px); }
-  45%      { transform: translateX(5px); }
-  70%      { transform: translateX(-3px); }
-}
-
-/* ---------- Pantallas chicas ---------- */
-@media (max-width: 380px) {
-  .card { padding: 28px 18px 24px; gap: 15px; border-radius: 18px; }
-  .desc { font-size: 13px; }
-  .features li { padding: 8px 2px; gap: 9px; }
-  .f-ico { flex-basis: 24px; height: 24px; font-size: 12px; }
-  .btn-install { padding: 14px 20px; font-size: 15px; }
-}
-
-/* ---------- Pantallas altas: mas aire ---------- */
-@media (min-height: 780px) {
-  .card { gap: 20px; padding: 40px 28px 34px; }
-}
-
-/* ---------- Accesibilidad: menos movimiento ---------- */
-@media (prefers-reduced-motion: reduce) {
-  .card, .brand, .desc, .features, .btn-install, .glow { animation: none; }
-  .bi-sheen { display: none; }
-  .btn-install { transition: none; }
-}
-
-
-/* ============================================================
-   ACCESIBILIDAD Y CREDITOS (v5.9.5)
-   ============================================================ */
-
-/* El nombre BAREMO existe para lectores de pantalla y buscadores,
-   pero no se dibuja: en pantalla solo se ve el logo enmascarado. */
-.sr-only {
-  position: absolute !important;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* Creditos animados, mismo criterio que el menu Ajustes de la app. */
-.credits {
-  width: 100%;
-  margin-top: 6px;
-  padding: 16px 18px 14px;
-  border-radius: 16px;
-  text-align: center;
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
-  border: 1px solid rgba(255, 255, 255, .08);
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
   color: #fff;
-  line-height: 1.6;
-  animation: rise .6s .3s cubic-bezier(.22, 1, .36, 1) both;
 }
-.credits .credits-emoji {
-  display: inline-block;
-  font-size: 22px;
-  margin-bottom: 4px;
-  animation: creditsFloat 3.4s ease-in-out infinite;
+.nav-logo-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(var(--brand-rgb), 0.4);
 }
-@keyframes creditsFloat {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-4px); }
+.nav-logo-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: #ffd54a;
 }
-.credits .credits-label {
-  display: block;
-  font-size: 9.5px;
-  text-transform: uppercase;
-  letter-spacing: 2.5px;
-  color: rgba(255, 255, 255, .65);
-  margin-bottom: 4px;
-}
-.credits .credits-author {
-  display: inline-block;
-  font-size: 17px;
+.nav-brand-name {
+  font-size: 19px;
   font-weight: 800;
-  background: linear-gradient(90deg, #fbbf24, #f472b6, #a78bfa, #60a5fa, #fbbf24);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: creditsGradient 3s linear infinite;
+  letter-spacing: -0.5px;
 }
-@keyframes creditsGradient {
-  0%   { background-position: 0% center; }
-  100% { background-position: 200% center; }
+.nav-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 2px 8px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 6px;
+  letter-spacing: 0.3px;
 }
-.credits .credits-divider {
-  display: block;
-  width: 40px; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .4), transparent);
-  margin: 9px auto;
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  list-style: none;
 }
-.credits .app-version {
-  display: inline-block;
-  padding: 3px 12px;
-  background: rgba(255, 255, 255, .1);
-  border: 1px solid rgba(255, 255, 255, .15);
-  border-radius: 20px;
-  font-size: 10px;
-  color: rgba(255, 255, 255, .8);
+.nav-links a {
+  color: var(--gray-soft);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.18s ease;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .credits, .credits .credits-emoji, .credits .credits-author { animation: none; }
-  .credits .credits-author {
-    -webkit-text-fill-color: #fbbf24;
-    background: none;
-  }
+.nav-links a:hover {
+  color: #ffffff;
 }
-
-
-/* ============================================================
-   LOGO DE MARCA (v5.9.9) - la mascara la genera brand.js
-   ============================================================ */
-.brand-logo-img {
-  display: block;
-  background-color: transparent;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  font-size: 0;
-  line-height: 0;
-  color: transparent;
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-  opacity: 1;
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.brand-logo-img.brand-listo { opacity: 1; }
-/* v5.9.28 - el logo nunca se oculta esperando la descarga: el fondo tambien
-   se declara aca, asi la marca de la landing se ve siempre. */
-.brand-logo-img:not(.brand-sin-logo) {
-  visibility: visible;
-  background-image: url("icons/logo.png?v=5.9.43");
+.btn-nav-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(var(--brand-rgb), 0.35);
+  transition: all 0.2s ease;
 }
-/* El logo se muestra tal cual: imagen a color con fondo transparente. */
-.brand-logo-img.brand-plana { filter: drop-shadow(0 3px 14px rgba(0, 0, 0, .35)); }
-
-/* Sin archivo de logo: el nombre con el degradado de la marca. */
-.brand-logo-img.brand-sin-logo {
-  opacity: 1;
-  width: auto;
-  height: auto;
-  background: none;
-  filter: none;
-  -webkit-mask-image: none;
-  mask-image: none;
-  font-size: clamp(30px, 9vw, 40px);
-  line-height: 1.1;
-  font-weight: 800;
-  letter-spacing: -.5px;
-  background-image: linear-gradient(135deg, #ffffff 0%, #a78bfa 55%, #4f46e5 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+.btn-nav-install:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(var(--brand-rgb), 0.5);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .brand-logo-img { transition: none; }
+/* ---------- HERO SECTION (CON LOGO ANIMADO CENTRADO) ---------- */
+.landing-hero {
+  position: relative;
+  padding: 56px 0 72px;
+  text-align: center;
+}
+.hero-stage-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
 }
 
-/* v5.9.9 - logo original: colores propios, fondo transparente, sin recuadro */
-.brand-logo-img,
-[data-brand-logo] {
-  background-color: transparent !important;
-  background-repeat: no-repeat !important;
-  background-size: contain !important;
-  background-position: center !important;
-  -webkit-mask-image: none !important;
-  mask-image: none !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
-.brand-logo-img.brand-plana {
-  filter: drop-shadow(0 8px 26px rgba(0, 0, 0, .45));
-}
-
-
-/* ============================================================
-   v5.9.39 - LA MARCA DE LA PRESENTACION SE ANIMA COMO EL ARRANQUE
-
-   Es la misma secuencia que el splash de la aplicacion, con los
-   mismos tiempos (1,85 s):
-     1. el contorno del rayo se dibuja de punta a punta;
-     2. el cuerpo se carga de energia, del blanco al dorado;
-     3. tres arcos electricos chispean alrededor;
-     4. descarga: halo que se expande y destello contenido en el
-        circulo del logo, nunca fuera de el;
-     5. el rayo se apaga y entra el logo con la B, que late con un
-        aro de energia, recibe un barrido de luz y queda flotando.
-
-   Todo es SVG + CSS: ni una imagen nueva, ni una libreria.
-   La clase .animar viene puesta en el HTML, asi que la entrada se
-   ve aunque el script no llegue a correr; el script solo la repite
-   cuando volves a la pagina.
-   ============================================================ */
+/* MARCA: ESCENARIO DEL LOGO ANIMADO DE BAREMO */
 .brand-stage {
-  --brand-circulo: clamp(150px, 56vw, 210px);
+  --brand-circulo: clamp(160px, 25vw, 210px);
   position: relative;
   display: block;
   width: var(--brand-circulo);
@@ -461,8 +224,6 @@ body {
   margin: 0 auto;
   isolation: isolate;
 }
-
-/* dentro del escenario el logo ocupa todo el circulo */
 .brand-stage .brand-logo {
   position: absolute;
   inset: 0;
@@ -470,9 +231,8 @@ body {
   height: 100%;
   margin: 0;
   z-index: 2;
+  filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.65));
 }
-
-/* ---- el destello, recortado en el circulo del logo ---- */
 .brand-flash {
   position: absolute;
   left: 50%;
@@ -487,8 +247,6 @@ body {
   pointer-events: none;
   z-index: 1;
 }
-
-/* ---- el rayo, con el mismo centro que el logo ---- */
 .brand-bolt {
   position: absolute;
   left: 50%;
@@ -500,72 +258,72 @@ body {
   place-items: center;
   border-radius: 50%;
   clip-path: circle(50% at 50% 50%);
-  opacity: 0;
-  pointer-events: none;
   z-index: 1;
 }
-.brand-bolt .bolt-halo {
+.brand-stage .bolt-halo {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 100%;
-  height: 100%;
-  margin: -50% 0 0 -50%;
+  width: 90%;
+  height: 90%;
+  transform: translate(-50%, -50%) scale(0.34);
   border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.85) 0%, rgba(109, 92, 245, 0.8) 32%, rgba(34, 211, 238, 0.45) 54%, rgba(99, 91, 255, 0) 74%);
   opacity: 0;
-  pointer-events: none;
-  background: radial-gradient(circle, rgba(255, 255, 255, .6) 0%, rgba(167, 139, 250, .34) 38%, rgba(var(--brand-rgb), 0) 70%);
+  filter: blur(10px);
 }
-.brand-bolt .bolt-spark {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  opacity: 0;
-  z-index: 3;
-}
-.brand-bolt .bs1 { top: 22%; left: 20%;    width: 3px;   height: 3px;   background: #fbbf24; }
-.brand-bolt .bs2 { top: 50%; right: 16%;   width: 2.5px; height: 2.5px; background: #a78bfa; }
-.brand-bolt .bs3 { bottom: 22%; left: 26%; width: 2px;   height: 2px;   background: #22d3ee; }
-.brand-bolt .bs4 { top: 26%; right: 20%;   width: 3.5px; height: 3.5px; background: #ffffff; }
-.brand-bolt .bs5 { bottom: 24%; right: 28%; width: 2.5px; height: 2.5px; background: #ffd54a; }
-.brand-bolt .electric-bolt {
-  width: 46%;
-  height: 46%;
+.brand-stage .electric-bolt {
+  width: 58%;
+  height: 58%;
+  display: block;
   overflow: visible;
-  fill: none;
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 34px rgba(255, 213, 74, 0.85));
 }
-.brand-bolt .bolt-body {
+.brand-stage .bolt-body {
   fill: url(#boltGradLanding);
   opacity: 0;
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, .9)) drop-shadow(0 0 16px rgba(255, 213, 74, .7));
 }
-.brand-bolt .bolt-trazo {
+.brand-stage .bolt-trazo {
   fill: none;
   stroke: #ffffff;
-  stroke-width: 1.1;
-  stroke-linejoin: round;
+  stroke-width: 2.2;
   stroke-linecap: round;
+  stroke-linejoin: round;
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, .95));
+  opacity: 1;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 1));
 }
-.brand-bolt .bolt-arc {
+.brand-stage .bolt-arc {
   fill: none;
-  stroke: rgba(199, 190, 255, .95);
-  stroke-width: .55;
+  stroke: #ffd54a;
+  stroke-width: 1.8;
   stroke-linecap: round;
   opacity: 0;
-  filter: drop-shadow(0 0 3px rgba(167, 139, 250, .9));
+  filter: drop-shadow(0 0 6px rgba(255, 213, 74, 1));
 }
+.brand-stage .bolt-spark {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 12px 3px rgba(255, 213, 74, 0.95), 0 0 4px 1px #fff;
+  opacity: 0;
+}
+.brand-stage .bs1 { top: 22%; left: 34%; }
+.brand-stage .bs2 { top: 48%; left: 74%; }
+.brand-stage .bs3 { top: 72%; left: 28%; }
+.brand-stage .bs4 { top: 32%; left: 66%; }
+.brand-stage .bs5 { top: 64%; left: 68%; }
 
-/* ---- el aro y el barrido de luz sobre la B ---- */
 .brand-stage .brand-logo::before {
   content: '';
   position: absolute;
   inset: 1%;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, .55);
-  box-shadow: 0 0 14px rgba(255, 255, 255, .45), inset 0 0 18px rgba(167, 139, 250, .35);
+  box-shadow: 0 0 16px rgba(255, 255, 255, .5), inset 0 0 20px rgba(167, 139, 250, .4);
   opacity: 0;
   pointer-events: none;
 }
@@ -584,7 +342,7 @@ body {
   pointer-events: none;
 }
 
-/* ---- la secuencia ---- */
+/* SECUENCIA DE ANIMACIÓN DEL LOGO */
 .brand-stage.animar .brand-flash        { animation: bFlash 1.85s ease-out forwards; }
 .brand-stage.animar .brand-bolt         { animation: bRayo 1.85s cubic-bezier(.22, .9, .24, 1) forwards; }
 .brand-stage.animar .bolt-halo          { animation: bHalo 1.85s ease-out forwards; }
@@ -639,180 +397,803 @@ body {
   57%     { opacity: 0; }
   100%    { opacity: 0; }
 }
-@keyframes bFlash {
-  0%, 42% { opacity: 0; }
-  50%     { opacity: .85; }
-  60%     { opacity: .16; }
+@keyframes bChispaAlta {
+  0%, 20% { opacity: 0; transform: scale(.4); }
+  25%     { opacity: 1; transform: scale(1.3); }
+  32%     { opacity: 0; transform: scale(.6); }
   100%    { opacity: 0; }
 }
-@keyframes bRayo {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.30); }
-  16%  { opacity: 1; transform: translate(-50%, -50%) scale(1.10); }
-  50%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  70%  { opacity: .5; transform: translate(-50%, -50%) scale(1.06); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.12); visibility: hidden; }
-}
-@keyframes bChispaAlta {
-  0%   { transform: translate(0, 0) scale(1); opacity: 1; box-shadow: 0 0 6px #ffffff; }
-  100% { transform: translate(11px, -12px) scale(0); opacity: 0; }
-}
 @keyframes bChispaBaja {
-  0%   { transform: translate(0, 0) scale(1); opacity: 1; box-shadow: 0 0 6px #ffd54a; }
-  100% { transform: translate(8px, 10px) scale(0); opacity: 0; }
+  0%, 30% { opacity: 0; transform: scale(.4); }
+  36%     { opacity: 1; transform: scale(1.2); }
+  44%     { opacity: 0; transform: scale(.5); }
+  100%    { opacity: 0; }
+}
+@keyframes bFlash {
+  0%, 46% { opacity: 0; transform: translate(-50%, -50%) scale(.6); }
+  52%     { opacity: .95; transform: translate(-50%, -50%) scale(1.04); }
+  68%     { opacity: .4; transform: translate(-50%, -50%) scale(1); }
+  100%    { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes bRayo {
+  0%, 54% { opacity: 1; }
+  56%     { opacity: 0; }
+  100%    { opacity: 0; }
 }
 @keyframes bEntrada {
-  0%, 46% { opacity: 0; transform: scale(.62); }
-  58%     { opacity: 1; transform: scale(1.12); }
-  72%     { opacity: 1; transform: scale(.97); }
+  0%, 46% { opacity: 0; transform: scale(.92); }
+  54%     { opacity: 1; transform: scale(1.05); }
+  66%     { transform: scale(.99); }
+  78%     { transform: scale(1); }
   100%    { opacity: 1; transform: scale(1); }
 }
 @keyframes brandAro {
-  0%, 48% { opacity: 0; transform: scale(.72); }
-  60%     { opacity: .95; transform: scale(.9); }
-  78%     { opacity: .5; transform: scale(.98); }
-  100%    { opacity: 0; transform: scale(1); }
+  0%, 52% { opacity: 0; transform: scale(.9); }
+  56%     { opacity: .9; transform: scale(1.02); }
+  74%     { opacity: .3; }
+  100%    { opacity: 0; }
 }
 @keyframes brandBrillo {
-  0%, 54% { opacity: 0; background-position: 130% 50%; }
-  60%     { opacity: 1; }
-  92%     { opacity: .9; background-position: -30% 50%; }
-  100%    { opacity: 0; background-position: -30% 50%; }
+  0%, 55% { opacity: 0; background-position: 130% 50%; }
+  58%     { opacity: 1; }
+  78%     { opacity: 1; background-position: -30% 50%; }
+  85%     { opacity: 0; }
+  100%    { opacity: 0; }
 }
 @keyframes brandResplandor {
-  0%, 46% { filter: drop-shadow(0 6px 22px rgba(0, 0, 0, .38)); }
-  58%     { filter: drop-shadow(0 0 18px rgba(255, 255, 255, .95)) drop-shadow(0 0 34px rgba(255, 213, 74, .75)); }
-  72%     { filter: drop-shadow(0 4px 18px rgba(0, 0, 0, .3)) drop-shadow(0 0 10px rgba(255, 255, 255, .4)); }
-  86%     { filter: drop-shadow(0 0 14px rgba(255, 255, 255, .7)) drop-shadow(0 0 26px rgba(130, 190, 255, .55)); }
-  100%    { filter: drop-shadow(0 6px 22px rgba(0, 0, 0, .38)); }
+  0%, 52% { filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+  55%     { filter: drop-shadow(0 0 28px rgba(255, 255, 255, .9)) drop-shadow(0 0 60px rgba(109, 92, 245, .8)); }
+  75%     { filter: drop-shadow(0 8px 24px rgba(0, 0, 0, .45)); }
+  100%    { filter: drop-shadow(0 10px 28px rgba(0, 0, 0, .45)); }
+}
+@keyframes brandFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-7px) scale(1.025); }
 }
 
-/* Movimiento reducido: se ve el logo quieto, sin rayo ni destellos. */
-/* Movimiento reducido: se ve el logo quieto, sin rayo ni destellos. */
-@media (prefers-reduced-motion: reduce) {
-  .brand-flash,
-  .brand-bolt { display: none; }
-  .brand-stage.animar .brand-logo,
-  .brand-stage.animar .brand-logo::before,
-  .brand-stage.animar .brand-logo::after { animation: none; }
-  .brand-stage .brand-logo::before,
-  .brand-stage .brand-logo::after { opacity: 0; }
+/* TEXTOS DEL HERO */
+.hero-editorial-label {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--accent);
+  margin-bottom: 12px;
 }
-
-
-/* ============================================================
-   v5.9.43 - REDISENO DE LA PRESENTACION
-   Se corrige el desarme anterior: el logo volvio adentro de
-   .brand-stage y desaparecieron los huecos. Ademas la tarjeta
-   respira mejor: marca + titulo + descripcion forman un solo
-   bloque, las funciones pasan a fichas en dos columnas y los
-   creditos quedan en una sola linea. La animacion del rayo y de
-   la B no se toca: aca solo hay medidas, aire y color.
-   ============================================================ */
-.card {
-  max-width: 430px;
-  gap: 0;
-  padding: 30px 22px 26px;
+.hero-title {
+  font-size: clamp(40px, 6vw, 68px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+  color: #ffffff;
+  margin-bottom: 16px;
 }
-
-/* ---- bloque de marca, sin aire muerto alrededor ---- */
-.hero {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-.brand { margin: 0; }
-.brand-stage { --brand-circulo: clamp(138px, 44vw, 172px); }
-.tagline {
-  font-size: clamp(17px, 5vw, 20px);
-  font-weight: 800;
-  line-height: 1.25;
-  letter-spacing: -.2px;
-  max-width: 18ch;
-  background: linear-gradient(100deg, #ffffff 0%, #d7d0ff 45%, var(--accent) 100%);
+.hero-tagline {
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.4px;
+  max-width: 32ch;
+  margin: 0 auto 18px;
+  background: linear-gradient(105deg, #ffffff 0%, #d8d0ff 45%, var(--accent) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  animation: rise .6s .1s cubic-bezier(.22, 1, .36, 1) both;
 }
-.desc {
-  font-size: 13.5px;
-  max-width: 33ch;
-  margin: 0 auto;
-}
-
-/* ---- funciones: fichas de vidrio en dos columnas ---- */
-.features {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 20px;
-}
-.features li,
-.features li:last-child {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 7px;
-  padding: 12px 11px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, .055) 0%, rgba(255, 255, 255, .022) 100%);
-  transition: border-color .2s ease, transform .2s ease;
-}
-.features li:hover { border-color: rgba(var(--brand-rgb), .38); transform: translateY(-2px); }
-.f-ico {
-  flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  font-size: 15px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(var(--brand-rgb), .32), rgba(34, 211, 238, .16));
-  border: 1px solid rgba(var(--brand-rgb), .3);
-}
-.f-txt { font-size: 11px; line-height: 1.4; }
-.f-txt b { font-size: 12px; margin-bottom: 3px; color: #fff; }
-
-/* ---- llamado a la accion ---- */
-.btn-install { margin-top: 20px; max-width: 100%; }
-.nota {
-  margin-top: 10px;
-  font-size: 10.5px;
-  line-height: 1.5;
+.hero-desc {
+  font-size: 16px;
+  line-height: 1.65;
   color: var(--gray-soft);
-  max-width: 32ch;
-  animation: rise .6s .28s cubic-bezier(.22, 1, .36, 1) both;
+  max-width: 66ch;
+  margin: 0 auto 36px;
 }
 
-/* ---- creditos en una sola linea ---- */
-.credits {
-  margin-top: 18px;
-  padding: 11px 14px;
-  border-radius: 14px;
+/* ACCIONES DE INSTALACIÓN Y EXPLORACIÓN */
+.hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.hero-btn-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 14px;
 }
-.credits .credits-emoji { font-size: 17px; margin: 0; }
-.credits .credits-label { display: inline; margin: 0; font-size: 9px; }
-.credits .credits-author { font-size: 15px; }
-.credits .credits-divider { display: none; }
-.credits .app-version { margin-left: auto; }
 
-@media (max-width: 360px) {
-  .card { padding: 26px 16px 22px; }
-  .features { grid-template-columns: 1fr; gap: 7px; }
-  .features li, .features li:last-child { flex-direction: row; align-items: center; }
-  .credits .app-version { margin-left: 0; }
+/* BOTÓN PRINCIPAL DE INSTALACIÓN DE LA PWA */
+.btn-install {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 36px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@media (min-height: 780px) {
-  .card { padding: 38px 26px 30px; }
-  .features { gap: 9px; margin-top: 24px; }
+.btn-install:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(79, 70, 229, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
 }
+.btn-install:active {
+  transform: translateY(0);
+}
+.btn-install .bi-icon {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+}
+.bi-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.28) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: sheen 4.5s ease-in-out infinite;
+}
+@keyframes sheen {
+  0%, 70% { transform: translateX(-100%); }
+  100%    { transform: translateX(100%); }
+}
+
+/* ESTADOS DINÁMICOS DEL BOTÓN */
+.btn-install.ok {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.45);
+}
+.btn-install.cargando {
+  opacity: 0.85;
+  pointer-events: none;
+}
+.btn-install.shake {
+  animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* BOTÓN SECUNDARIO */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* GARANTÍAS HERO */
+.hero-guarantees {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  font-size: 12.5px;
+  color: var(--gray-soft);
+}
+.hero-guarantees span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hero-guarantees .check {
+  color: #10b981;
+  font-weight: 800;
+}
+
+/* ---------- FRANJA DE MÉTRICAS OPERATIVAS ---------- */
+.stats-ribbon {
+  padding: 30px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: rgba(14, 11, 33, 0.55);
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.stat-box {
+  text-align: center;
+  padding: 8px 12px;
+}
+.stat-num {
+  font-size: clamp(26px, 3.5vw, 38px);
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: #ffffff;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.stat-num.accent { color: var(--accent); }
+.stat-lbl {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-soft);
+}
+
+/* ---------- SHOWCASE / VISTA PREVIA INTERACTIVA DE LA APP ---------- */
+.showcase-section {
+  padding: 80px 0;
+}
+.section-header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 48px;
+}
+.section-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.section-title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+.section-subtitle {
+  font-size: 16px;
+  color: var(--gray-soft);
+  line-height: 1.6;
+}
+
+/* PESTAÑAS DE CONTROL DEL SHOWCASE */
+.showcase-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+.showcase-tab {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-soft);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.showcase-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.showcase-tab.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 16px rgba(var(--brand-rgb), 0.35);
+}
+
+/* MAQUETA DE DISPOSITIVO */
+.device-mockup {
+  position: relative;
+  max-width: 780px;
+  margin: 0 auto;
+  border-radius: 28px;
+  padding: 16px;
+  background: linear-gradient(180deg, #1c173b 0%, #0d0a21 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(var(--brand-rgb), 0.25);
+}
+.device-inner {
+  border-radius: 20px;
+  background: #080616;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.device-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #0d0a21;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.device-app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  color: #ffffff;
+}
+.device-pwa-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: #059669;
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.device-content {
+  padding: 24px;
+  min-height: 380px;
+}
+
+/* VISTAS DENTRO DEL SHOWCASE */
+.showcase-panel {
+  display: none;
+  animation: fadeIn 0.3s ease forwards;
+}
+.showcase-panel.active {
+  display: block;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ELEMENTOS DE SIMULACIÓN DE UI DE BAREMO */
+.mock-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+.mock-user-meta {
+  font-size: 13.5px;
+  color: var(--gray-soft);
+}
+.mock-user-meta b {
+  color: #ffffff;
+}
+.mock-total-badge {
+  text-align: right;
+}
+.mock-total-badge .lbl {
+  font-size: 11px;
+  color: var(--gray-soft);
+  text-transform: uppercase;
+}
+.mock-total-badge .val {
+  font-size: 22px;
+  font-weight: 900;
+  color: #34d399;
+}
+.mock-card {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mock-card-left h4 {
+  font-size: 14px;
+  color: #ffffff;
+  margin-bottom: 3px;
+}
+.mock-card-left p {
+  font-size: 12px;
+  color: var(--gray-soft);
+}
+.mock-card-right {
+  text-align: right;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent);
+}
+.mock-ats-status {
+  padding: 14px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-sm);
+  color: #6ee7b7;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- GRID DE FUNCIONALIDADES DETALLADAS ---------- */
+.features-section {
+  padding: 80px 0;
+  background: rgba(10, 8, 26, 0.4);
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.feat-card {
+  position: relative;
+  padding: 28px 24px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+.feat-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(var(--brand-rgb), 0.35);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+}
+.feat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  background: linear-gradient(135deg, rgba(var(--brand-rgb), 0.22), rgba(34, 211, 238, 0.12));
+  border: 1px solid rgba(var(--brand-rgb), 0.25);
+  margin-bottom: 18px;
+}
+.feat-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 10px;
+  letter-spacing: -0.2px;
+}
+.feat-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--gray-soft);
+  flex-grow: 1;
+}
+
+/* ---------- TARJETA EXPLICATIVA STANDALONE GATE ---------- */
+.standalone-section {
+  padding: 60px 0;
+}
+.standalone-card {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 36px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.14) 0%, rgba(124, 58, 237, 0.08) 100%);
+  border: 1px solid rgba(99, 91, 255, 0.3);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 36px;
+  align-items: center;
+}
+.standalone-info h3 {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+.standalone-info p {
+  font-size: 14.5px;
+  color: var(--gray-soft);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.standalone-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.standalone-list li {
+  font-size: 13.5px;
+  color: var(--gray);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.standalone-list li::before {
+  content: '✓';
+  color: var(--accent);
+  font-weight: 900;
+}
+.standalone-box-right {
+  padding: 24px;
+  background: rgba(5, 3, 15, 0.85);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.s-box-icon {
+  font-size: 38px;
+  margin-bottom: 12px;
+}
+.s-box-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.s-box-desc {
+  font-size: 12.5px;
+  color: var(--gray-soft);
+  margin-bottom: 16px;
+}
+
+/* ---------- GUÍA DE INSTALACIÓN PASO A PASO ---------- */
+.install-guide-section {
+  padding: 80px 0;
+}
+.guide-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 36px;
+}
+.guide-tab-btn {
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-soft);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+.guide-tab-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.guide-tab-btn.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 20px rgba(var(--brand-rgb), 0.4);
+}
+.guide-panel {
+  display: none;
+  max-width: 900px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease forwards;
+}
+.guide-panel.active {
+  display: block;
+}
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.step-card {
+  padding: 24px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.step-number {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+}
+.step-card h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+.step-card p {
+  font-size: 13.5px;
+  color: var(--gray-soft);
+  line-height: 1.55;
+}
+
+/* ---------- PREGUNTAS FRECUENTES (FAQ ACORDEÓN) ---------- */
+.faq-section {
+  padding: 80px 0;
+  background: rgba(10, 8, 26, 0.4);
+}
+.faq-list {
+  max-width: 780px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.faq-item {
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+.faq-item:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.faq-question {
+  width: 100%;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+.faq-icon {
+  font-size: 18px;
+  color: var(--accent);
+  transition: transform 0.25s ease;
+}
+.faq-item.open .faq-icon {
+  transform: rotate(45deg);
+}
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  padding: 0 24px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--gray-soft);
+}
+.faq-item.open .faq-answer {
+  padding-bottom: 20px;
+}
+
+/* ---------- FINAL CTA BANNER ---------- */
+.final-cta-section {
+  padding: 90px 0 70px;
+}
+.final-cta-card {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 56px 36px;
+  text-align: center;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(180deg, rgba(28, 22, 66, 0.85) 0%, rgba(13, 10, 33, 0.95) 100%);
+  border: 1px solid rgba(99, 91, 255, 0.35);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+}
+.final-cta-card h2 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+.final-cta-card p {
+  font-size: 16px;
+  color: var(--gray-soft);
+  max-width: 50ch;
+  margin: 0 auto 30px;
+}
+
+/* ---------- FOOTER PROFESIONAL ---------- */
+.landing-footer {
+  border-top: 1px solid var(--border);
+  background: #04020a;
+  padding: 50px 0 36px;
+  margin-top: auto;
+}
+.footer-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.footer-brand h4 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+}
+.footer-desc {
+  font-size: 13px;
+  color: var(--gray-dim);
+  max-width: 38ch;
+}
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12.5px;
+  color: var(--gray-dim);
+}
+.footer-credits-author {
+  color: var(--gray-soft);
+  font-weight: 600;
+}
+.footer-version-tag {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ---------- RESPONSIVIDAD ---------- */
+@media (max-width: 992px) {
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .standalone-card { grid-template-columns: 1fr; }
+  .steps-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .landing-nav .nav-links { display: none; }
+  .features-grid { grid-template-columns: 1fr; }
+  .hero-tagline { font-size: 20px; }
+  .device-mockup { padding: 10px; border-radius: 20px; }
+  .device-content { padding: 16px; }
+  .showcase-tabs { flex-direction: column; width: 100%; }
+  .showcase-tab { width: 100%; text-align: center; }
+  .guide-tabs { flex-direction: column; width: 100%; }
+  .guide-tab-btn { width: 100%; justify-content: center; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .tagline, .nota { animation: none; }
-  .features li:hover { transform: none; }
+  .brand-stage.animar .brand-logo,
+  .brand-stage.animar .brand-logo::before,
+  .brand-stage.animar .brand-logo::after,
+  .brand-stage.animar .electric-bolt,
+  .brand-stage.animar .bolt-trazo,
+  .brand-stage.animar .bolt-body,
+  .glow,
+  .bi-sheen {
+    animation: none !important;
+  }
 }

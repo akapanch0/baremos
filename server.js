@@ -1512,6 +1512,36 @@ app.get('/api/version', (req, res) => {
   }
 });
 
+// Servir Service Worker con cabeceras estrictas de tipo MIME JavaScript y sin caché
+const servirServiceWorker = (req, res) => {
+  const isSw = req.path.includes('sw');
+  const file = isSw ? 'sw.js' : 'service-worker.js';
+  const filePath = path.join(__dirname, file);
+
+  res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.sendFile(filePath);
+};
+
+app.get(['/service-worker.js', '/sw.js', '/service-worker', '/sw'], servirServiceWorker);
+app.get(/^\/(service-worker|sw)(\.js)?\/?$/, servirServiceWorker);
+
+// Rutas explícitas de navegación: en el navegador la raíz abre la Landing Page
+app.get(['/', '/landing', '/landing.html'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'landing.html'));
+});
+
+// index.html es el punto de acceso de la PWA instalada en modo standalone
+app.get(['/index', '/index.html'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Servir archivos estáticos
 app.use(express.static(__dirname, {
   etag: true,
@@ -1530,14 +1560,18 @@ app.use(express.static(__dirname, {
   }
 }));
 
-// Fallback a index.html solo para solicitudes de navegación HTML (sin extensión de archivo)
+// Fallback a landing.html solo para solicitudes de navegación HTML en el navegador
 app.use((req, res) => {
   const ext = path.extname(req.path);
   if (ext && ext !== '.html') {
     return res.status(404).end();
   }
+  // Si la ruta parece un script de service worker o API, no servir HTML
+  if (req.path.startsWith('/api/') || req.path.includes('service-worker') || req.path.includes('/sw')) {
+    return res.status(404).end();
+  }
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'landing.html'));
 });
 
 app.listen(PORT, HOST, () => {

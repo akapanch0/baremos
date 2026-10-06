@@ -214,7 +214,18 @@ self.addEventListener('fetch', event => {
   let url;
   try { url = new URL(event.request.url); } catch (e) { return; }
 
-  // Los archivos de version SIEMPRE van a la red y nunca se guardan: son los
+  // 1. Archivos de scripts del Service Worker: NUNCA interceptar ni cachear
+  // Se deja pasar directo a la red para que el navegador controle las actualizaciones y los tipos MIME
+  if (
+    url.pathname.endsWith('/service-worker.js') ||
+    url.pathname.endsWith('/sw.js') ||
+    url.pathname === '/service-worker.js' ||
+    url.pathname === '/sw.js'
+  ) {
+    return;
+  }
+
+  // 2. Los archivos de version SIEMPRE van a la red y nunca se guardan: son los
   // que permiten detectar la version nueva desde adentro de la app.
   if (esArchivoDeVersion(url)) {
     event.respondWith(

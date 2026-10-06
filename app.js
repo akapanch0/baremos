@@ -713,7 +713,7 @@ async function registerSW() {
     if (window.__swRegistration) {
       swRegistration = window.__swRegistration;
     } else {
-      swRegistration = await navigator.serviceWorker.register('./service-worker.js');
+      swRegistration = await navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' });
       window.__swRegistration = swRegistration;
     }
     

@@ -4,106 +4,674 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#4338ca">
-<title>BAREMO — Registro de producción diaria</title>
-<meta name="description" content="BAREMO: registro de producción diaria por baremo, con tareas geolocalizadas, combustible, quincenas, dashboard y reportes en PDF y Excel. Funciona sin conexión.">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.48">
-<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.48">
-<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.48">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.48">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.48">
-<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.48">
-<link rel="manifest" href="manifest.json?v=5.9.48">
-<link rel="stylesheet" href="landing.css?v=5.9.48">
-<script src="brand.js?v=5.9.48" defer></script>
+<title>BAREMO — Registro de Producción Diaria, Baremos y Seguridad Operativa</title>
+<meta name="description" content="BAREMO: La plataforma oficial de registro de producción diaria por baremo para cuadrillas y contratistas. Tareas geolocalizadas por GPS, protocolo ATS, combustible y reportes en PDF y Excel — 100% offline.">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=5.9.53">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png?v=5.9.53">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png?v=5.9.53">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=5.9.53">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=5.9.53">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=5.9.53">
+<link rel="manifest" href="manifest.json?v=5.9.53">
+<link rel="stylesheet" href="landing.css?v=5.9.53">
+<script src="brand.js?v=5.9.53" defer></script>
 </head>
 <body>
 
-<main class="landing">
+<div class="landing-wrap">
+  <!-- Halos ambientales de luz -->
   <div class="glow glow-a" aria-hidden="true"></div>
   <div class="glow glow-b" aria-hidden="true"></div>
+  <div class="glow glow-c" aria-hidden="true"></div>
 
-  <section class="card">
+  <!-- NAVBAR SUPERIOR -->
+  <header class="landing-nav">
+    <div class="container">
+      <a href="#inicio" class="nav-brand" aria-label="BAREMO - Inicio">
+        <div class="nav-logo-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/></svg>
+        </div>
+        <span class="nav-brand-name">BAREMO</span>
+        <span class="nav-badge">PWA Oficial</span>
+      </a>
 
-    <!-- MARCA (v5.9.43): el logo va SIEMPRE adentro de .brand-stage.
-         Ahi el CSS lo apoya sobre el escenario de la animacion (inset 0) y
-         queda encima del rayo. Si se lo saca del escenario pierde su medida,
-         se descuelga y deja el hueco que rompia la presentacion. El nombre
-         queda accesible en .sr-only para lectores de pantalla. -->
-    <div class="hero">
-      <h1 class="brand">
-      <!-- MISMA ENTRADA QUE EL ARRANQUE DE LA APP
-           El rayo se dibuja, se carga de energia, chispea, descarga en un
-           destello y recien ahi aparece el logo con la B, que late, recibe un
-           barrido de luz y queda flotando. Todo es SVG + CSS recortado dentro
-           del circulo: no hay imagenes nuevas y no se toca ni un tiempo. -->
-      <span class="brand-stage animar" id="brandStage">
-        <span class="brand-flash" aria-hidden="true"></span>
-        <span class="brand-bolt electric-wrapper" aria-hidden="true">
-          <span class="bolt-halo"></span>
-          <span class="bolt-spark bs1"></span>
-          <span class="bolt-spark bs2"></span>
-          <span class="bolt-spark bs3"></span>
-          <span class="bolt-spark bs4"></span>
-          <span class="bolt-spark bs5"></span>
-          <svg class="electric-bolt" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-            <defs>
-              <linearGradient id="boltGradLanding" x1="6" y1="1" x2="18" y2="23" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#ffffff"/>
-                <stop offset="45%" stop-color="#eae7ff"/>
-                <stop offset="100%" stop-color="#ffd54a"/>
-              </linearGradient>
-            </defs>
-            <path class="bolt-arc a1" d="M6.6 3.1C4.3 5 3 7.6 2.9 10.4"/>
-            <path class="bolt-arc a2" d="M20.9 8.3c1.4 2.7 1.3 5.8-.3 8.3"/>
-            <path class="bolt-arc a3" d="M8.7 21.5c-2.1-.9-3.8-2.6-4.7-4.7"/>
-            <path class="bolt-body" d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/>
-            <path class="bolt-trazo" pathLength="100" d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/>
-          </svg>
-        </span>
-        <span class="brand-logo brand-logo-img" data-brand-logo data-brand-text="BAREMO" role="img" aria-label="BAREMO"></span>
-      </span>
-      <span class="sr-only">BAREMO</span>
-    </h1>
+      <nav aria-label="Navegación principal">
+        <ul class="nav-links">
+          <li><a href="#funciones">Funcionalidades</a></li>
+          <li><a href="#showcase">Vista Previa</a></li>
+          <li><a href="#standalone">Modo Standalone</a></li>
+          <li><a href="#instalacion">Cómo Instalar</a></li>
+          <li><a href="#faq">Preguntas</a></li>
+        </ul>
+      </nav>
 
-      <p class="tagline">Tu producción diaria, clara y bajo control</p>
-      <p class="desc">Cargás lo que hiciste en la calle y la app calcula, ordena y respalda todo en tu propio dispositivo.</p>
+      <div class="nav-cta">
+        <button type="button" class="btn-nav-install" id="btnNavInstall">
+          <span>📲</span> Instalar App
+        </button>
+      </div>
     </div>
+  </header>
 
-    <ul class="features">
-      <li><span class="f-ico">⚡</span><span class="f-txt"><b>Producción por baremo</b>Tareas del día con cálculo automático de totales.</span></li>
-      <li><span class="f-ico">📍</span><span class="f-txt"><b>Tareas con ubicación</b>Cada cierre guarda su dirección por GPS.</span></li>
-      <li><span class="f-ico">📊</span><span class="f-txt"><b>Dashboard y metas</b>Promedios, récords y avance del mes.</span></li>
-      <li><span class="f-ico">⛽</span><span class="f-txt"><b>Combustible y quincenas</b>Descuentos y saldo final al día.</span></li>
-      <li><span class="f-ico">📄</span><span class="f-txt"><b>Reportes PDF y Excel</b>Exportá una jornada o el mes completo.</span></li>
-      <li><span class="f-ico">📶</span><span class="f-txt"><b>Funciona sin conexión</b>Tus datos quedan siempre en el dispositivo.</span></li>
-    </ul>
+  <!-- HERO SECTION CON LOGO ANIMADO CENTRADO -->
+  <main>
+    <section class="landing-hero" id="inicio">
+      <div class="container">
+        <span class="hero-editorial-label">Sistema Operativo para Cuadrillas y Contratistas Técnicos</span>
 
-    <button class="btn-install" id="btnInstall" type="button">
-      <span class="bi-label" id="biLabel">Instalar aplicación</span>
-      <span class="bi-sheen" aria-hidden="true"></span>
-    </button>
-    <p class="nota">Se instala en tu teléfono · Funciona sin conexión · Tus datos no salen del dispositivo</p>
+        <!-- LOGO ANIMADO CENTRADO DE BAREMO -->
+        <div class="hero-stage-wrap">
+          <div class="brand-stage animar" id="brandStage" role="img" aria-label="Logo animado de BAREMO con rayo de energía eléctrica">
+            <span class="brand-flash" aria-hidden="true"></span>
+            <span class="brand-bolt electric-wrapper" aria-hidden="true">
+              <span class="bolt-halo"></span>
+              <span class="bolt-spark bs1"></span>
+              <span class="bolt-spark bs2"></span>
+              <span class="bolt-spark bs3"></span>
+              <span class="bolt-spark bs4"></span>
+              <span class="bolt-spark bs5"></span>
+              <svg class="electric-bolt" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="boltGradLanding" x1="6" y1="1" x2="18" y2="23" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#ffffff"/>
+                    <stop offset="45%" stop-color="#eae7ff"/>
+                    <stop offset="100%" stop-color="#ffd54a"/>
+                  </linearGradient>
+                </defs>
+                <path class="bolt-arc a1" d="M6.6 3.1C4.3 5 3 7.6 2.9 10.4"/>
+                <path class="bolt-arc a2" d="M20.9 8.3c1.4 2.7 1.3 5.8-.3 8.3"/>
+                <path class="bolt-arc a3" d="M8.7 21.5c-2.1-.9-3.8-2.6-4.7-4.7"/>
+                <path class="bolt-body" d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/>
+                <path class="bolt-trazo" pathLength="100" d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/>
+              </svg>
+            </span>
+            <span class="brand-logo brand-logo-img" data-brand-logo data-brand-text="BAREMO" role="img" aria-label="BAREMO"></span>
+          </div>
+        </div>
 
-    <!-- Creditos animados, igual criterio que el menu Ajustes de la app -->
-    <div class="credits">
-      <span class="credits-emoji" aria-hidden="true">🚀</span>
-      <span class="credits-label">Desarrollado por</span>
-      <span class="credits-author">Akapanch0</span>
-      <span class="credits-divider" aria-hidden="true"></span>
-      <span class="app-version" id="appVersion">v5.9.48</span>
+        <h1 class="hero-title">BAREMO</h1>
+        <p class="hero-tagline">Tu producción diaria, cálculos de baremos y seguridad laboral bajo control</p>
+        <p class="hero-desc">
+          La herramienta de campo definitiva para cuadrillas de telecomunicaciones, electricidad y servicios. Registrá tareas por baremo, geolocalizá obras con GPS, completá el protocolo ATS y emití partes oficiales en PDF y Excel — 100% offline y en tu dispositivo.
+        </p>
+
+        <!-- ACCIONES PRINCIPALES DE INSTALACIÓN -->
+        <div class="hero-actions">
+          <div class="hero-btn-row">
+            <button class="btn-install" id="btnInstall" type="button" aria-label="Instalar aplicación BAREMO">
+              <span class="bi-icon" aria-hidden="true">⚡</span>
+              <span class="bi-label" id="biLabel">Instalar Aplicación</span>
+              <span class="bi-sheen" aria-hidden="true"></span>
+            </button>
+            <a href="#showcase" class="btn-secondary">
+              Ver Funciones y Módulos ↓
+            </a>
+          </div>
+
+          <div class="hero-guarantees">
+            <span><strong class="check">✓</strong> Instalación PWA Directa</span>
+            <span><strong class="check">✓</strong> Funciona 100% sin señal</span>
+            <span><strong class="check">✓</strong> Datos protegidos en tu dispositivo</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FRANJA DE MÉTRICAS OPERATIVAS -->
+    <section class="stats-ribbon" aria-label="Métricas de campo">
+      <div class="container">
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-num accent">100%</div>
+            <div class="stat-lbl">Operatividad Offline (Sin señal)</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">+40%</div>
+            <div class="stat-lbl">Ahorro de Tiempo en Liquidación</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num accent">GPS</div>
+            <div class="stat-lbl">Auditoría Geográfica de Obras</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">PDF/XLS</div>
+            <div class="stat-lbl">Reportes Oficiales Homologados</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SHOWCASE / VISTA PREVIA INTERACTIVA DE LA APLICACIÓN -->
+    <section class="showcase-section" id="showcase">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-kicker">Vista Previa Operativa</div>
+          <h2 class="section-title">La Interfaz que Revoluciona el Trabajo de Cuadrilla</h2>
+          <p class="section-subtitle">
+            Diseñada con alto contraste para visibilidad bajo la luz directa del sol y optimizada para operar con una sola mano en campo.
+          </p>
+        </div>
+
+        <!-- Pestañas del Showcase -->
+        <div class="showcase-tabs" role="tablist" aria-label="Pestañas de la vista previa">
+          <button class="showcase-tab active" data-tab="jornada" role="tab" aria-selected="true" aria-controls="panel-jornada">
+            📋 Carga de Baremos
+          </button>
+          <button class="showcase-tab" data-tab="ats" role="tab" aria-selected="false" aria-controls="panel-ats">
+            ⚠️ Protocolo ATS
+          </button>
+          <button class="showcase-tab" data-tab="combustible" role="tab" aria-selected="false" aria-controls="panel-combustible">
+            ⛽ Control Combustible
+          </button>
+          <button class="showcase-tab" data-tab="reportes" role="tab" aria-selected="false" aria-controls="panel-reportes">
+            📄 Reportes PDF y Excel
+          </button>
+        </div>
+
+        <!-- Maqueta de Dispositivo -->
+        <div class="device-mockup">
+          <div class="device-inner">
+            <div class="device-top-bar">
+              <div class="device-app-title">
+                <span>⚡</span> BAREMO — Cuadrilla 104
+              </div>
+              <div class="device-pwa-badge">MODO STANDALONE ACTIVO</div>
+            </div>
+
+            <div class="device-content">
+              <!-- Panel 1: Jornada y Baremos -->
+              <div class="showcase-panel active" id="panel-jornada" role="tabpanel">
+                <div class="mock-header-row">
+                  <div class="mock-user-meta">
+                    <div>Operador: <b>García, Juan (Legajo #4892)</b></div>
+                    <div style="font-size:12px; margin-top:2px;">Zona: Moreno / Trujui · Turno Mañana</div>
+                  </div>
+                  <div class="mock-total-badge">
+                    <div class="lbl">Total Producción</div>
+                    <div class="val">$148.500</div>
+                  </div>
+                </div>
+
+                <div class="mock-card">
+                  <div class="mock-card-left">
+                    <h4>C-01 · Tendido de Fibra Óptica 24 FO</h4>
+                    <p>📍 Av. Libertador 2450 (GPS: -34.6158, -58.7891) · 180 metros</p>
+                  </div>
+                  <div class="mock-card-right">24.5 Pts · $73.500</div>
+                </div>
+
+                <div class="mock-card">
+                  <div class="mock-card-left">
+                    <h4>A-14 · Acometida Domiciliaria con ONT</h4>
+                    <p>📍 Calle Las Rosas 412 · Instalación completa y certificación</p>
+                  </div>
+                  <div class="mock-card-right">15.0 Pts · $45.000</div>
+                </div>
+
+                <div class="mock-card">
+                  <div class="mock-card-left">
+                    <h4>M-03 · Reemplazo de Filtro en Poste</h4>
+                    <p>📍 Poste #142 (Esquina San Martín) · Mantenimiento correctivo</p>
+                  </div>
+                  <div class="mock-card-right">10.0 Pts · $30.000</div>
+                </div>
+              </div>
+
+              <!-- Panel 2: Protocolo ATS -->
+              <div class="showcase-panel" id="panel-ats" role="tabpanel">
+                <div class="mock-ats-status">
+                  <span style="font-size:18px;">🛡️</span>
+                  <div>
+                    <strong>ATS #2026-0941 APROBADO Y CERTIFICADO</strong>
+                    <div style="font-size:11.5px; opacity:0.85;">Protocolo obligatorio cumplimentado previo al inicio de jornada</div>
+                  </div>
+                </div>
+
+                <div class="mock-card">
+                  <div class="mock-card-left">
+                    <h4>Equipos de Protección Personal (EPP)</h4>
+                    <p>Casco dieléctrico, guantes de alta tensión, arnés y calzado de seguridad</p>
+                  </div>
+                  <div class="mock-card-right" style="color:#34d399;">✓ CONFORME</div>
+                </div>
+
+                <div class="mock-card">
+                  <div class="mock-card-left">
+                    <h4>Riesgos en Altura y Líneas de Tensión</h4>
+                    <p>Pértiga dieléctrica verificada · Distancia de seguridad a red MT respetada</p>
+                  </div>
+                  <div class="mock-card-right" style="color:#34d399;">✓ SEGURO</div>
+                </div>
+
+                <div class="mock-card">
+                  <div class="mock-card-left">
+                    <h4>Firma Digital de Cuadrilla y Supervisor</h4>
+                    <p>Firmado en pantalla por: Ing. Méndez (Supervisor Central Operativo)</p>
+                  </div>
+                  <div class="mock-card-right" style="color:#34d399;">✓ REGISTRADA</div>
+                </div>
+              </div>
+
+              <!-- Panel 3: Control Combustible -->
+              <div class="showcase-panel" id="panel-combustible" role="tabpanel">
+                <div class="mock-header-row">
+                  <div class="mock-user-meta">
+                    <div>Vehículo: <b>Hilux Cuadrilla 104 (AF 892 ZB)</b></div>
+                    <div style="font-size:12px; margin-top:2px;">Odómetro inicial: 142.300 km · Odómetro actual: 142.410 km</div>
+                  </div>
+                  <div class="mock-total-badge">
+                    <div class="lbl">Consumo Registrado</div>
+                    <div class="val" style="color:var(--accent);">110 km / 14 L</div>
+                  </div>
+                </div>
+
+                <div class="mock-card">
+                  <div class="mock-card-left">
+                    <h4>Carga YPF Moreno (Diesel Premium)</h4>
+                    <p>Ticket #0041-00084120 · Odómetro: 142.350 km · 28 Litros</p>
+                  </div>
+                  <div class="mock-card-right">$33.600</div>
+                </div>
+
+                <div class="mock-card">
+                  <div class="mock-card-left">
+                    <h4>Balance de Quincena (Descuento Combustible)</h4>
+                    <p>Producción Bruta: $640.000 · Deducción Combustible: -$48.000</p>
+                  </div>
+                  <div class="mock-card-right" style="color:#34d399;">Neto: $592.000</div>
+                </div>
+              </div>
+
+              <!-- Panel 4: Reportes PDF y Excel -->
+              <div class="showcase-panel" id="panel-reportes" role="tabpanel">
+                <div class="mock-card" style="background:rgba(99,91,255,0.12); border-color:rgba(99,91,255,0.3);">
+                  <div class="mock-card-left">
+                    <h4>📄 Parte Diario Oficial — Formato Homologado</h4>
+                    <p>Detalle pormenorizado de tareas, horas, coordenadas GPS y firma de conformidad</p>
+                  </div>
+                  <div class="mock-card-right">PDF Generado</div>
+                </div>
+
+                <div class="mock-card" style="background:rgba(16,185,129,0.12); border-color:rgba(16,185,129,0.3);">
+                  <div class="mock-card-left">
+                    <h4>📊 Planilla de Liquidación Quincenal — Excel (XLSX)</h4>
+                    <p>Cómputo automático de unidades, combustible, premios por producción y balance neto</p>
+                  </div>
+                  <div class="mock-card-right">XLSX Exportado</div>
+                </div>
+
+                <div style="font-size:12.5px; color:var(--gray-soft); text-align:center; margin-top:14px;">
+                  ⚡ Exportación instantánea generada directamente en tu teléfono, lista para compartir por WhatsApp o email sin consumir datos de red.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRID DE FUNCIONALIDADES DETALLADAS -->
+    <section class="features-section" id="funciones">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-kicker">Módulos Especializados</div>
+          <h2 class="section-title">Diseñado con Criterio de Campo Real</h2>
+          <p class="section-subtitle">
+            Cada módulo resuelve una necesidad operativa concreta de los técnicos y cuadrillas en la calle.
+          </p>
+        </div>
+
+        <div class="features-grid">
+          <!-- Card 1 -->
+          <article class="feat-card">
+            <div class="feat-icon">⚡</div>
+            <h3 class="feat-title">Cálculo Automático por Baremo</h3>
+            <p class="feat-desc">
+              Buscador ultrarrápido con catálogo de ítems, puntos y valores precargados. Totalización en vivo para saber con exactitud cuánto producís minuto a minuto.
+            </p>
+          </article>
+
+          <!-- Card 2 -->
+          <article class="feat-card">
+            <div class="feat-icon">📍</div>
+            <h3 class="feat-title">Geolocalización GPS y Mapas</h3>
+            <p class="feat-desc">
+              Cada cierre de tarea captura satelitalmente latitud, longitud y dirección por geocodificación inversa. Mapas de cuadrícula offline para zonas asignadas.
+            </p>
+          </article>
+
+          <!-- Card 3 -->
+          <article class="feat-card">
+            <div class="feat-icon">🛡️</div>
+            <h3 class="feat-title">Protocolo ATS de Seguridad</h3>
+            <p class="feat-desc">
+              Análisis de Trabajo Seguro obligatorio antes de iniciar tareas de riesgo (altura, media tensión, zanjas). Firma en pantalla de cuadrilla y supervisores.
+            </p>
+          </article>
+
+          <!-- Card 4 -->
+          <article class="feat-card">
+            <div class="feat-icon">⛽</div>
+            <h3 class="feat-title">Combustible y Kilometraje</h3>
+            <p class="feat-desc">
+              Registro fotográfico de tickets, control de odómetro de inicio y fin de jornada, y cálculo exacto de rendimiento de combustible por kilómetro.
+            </p>
+          </article>
+
+          <!-- Card 5 -->
+          <article class="feat-card">
+            <div class="feat-icon">📊</div>
+            <h3 class="feat-title">Liquidaciones Quincenales</h3>
+            <p class="feat-desc">
+              Cierre automatizado de 1ª y 2ª quincena. Balancea producción bruta, descuenta combustible asignado y proyecta con exactitud tu cobro neto final.
+            </p>
+          </article>
+
+          <!-- Card 6 -->
+          <article class="feat-card">
+            <div class="feat-icon">📄</div>
+            <h3 class="feat-title">Exportación en PDF y Excel</h3>
+            <p class="feat-desc">
+              Generá partes diarios y resúmenes mensuales homologados para presentar ante coordinadores y contratistas. Todo procesado localmente en segundos.
+            </p>
+          </article>
+
+          <!-- Card 7 -->
+          <article class="feat-card">
+            <div class="feat-icon">📶</div>
+            <h3 class="feat-title">Arquitectura 100% Offline</h3>
+            <p class="feat-desc">
+              Toda la información se resguarda en IndexedDB dentro de tu teléfono. Podés trabajar en sótanos, zonas rurales o sin cobertura sin perder jamás un dato.
+            </p>
+          </article>
+
+          <!-- Card 8 -->
+          <article class="feat-card">
+            <div class="feat-icon">🔔</div>
+            <h3 class="feat-title">Alertas Push y Comunicados</h3>
+            <p class="feat-desc">
+              Notificaciones oficiales de supervisión técnica, alertas meteorológicas para trabajos en altura y recordatorios del protocolo ATS en tu pantalla.
+            </p>
+          </article>
+
+          <!-- Card 9 -->
+          <article class="feat-card">
+            <div class="feat-icon">💾</div>
+            <h3 class="feat-title">Respaldo y Backup Local</h3>
+            <p class="feat-desc">
+              Exportá en un solo archivo JSON todo tu historial de jornadas, quincenas y usuarios para migrar a otro teléfono sin depender de servidores externos.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- TARJETA EXPLICATIVA STANDALONE GATE -->
+    <section class="standalone-section" id="standalone">
+      <div class="container">
+        <div class="standalone-card">
+          <div class="standalone-info">
+            <h3>¿Por qué BAREMO solo se ejecuta como App Instalada?</h3>
+            <p>
+              Para garantizar que los técnicos de cuadrilla trabajen sin interrupciones ni fallos de red en la calle, la aplicación operativa está blindada para abrirse <strong>exclusivamente en modo PWA Standalone</strong>.
+            </p>
+            <ul class="standalone-list">
+              <li><strong>Pantalla completa nativa:</strong> Sin barras de navegador que estorben ni pestañas que se cierren por error.</li>
+              <li><strong>Arranque ultrarrápido garantizado:</strong> Los archivos de la app viven congelados en tu teléfono y abren al instante.</li>
+              <li><strong>Privacidad estricta:</strong> Tus datos de producción no quedan expuestos en historiales públicos de navegación.</li>
+              <li><strong>Acceso a hardware:</strong> Antena GPS de alta precisión y receptor de notificaciones push de sistema.</li>
+            </ul>
+          </div>
+
+          <div class="standalone-box-right">
+            <div class="s-box-icon">📱</div>
+            <div class="s-box-title">Instalación en 1 Toque</div>
+            <div class="s-box-desc">No requiere Google Play Store ni Apple App Store. Se instala de forma limpia y directa como PWA nativa.</div>
+            <button type="button" class="btn-install" id="btnInstallCard" style="width:100%; padding:14px 20px; font-size:14.5px;">
+              <span>Instalar BAREMO PWA</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GUÍA DE INSTALACIÓN PASO A PASO -->
+    <section class="install-guide-section" id="instalacion">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-kicker">Guía Rápida</div>
+          <h2 class="section-title">Cómo Instalar BAREMO en Tu Dispositivo</h2>
+          <p class="section-subtitle">
+            Seguí estos sencillos pasos según el teléfono o computadora que uses para trabajar.
+          </p>
+        </div>
+
+        <!-- Pestañas de dispositivo -->
+        <div class="guide-tabs" role="tablist" aria-label="Instrucciones según sistema operativo">
+          <button class="guide-tab-btn active" data-guide="android" role="tab" aria-selected="true" aria-controls="guide-android">
+            🤖 Android (Chrome / Edge)
+          </button>
+          <button class="guide-tab-btn" data-guide="ios" role="tab" aria-selected="false" aria-controls="guide-ios">
+            🍏 iPhone / iPad (Safari)
+          </button>
+          <button class="guide-tab-btn" data-guide="desktop" role="tab" aria-selected="false" aria-controls="guide-desktop">
+            💻 Computadora (Windows / Mac)
+          </button>
+        </div>
+
+        <!-- Panel Android -->
+        <div class="guide-panel active" id="guide-android" role="tabpanel">
+          <div class="steps-grid">
+            <div class="step-card">
+              <div class="step-number">1</div>
+              <h4>Tocá Instalar</h4>
+              <p>Pulsá el botón <strong>"Instalar Aplicación"</strong> en esta página o abrí el menú de tres puntos (⋮) de Google Chrome.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">2</div>
+              <h4>Confirmá la Instalación</h4>
+              <p>Seleccioná <strong>"Instalar aplicación"</strong> o "Agregar a la pantalla principal" en el cuadro emergente del sistema.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">3</div>
+              <h4>Abrí BAREMO</h4>
+              <p>Listo. El icono de BAREMO aparecerá en tu lista de aplicaciones. Abrila para disfrutar de la experiencia completa.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel iOS -->
+        <div class="guide-panel" id="guide-ios" role="tabpanel">
+          <div class="steps-grid">
+            <div class="step-card">
+              <div class="step-number">1</div>
+              <h4>Abrí en Safari</h4>
+              <p>Asegurate de estar viendo esta página en el navegador <strong>Safari</strong> de tu iPhone o iPad.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">2</div>
+              <h4>Tocá Compartir</h4>
+              <p>Pulsá el botón <strong>Compartir ⎋</strong> (el cuadrado con la flecha hacia arriba en la barra inferior).</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">3</div>
+              <h4>Agregar al Inicio</h4>
+              <p>Deslizá hacia abajo y elegí <strong>"Agregar a la pantalla de inicio"</strong>. Pulsá "Agregar" arriba a la derecha y abrí la app.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel Desktop -->
+        <div class="guide-panel" id="guide-desktop" role="tabpanel">
+          <div class="steps-grid">
+            <div class="step-card">
+              <div class="step-number">1</div>
+              <h4>Icono en la Barra</h4>
+              <p>En Google Chrome o Microsoft Edge, hacé clic en el icono <strong>⊕ (Instalar)</strong> ubicado al final de la barra de direcciones.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">2</div>
+              <h4>Aceptar Instalación</h4>
+              <p>Hacé clic en <strong>"Instalar"</strong> en el cuadro emergente para crear el acceso directo en tu escritorio.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">3</div>
+              <h4>Ventana Dedicada</h4>
+              <p>BAREMO se abrirá inmediatamente en su propia ventana sin marcos de navegador, lista para cargar datos y auditar jornadas.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PREGUNTAS FRECUENTES (FAQ ACORDEÓN) -->
+    <section class="faq-section" id="faq">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-kicker">Dudas Habituales</div>
+          <h2 class="section-title">Preguntas Frecuentes</h2>
+          <p class="section-subtitle">
+            Todo lo que necesitás saber antes de comenzar a registrar tus jornadas en BAREMO.
+          </p>
+        </div>
+
+        <div class="faq-list">
+          <!-- FAQ 1 -->
+          <div class="faq-item">
+            <button class="faq-question" type="button" aria-expanded="false">
+              <span>¿Por qué la aplicación operativa no abre directamente en el navegador?</span>
+              <span class="faq-icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                BAREMO es un sistema de producción crítico para trabajo en calle. Al ejecutarse como aplicación instalada (PWA Standalone), el teléfono le otorga permisos de almacenamiento offline persistente, geolocalización continua por GPS sin cortes de pestaña y pantalla completa para trabajar con agilidad sin cierres accidentales.
+              </p>
+            </div>
+          </div>
+
+          <!-- FAQ 2 -->
+          <div class="faq-item">
+            <button class="faq-question" type="button" aria-expanded="false">
+              <span>¿Consume datos móviles de mi paquete de telefonía?</span>
+              <span class="faq-icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                No. Una vez instalada, BAREMO opera de manera 100% autónoma y offline. Podés cargar tareas, calcular baremos, registrar combustible y generar reportes en PDF sin estar conectado a internet ni consumir saldo. Solo utiliza una cantidad ínfima de datos si decidís sincronizar jornadas con supervisión central.
+              </p>
+            </div>
+          </div>
+
+          <!-- FAQ 3 -->
+          <div class="faq-item">
+            <button class="faq-question" type="button" aria-expanded="false">
+              <span>¿Dónde se guardan mis tareas, combustible y firmas?</span>
+              <span class="faq-icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                Toda la información se almacena de forma segura en la base de datos interna de tu dispositivo (IndexedDB). Tus registros no salen a servidores externos sin tu consentimiento, lo que te garantiza absoluta confidencialidad y control total sobre tu producción.
+              </p>
+            </div>
+          </div>
+
+          <!-- FAQ 4 -->
+          <div class="faq-item">
+            <button class="faq-question" type="button" aria-expanded="false">
+              <span>¿Qué ocurre si cambio de teléfono celular o reinstalo la app?</span>
+              <span class="faq-icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                En el menú de Ajustes contás con la función "Exportar Backup Completo", que genera un archivo seguro con todos tus datos. En tu nuevo teléfono, simplemente instalás BAREMO e importás ese archivo para restaurar al instante todo tu historial.
+              </p>
+            </div>
+          </div>
+
+          <!-- FAQ 5 -->
+          <div class="faq-item">
+            <button class="faq-question" type="button" aria-expanded="false">
+              <span>¿Los reportes en PDF y Excel son aceptados por las empresas contratistas?</span>
+              <span class="faq-icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                Sí. Los partes diarios y quincenales de BAREMO siguen el formato estándar homologado de los rubros de telecomunicaciones, electricidad y servicios, incluyendo detalle de tareas, horas, coordenadas geográficas, consumo de combustible y firmas de conformidad.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINAL CTA BANNER -->
+    <section class="final-cta-section">
+      <div class="container">
+        <div class="final-cta-card">
+          <h2>Comenzá a Producir con BAREMO Hoy Mismo</h2>
+          <p>Instalá la aplicación en tu teléfono en segundos y llevá el control exacto de tus tareas, combustible y liquidación sin depender de papel ni señal.</p>
+          <button class="btn-install" id="btnInstallBottom" type="button" style="margin: 0 auto;">
+            <span class="bi-icon" aria-hidden="true">⚡</span>
+            <span class="bi-label" id="biLabelBottom">Instalar Aplicación Gratuita</span>
+            <span class="bi-sheen" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER PROFESIONAL -->
+  <footer class="landing-footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="nav-logo-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M13 2L3 14h8l-2 8 12-12h-8l2-8z"/></svg>
+          </div>
+          <div>
+            <h4>BAREMO</h4>
+            <p class="footer-desc">Registro de producción diaria, tareas geolocalizadas, combustible y seguridad ATS para cuadrillas técnicas.</p>
+          </div>
+        </div>
+
+        <div>
+          <button type="button" class="btn-secondary" id="btnAbrirSiYaInstalada" style="font-size:13px; padding:10px 18px;">
+            <span>🚀 Abrir App Instalada</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          © 2026 BAREMO · Desarrollado por <span class="footer-credits-author">Akapanch0</span> para contratistas de telecomunicaciones.
+        </div>
+        <div style="display:flex; gap:16px; align-items:center;">
+          <span>Arquitectura Offline PWA</span>
+          <span>·</span>
+          <span class="footer-version-tag" id="appVersion">v5.9.53</span>
+        </div>
+      </div>
     </div>
-  </section>
-</main>
+  </footer>
+</div>
 
+<!-- SCRIPTS DE CONTROL DE INSTALACIÓN, TABS Y ACCIONES -->
 <script>
 (function () {
   'use strict';
 
-  var btn = document.getElementById('btnInstall');
+  var btnInstall = document.getElementById('btnInstall');
+  var btnInstallCard = document.getElementById('btnInstallCard');
+  var btnInstallBottom = document.getElementById('btnInstallBottom');
+  var btnNavInstall = document.getElementById('btnNavInstall');
+  var btnAbrir = document.getElementById('btnAbrirSiYaInstalada');
   var label = document.getElementById('biLabel');
+  var labelBottom = document.getElementById('biLabelBottom');
+
   var deferredPrompt = null;
   var instalada = false;
 
+  // Detección rigurosa de modo PWA Standalone
   function esStandalone() {
     try {
       if (window.navigator.standalone === true) return true;
@@ -115,25 +683,28 @@
     } catch (e) { return false; }
   }
 
-  // Si ya se abrio en modo app instalada, entra directo a la aplicacion.
+  // Si esta página fue abierta dentro del modo standalone de la app, ir a index.html
   if (esStandalone()) {
     window.location.replace('index.html');
     return;
   }
 
-  // El boton pasa a ABRIR APLICACION y lanza la app instalada.
+  function setBotonesTexto(txt, esOk) {
+    if (label) label.textContent = txt;
+    if (labelBottom) labelBottom.textContent = txt;
+    [btnInstall, btnInstallCard, btnInstallBottom, btnNavInstall].forEach(function (b) {
+      if (!b) return;
+      if (esOk) b.classList.add('ok');
+      else b.classList.remove('ok');
+    });
+  }
+
   function modoAbrir() {
     instalada = true;
     deferredPrompt = null;
-    btn.classList.remove('cargando');
-    btn.classList.add('ok');
-    label.textContent = 'ABRIR APLICACI\u00d3N';
+    setBotonesTexto('ABRIR APLICACIÓN', true);
   }
 
-  /* Lanza la app INSTALADA en su ventana standalone.
-     Nunca navega a index.html desde el navegador: la aplicacion no se abre
-     jamas dentro de una pestania. Se usa el protocol handler declarado en el
-     manifest (web+baremos), que el sistema resuelve abriendo la PWA instalada. */
   function abrirApp() {
     var vino = false;
     var marcar = function () { vino = true; };
@@ -144,18 +715,14 @@
       window.location.href = 'web+baremos://abrir';
     } catch (e) {}
 
-    // Si el sistema no cambio de ventana, avisamos en el propio boton.
     setTimeout(function () {
       if (vino || document.hidden) return;
-      // Plan B: navegar al start_url. Si el sistema tiene la app instalada y
-      // la captura de enlaces activa, se abre en su ventana standalone. Si no,
-      // la puerta de entrada devuelve a esta presentacion: la aplicacion no
-      // se abre nunca dentro del navegador.
+      // Plan B: Si la app está instalada, navegar a index.html
       window.location.href = 'index.html';
-    }, 1400);
+    }, 1200);
   }
 
-  // Si el navegador ya la reconoce instalada, arrancamos en modo ABRIR.
+  // Si el navegador ya detecta la PWA instalada
   if (navigator.getInstalledRelatedApps) {
     navigator.getInstalledRelatedApps().then(function (apps) {
       if (apps && apps.length) modoAbrir();
@@ -166,60 +733,138 @@
     e.preventDefault();
     deferredPrompt = e;
     instalada = false;
-    btn.classList.add('listo');
+    setBotonesTexto('Instalar Aplicación', false);
   });
 
-  btn.addEventListener('click', async function () {
-    if (instalada) { abrirApp(); return; }
+  async function ejecutarInstalacion(btnTrigger) {
+    if (instalada) {
+      abrirApp();
+      return;
+    }
 
     if (deferredPrompt) {
-      btn.classList.add('cargando');
+      if (btnTrigger) btnTrigger.classList.add('cargando');
       deferredPrompt.prompt();
       var res = await deferredPrompt.userChoice;
       deferredPrompt = null;
-      btn.classList.remove('cargando');
+      if (btnTrigger) btnTrigger.classList.remove('cargando');
       if (res && res.outcome === 'accepted') {
-        label.textContent = 'Instalando\u2026';
-        btn.classList.add('ok');
+        setBotonesTexto('Instalando…', true);
       }
       return;
     }
 
-    // Sin evento disponible: feedback breve, sin instrucciones.
-    btn.classList.add('shake');
-    setTimeout(function () { btn.classList.remove('shake'); }, 500);
+    // Si el navegador no soporta beforeinstallprompt (ej. Safari o escritorio sin diálogo directo)
+    // Hacemos scroll suave a la guía de instalación
+    var sec = document.getElementById('instalacion');
+    if (sec) {
+      sec.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    if (btnTrigger) {
+      btnTrigger.classList.add('shake');
+      setTimeout(function () { btnTrigger.classList.remove('shake'); }, 500);
+    }
+  }
+
+  [btnInstall, btnInstallCard, btnInstallBottom, btnNavInstall].forEach(function (b) {
+    if (b) {
+      b.addEventListener('click', function () {
+        ejecutarInstalacion(b);
+      });
+    }
   });
 
-  // Instalacion terminada: el boton queda listo para lanzar la app.
+  if (btnAbrir) {
+    btnAbrir.addEventListener('click', abrirApp);
+  }
+
   window.addEventListener('appinstalled', function () {
     modoAbrir();
-    // Apertura automatica: si el sistema no la abrio solo, entramos a la app.
     setTimeout(function () { if (!document.hidden) abrirApp(); }, 900);
   });
 
-  // Si la app se abre en su ventana, esta pestania deja de ser necesaria.
-  window.addEventListener('visibilitychange', function () {
-    if (!document.hidden && instalada) label.textContent = 'ABRIR APLICACI\u00d3N';
-  });
-
+  // Service Worker Registration
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js').catch(function () {});
+    navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }).catch(function () {});
   }
 
-  // Version real, tomada del mismo archivo que usa la app.
+  // Sincronización de versión
   fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
-      if (d && d.version) document.getElementById('appVersion').textContent = 'v' + d.version;
+      if (d && d.version) {
+        var el = document.getElementById('appVersion');
+        if (el) el.textContent = 'v' + d.version;
+      }
     })
     .catch(function () {});
+
+  // Showcase Tabs Switcher
+  var showcaseTabs = document.querySelectorAll('.showcase-tab');
+  var showcasePanels = document.querySelectorAll('.showcase-panel');
+  showcaseTabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      showcaseTabs.forEach(function (t) { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+      showcasePanels.forEach(function (p) { p.classList.remove('active'); });
+
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      var id = 'panel-' + tab.getAttribute('data-tab');
+      var target = document.getElementById(id);
+      if (target) target.classList.add('active');
+    });
+  });
+
+  // Installation Guide Tabs Switcher
+  var guideBtns = document.querySelectorAll('.guide-tab-btn');
+  var guidePanels = document.querySelectorAll('.guide-panel');
+  guideBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      guideBtns.forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+      guidePanels.forEach(function (p) { p.classList.remove('active'); });
+
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+      var id = 'guide-' + btn.getAttribute('data-guide');
+      var target = document.getElementById(id);
+      if (target) target.classList.add('active');
+    });
+  });
+
+  // FAQ Accordion
+  var faqQuestions = document.querySelectorAll('.faq-question');
+  faqQuestions.forEach(function (q) {
+    q.addEventListener('click', function () {
+      var item = q.closest('.faq-item');
+      var answer = item.querySelector('.faq-answer');
+      var isOpen = item.classList.contains('open');
+
+      // Cerrar otros
+      document.querySelectorAll('.faq-item.open').forEach(function (openItem) {
+        if (openItem !== item) {
+          openItem.classList.remove('open');
+          openItem.querySelector('.faq-question').setAttribute('aria-expanded', 'false');
+          openItem.querySelector('.faq-answer').style.maxHeight = null;
+        }
+      });
+
+      if (isOpen) {
+        item.classList.remove('open');
+        q.setAttribute('aria-expanded', 'false');
+        answer.style.maxHeight = null;
+      } else {
+        item.classList.add('open');
+        q.setAttribute('aria-expanded', 'true');
+        answer.style.maxHeight = answer.scrollHeight + 'px';
+      }
+    });
+  });
 })();
 </script>
 
 <script>
-/* La marca repite la entrada electrica cuando volves a esta pagina.
-   La animacion ya arranca sola por CSS (la clase viene en el HTML), asi que
-   si este script no corre, el logo se ve y se anima igual. */
+/* Relanzador de la animación del logo centrado */
 (function () {
   'use strict';
 
@@ -234,7 +879,7 @@
     if (Date.now() - t0 < 2200) return;
     enCurso = true;
     stage.classList.remove('animar');
-    void stage.offsetWidth;            // fuerza el reinicio de la animacion
+    void stage.offsetWidth;
     stage.classList.add('animar');
     setTimeout(function () { enCurso = false; }, 2000);
   }

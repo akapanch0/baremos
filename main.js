@@ -13,13 +13,36 @@
 
   var html = document.documentElement;
 
+  function esStandalone() {
+    try {
+      if (window.navigator.standalone === true) return true;
+      var params = new URLSearchParams(window.location.search);
+      // Parámetros de desarrollo o apertura directa autorizada
+      if (params.has('app') || params.has('standalone') || params.has('preview')) return true;
+      if (window.matchMedia) {
+        return window.matchMedia('(display-mode: standalone)').matches ||
+               window.matchMedia('(display-mode: fullscreen)').matches ||
+               window.matchMedia('(display-mode: minimal-ui)').matches ||
+               window.matchMedia('(display-mode: window-controls-overlay)').matches;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   function liberarApp() {
     html.removeAttribute('data-gate');
     html.setAttribute('data-pwa', 'app');
   }
 
-  // En entorno web y vista previa de AI Studio, liberar la aplicación directamente
-  liberarApp();
+  // La aplicación es accesible ÚNICAMENTE desde la instalación standalone.
+  // En el navegador estándar, la app no abre ni muestra funcionalidades; se redirige a la Landing.
+  if (esStandalone()) {
+    liberarApp();
+  } else {
+    html.setAttribute('data-gate', 'redirecting');
+    window.location.replace('landing.html');
+    return;
+  }
 
   /* ============================================================
      GESTIÓN DE ACTUALIZACIONES DEL SERVICE WORKER (CICLO DE VIDA)
@@ -120,7 +143,7 @@
 
     // Registrar e iniciar monitoreo de actualizaciones
     function iniciarMonitoreoSW() {
-      navigator.serviceWorker.register('./service-worker.js').then(function (reg) {
+      navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }).then(function (reg) {
         window.__swRegistration = reg;
         window.swRegistration = reg;
 
