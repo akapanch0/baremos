@@ -47,7 +47,14 @@ const State = {
   metaAlcanzada: false,
   pushSubscribed: false,
   pushPublicKey: null,
-  avisosEmpresa: [],
+  avisosEmpresa: (() => {
+    try {
+      const c = localStorage.getItem('baremo_avisos_cache');
+      return c ? JSON.parse(c) : [];
+    } catch (e) {
+      return [];
+    }
+  })(),
   avisosCategoriaFiltro: 'todas',
   supervisoresFirmas: []
 };
@@ -3753,7 +3760,7 @@ function renderAjustes() {
     <div class="ajuste-item" data-act="backup"><div class="aj-ico">💾</div><div class="aj-text"><div class="aj-title">Backup</div><div class="aj-desc">Guardá tus datos · te lo recordamos todos los lunes</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="restore"><div class="aj-ico">📤</div><div class="aj-text"><div class="aj-title">Restaurar</div><div class="aj-desc">Recuperar datos</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="notif"><div class="aj-ico">🔔</div><div class="aj-text"><div class="aj-title">Notificaciones Locales</div><div class="aj-desc" id="ajNotifDesc">Avisos de jornada y de inicio de mes</div></div><div class="aj-arrow">›</div></div>
-    <div class="ajuste-item admin" data-act="admin"><div class="aj-ico">🛡️</div><div class="aj-text"><div class="aj-title">Panel de Supervisión</div><div class="aj-desc">Exclusivo Supervisores · Reportes consolidados y alertas</div></div><div class="aj-arrow">›</div></div>
+    <div class="ajuste-item admin" data-act="admin"><div class="aj-ico">🛡️</div><div class="aj-text"><div class="aj-title">Panel de Supervisión</div><div class="aj-desc">Exclusivo Supervisores · Cuadrillas acceden a reportes en Historial</div></div><div class="aj-arrow">›</div></div>
     <div class="credits credits-min">
       <div class="credits-top">
         <span class="credits-emoji">🚀</span>
@@ -3794,9 +3801,52 @@ function renderAjustes() {
       else if (a === 'backup') backup();
       else if (a === 'restore') restoreInput();
       else if (a === 'notif') activarNotificaciones();
-      else if (a === 'admin') showView('Admin');
+      else if (a === 'admin') {
+        if (!State.adminLoggedIn) {
+          abrirModalRestriccionCuadrilla();
+        } else {
+          showView('Admin');
+        }
+      }
     };
   });
+}
+
+function abrirModalRestriccionCuadrilla() {
+  const m = $('#modalRestriccionCuadrilla');
+  if (!m) {
+    showView('Admin');
+    return;
+  }
+  m.style.display = 'flex';
+  m.classList.add('show');
+  const btnHist = $('#btnModalIrAHistorial');
+  if (btnHist) {
+    btnHist.onclick = () => {
+      cerrarModalRestriccionCuadrilla();
+      showView('Historial');
+      toast('📚 Redirigido a Historial: aquí las cuadrillas acceden a todos sus reportes', 'info');
+    };
+  }
+  const btnSup = $('#btnModalSoySupervisor');
+  if (btnSup) {
+    btnSup.onclick = () => {
+      cerrarModalRestriccionCuadrilla();
+      showView('Admin');
+    };
+  }
+  const btnCancel = $('#btnModalCerrarRestriccion');
+  if (btnCancel) {
+    btnCancel.onclick = cerrarModalRestriccionCuadrilla;
+  }
+}
+
+function cerrarModalRestriccionCuadrilla() {
+  const m = $('#modalRestriccionCuadrilla');
+  if (m) {
+    m.classList.remove('show');
+    m.style.display = 'none';
+  }
 }
 
 /* ============================================================
@@ -11269,27 +11319,7 @@ async function verificarJornadasPendientes() {
     const pendiente = (anterioresAbiertas.length > 0) ? anterioresAbiertas[anterioresAbiertas.length - 1] : hoyAbiertaProlongada;
     _jornadaPendienteDetectada = pendiente;
 
-    const banner = $('#jornadaPendienteBanner');
-    if (!banner) return;
-
     if (pendiente) {
-      const cantTareas = (pendiente.items || []).length;
-      const esFechaAnterior = pendiente.fecha < fechaActual;
-      
-      const titleEl = $('#jpbTitle');
-      const descEl = $('#jpbDesc');
-      if (titleEl) {
-        titleEl.textContent = esFechaAnterior 
-          ? `⚠️ Jornada pendiente sin cerrar (${pendiente.fecha})`
-          : `⚠️ Turno prolongado sin cerrar (${pendiente.horaInicio || ''})`;
-      }
-      if (descEl) {
-        descEl.textContent = esFechaAnterior
-          ? `Tenés una jornada del ${pendiente.fecha} que no fue cerrada (${cantTareas} baremos registrados). Cerrala para consolidar tus números.`
-          : `Llevás más de 7 horas de trabajo en la jornada de hoy. Acordate de controlar tus tareas y cerrarla al terminar.`;
-      }
-      banner.style.display = 'flex';
-
       // Disparar push automático en background si no se envió en las últimas 4 horas
       const keyCache = 'baremo_push_pend_' + (pendiente.id || pendiente.fecha);
       const ultimoEnvio = parseInt(localStorage.getItem(keyCache) || '0', 10);
@@ -11311,9 +11341,8 @@ async function verificarJornadasPendientes() {
           }).catch(() => {});
         } catch (e) {}
       }
-    } else {
-      banner.style.display = 'none';
     }
+    actualizarIndicadorAvisos();
   } catch (err) {
     console.warn('[Jornadas Pendientes]', err);
   }
@@ -11396,9 +11425,8 @@ function esAvisoVigenteParaBanner(aviso) {
       return tExp > ahora;
     }
   }
-  const tCreado = obtenerTimestampAviso(aviso);
-  if (tCreado <= 0) return false;
-  return (ahora - tCreado) <= BANNER_AVISO_MAX_EDAD_MS;
+  // Todos los comunicados oficiales emitidos por supervisión se mantienen visibles en la tarjeta superior
+  return true;
 }
 
 function calcularTiempoRestanteBanner(aviso) {
@@ -11411,13 +11439,7 @@ function calcularTiempoRestanteBanner(aviso) {
       msRestante = tExp - ahora;
     }
   }
-  if (msRestante <= 0) {
-    const tCreado = obtenerTimestampAviso(aviso);
-    if (tCreado > 0) {
-      msRestante = BANNER_AVISO_MAX_EDAD_MS - (ahora - tCreado);
-    }
-  }
-  if (msRestante <= 0) return 'Vencido';
+  if (msRestante <= 0) return '';
   const mins = Math.floor(msRestante / 60000);
   const horas = Math.floor(mins / 60);
   const minsRest = mins % 60;
@@ -11435,6 +11457,7 @@ function mostrarBannerSinAvisos() {
 
   banner.style.display = 'flex';
   banner.classList.add('sin-avisos');
+  banner.classList.remove('modo-ats', 'modo-jornada');
 
   const elIco = $('#eabIco');
   const elCat = $('#eabCatBadge');
@@ -11455,10 +11478,12 @@ function mostrarBannerSinAvisos() {
 
   // Solo debe decir: "Por Ahora No Hay Anuncios"
   if (elTitle) elTitle.textContent = 'Por Ahora No Hay Anuncios';
-  if (elDesc) elDesc.style.display = 'none';
+  if (elDesc) {
+    elDesc.style.display = 'block';
+    elDesc.textContent = 'Sin comunicados activos para el personal en este momento.';
+  }
   if (btnVer) {
-    btnVer.style.display = 'inline-flex';
-    btnVer.textContent = 'Ver comunicados';
+    btnVer.style.display = 'none';
   }
 }
 
@@ -11520,21 +11545,43 @@ function mostrarSlideAviso(indice, animar = true) {
   const btnVer = $('#btnEabVer');
 
   const banner = $('#empresaAvisoBanner');
-  if (banner) banner.classList.remove('sin-avisos');
-  if (elDesc) elDesc.style.display = '';
-  if (elCat) elCat.style.display = '';
-
-  const esAtsSlide = aviso.esAts || aviso.id === '__ats_pendiente__';
-
-  if (esAtsSlide) {
-    if (banner) banner.classList.add('modo-ats');
-    if (btnVer) btnVer.textContent = '📋 Rellenar ATS';
-  } else {
-    if (banner) banner.classList.remove('modo-ats');
-    if (btnVer) btnVer.textContent = 'Ver comunicado';
+  if (banner) {
+    banner.classList.remove('sin-avisos', 'modo-ats', 'modo-jornada');
+  }
+  if (elDesc) elDesc.style.display = 'block';
+  if (elCat) {
+    elCat.textContent = aviso.categoria || 'Supervisión';
+    elCat.style.display = 'inline-block';
+  }
+  if (elIco) {
+    elIco.textContent = obtenerIconoAviso(aviso.categoria);
+  }
+  if (elPrio) {
+    elPrio.className = 'eab-badge-prio';
+    if (aviso.prioridad === 'alta') {
+      elPrio.textContent = 'URGENTE';
+      elPrio.style.display = 'inline-block';
+    } else {
+      elPrio.textContent = 'OFICIAL';
+      elPrio.style.display = 'inline-block';
+    }
+  }
+  if (elExpira) {
+    elExpira.style.display = 'none';
   }
 
-  // Actualizar controles y contador
+  // Botón para expandir y leer el texto completo directamente en la tarjeta
+  if (btnVer) {
+    const textoLargo = (aviso.cuerpo && aviso.cuerpo.length > 70);
+    if (textoLargo) {
+      btnVer.style.display = 'inline-flex';
+      btnVer.textContent = banner && banner.classList.contains('expandido') ? '▲ Menos' : '▼ Leer más';
+    } else {
+      btnVer.style.display = 'none';
+    }
+  }
+
+  // Actualizar controles y contador si hay más de 1 aviso de supervisión
   if (_carruselAvisosList.length > 1) {
     if (elControls) elControls.style.display = 'inline-flex';
     if (elCounter) elCounter.textContent = `${_carruselAvisosIdx + 1}/${_carruselAvisosList.length}`;
@@ -11559,52 +11606,12 @@ function mostrarSlideAviso(indice, animar = true) {
     if (elDots) elDots.style.display = 'none';
   }
 
-  // Meta badges
-  if (esAtsSlide) {
-    if (elIco) elIco.textContent = '🛡️';
-    if (elCat) elCat.textContent = 'Seguridad ATS';
-    if (elPrio) {
-      elPrio.textContent = 'PENDIENTE';
-      elPrio.className = 'eab-badge-prio prio-ats';
-      elPrio.style.display = 'inline-block';
-    }
-    if (elExpira) {
-      elExpira.textContent = '📝 Modal';
-      elExpira.style.display = 'inline-block';
-      elExpira.title = 'Tocá para abrir la ventana modal del ATS y rellenarlo';
-    }
-  } else {
-    if (elIco) elIco.textContent = obtenerIconoAviso(aviso.categoria);
-    if (elCat) elCat.textContent = aviso.categoria || 'General';
-    if (elPrio) {
-      elPrio.className = 'eab-badge-prio';
-      if (aviso.prioridad === 'alta') {
-        elPrio.textContent = 'URGENTE';
-        elPrio.style.display = 'inline-block';
-      } else {
-        elPrio.style.display = 'none';
-      }
-    }
-
-    // Tiempo restante de vigencia en el banner (máximo 5 horas)
-    if (elExpira) {
-      const restante = calcularTiempoRestanteBanner(aviso);
-      if (restante && restante !== 'Vencido') {
-        elExpira.textContent = `⏳ ${restante}`;
-        elExpira.style.display = 'inline-block';
-        elExpira.title = `Aviso activo en el banner por 5 horas. Restante: ${restante}`;
-      } else {
-        elExpira.style.display = 'none';
-      }
-    }
-  }
-
   // Animación suave de transición en textos
   if (animar && elTitle && elDesc) {
     elTitle.classList.add('eab-fade-out');
     elDesc.classList.add('eab-fade-out');
     setTimeout(() => {
-      elTitle.textContent = aviso.titulo || 'Comunicado oficial';
+      elTitle.textContent = aviso.titulo || 'Comunicado Oficial';
       elDesc.textContent = aviso.cuerpo || '';
       elTitle.classList.remove('eab-fade-out');
       elDesc.classList.remove('eab-fade-out');
@@ -11616,7 +11623,7 @@ function mostrarSlideAviso(indice, animar = true) {
       }, 250);
     }, 180);
   } else {
-    if (elTitle) elTitle.textContent = aviso.titulo || 'Comunicado oficial';
+    if (elTitle) elTitle.textContent = aviso.titulo || 'Comunicado Oficial';
     if (elDesc) elDesc.textContent = aviso.cuerpo || '';
   }
 }
@@ -11642,22 +11649,13 @@ function animarIconoAvisoNuevo() {
 }
 
 function actualizarIndicadorAvisos() {
-  const avisos = State.avisosEmpresa || [];
-  let leidos = [];
-  try {
-    leidos = JSON.parse(localStorage.getItem('baremo_avisos_leidos') || '[]');
-  } catch (e) {}
-
-  // Filtrar estrictamente solo los avisos con vigencia menor a 5 horas
-  const avisosVigentes = avisos.filter(esAvisoVigenteParaBanner);
-
-  const noLeidos = avisosVigentes.filter(a => !leidos.includes(a.id));
+  const avisos = Array.isArray(State.avisosEmpresa) ? State.avisosEmpresa : [];
   const badge = $('#badgeAvisosUnread');
   const btnAvisos = $('#btnAvisosEmpresa');
 
   if (badge) {
-    if (noLeidos.length > 0) {
-      badge.textContent = noLeidos.length > 9 ? '9+' : String(noLeidos.length);
+    if (avisos.length > 0) {
+      badge.textContent = avisos.length > 9 ? '9+' : String(avisos.length);
       badge.style.display = 'block';
     } else {
       badge.style.display = 'none';
@@ -11666,11 +11664,11 @@ function actualizarIndicadorAvisos() {
 
   // Actualizar animación e indicadores en el botón de avisos (#btnAvisosEmpresa)
   if (btnAvisos) {
-    if (noLeidos.length > 0) {
+    if (avisos.length > 0) {
       btnAvisos.classList.add('has-unread');
 
-      // Detectar llegada de un nuevo comunicado no leído para activar la animación de llamada de atención
-      const idsActuales = noLeidos.map(a => String(a.id));
+      // Detectar llegada de un nuevo comunicado para animar suavemente el botón
+      const idsActuales = avisos.map(a => String(a.id));
       const hayNuevo = idsActuales.some(id => !_idsAvisosNoLeidosPrev.has(id));
       if (hayNuevo && _cantAvisosNoLeidosPrev !== -1) {
         animarIconoAvisoNuevo();
@@ -11681,25 +11679,25 @@ function actualizarIndicadorAvisos() {
       _idsAvisosNoLeidosPrev.clear();
     }
   }
-  _cantAvisosNoLeidosPrev = noLeidos.length;
+  _cantAvisosNoLeidosPrev = avisos.length;
 
-  // Banner en inicio: si no hay avisos vigentes (< 5h), mostrar mensaje dinámico "Por Ahora No Hay Anuncios"
+  // Banner en inicio (Tarjeta Superior):
+  // Exclusiva y estrictamente se muestran los comunicados de supervisión en esta tarjeta.
+  // Si no hay comunicados de supervisión, muestra exactamente "Por Ahora No Hay Anuncios".
   const banner = $('#empresaAvisoBanner');
   if (!banner) return;
 
-  const itemsParaBanner = noLeidos.length > 0 ? [...noLeidos] : [...avisosVigentes];
-
-  if (itemsParaBanner && itemsParaBanner.length > 0) {
+  if (avisos.length > 0) {
     banner.classList.remove('sin-avisos');
-    _carruselAvisosList = itemsParaBanner;
-    if (_carruselAvisosIdx >= _carruselAvisosList.length) {
+    _carruselAvisosList = [...avisos];
+    if (_carruselAvisosIdx >= _carruselAvisosList.length || _carruselAvisosIdx < 0) {
       _carruselAvisosIdx = 0;
     }
     banner.style.display = 'flex';
     mostrarSlideAviso(_carruselAvisosIdx, false);
     iniciarTimerCarruselAvisos();
   } else {
-    // Si no hay avisos vigentes, mostrar el mensaje dinámico solicitado
+    // Si no hay avisos de supervisión, mostrar la tarjeta con "Por Ahora No Hay Anuncios"
     mostrarBannerSinAvisos();
   }
 }
@@ -11967,31 +11965,42 @@ function mostrarAlertaSupervisorEnVivo(alerta) {
   // 2. Chime acústico
   reproducirChimeAlerta();
 
-  // 3. Poblar modal de alerta de supervisión
-  const m = $('#modalAlertaSupervisor');
-  const tit = $('#alertaSupervisorTitulo');
-  const cue = $('#alertaSupervisorCuerpo');
-  const emi = $('#alertaSupervisorEmisor');
-  const fec = $('#alertaSupervisorFecha');
-  const bdg = $('#alertaSupervisorBadge');
-
-  if (tit) tit.textContent = alerta.titulo || 'Comunicado de Supervisión';
-  if (cue) cue.textContent = alerta.cuerpo || alerta.mensaje || '';
-  if (emi) emi.textContent = 'Emitido por: ' + (alerta.autor || 'Supervisión Central');
-  if (fec) fec.textContent = fechaLegible(alerta.fecha || hoy());
-  if (bdg) {
-    bdg.textContent = (alerta.prioridad === 'alta') ? '🚨 ALERTA URGENTE DE SUPERVISIÓN' : '📢 COMUNICADO DE SUPERVISIÓN';
+  // 3. Estrictamente y exclusivamente incorporar en la tarjeta superior (sin modales ni ventanas abajo)
+  if (alerta.titulo || alerta.cuerpo) {
+    if (!Array.isArray(State.avisosEmpresa)) State.avisosEmpresa = [];
+    const idStr = String(alerta.id || alerta.avisoId || ('aviso-' + Date.now()));
+    const existenteIdx = State.avisosEmpresa.findIndex(a => String(a.id) === idStr);
+    const nuevoObj = {
+      id: idStr,
+      titulo: alerta.titulo || 'Comunicado de Supervisión',
+      cuerpo: alerta.cuerpo || alerta.mensaje || '',
+      prioridad: alerta.prioridad || 'alta',
+      categoria: alerta.categoria || 'Supervisión',
+      autor: alerta.autor || 'Supervisión Central',
+      fecha: alerta.fecha || hoy(),
+      creadoEn: alerta.creadoEn || new Date().toISOString()
+    };
+    if (existenteIdx >= 0) {
+      State.avisosEmpresa[existenteIdx] = nuevoObj;
+    } else {
+      State.avisosEmpresa.unshift(nuevoObj);
+    }
+    try {
+      localStorage.setItem('baremo_avisos_cache', JSON.stringify(State.avisosEmpresa));
+    } catch (e) {}
   }
 
-  if (m) {
-    m.style.display = 'flex';
-    m.classList.add('show');
-  }
+  // 4. Mostrar de inmediato el nuevo comunicado al frente de la tarjeta superior
+  _carruselAvisosIdx = 0;
+  actualizarIndicadorAvisos();
 
-  // 4. Actualizar comunicados y carrusel de avisos
-  if (typeof cargarAvisosEmpresa === 'function') {
-    cargarAvisosEmpresa();
+  // 5. Destacar la tarjeta superior con resplandor
+  const banner = $('#empresaAvisoBanner');
+  if (banner) {
+    banner.classList.add('aviso-nuevo-destacado');
+    setTimeout(() => banner.classList.remove('aviso-nuevo-destacado'), 3500);
   }
+  toast(`📢 Nuevo comunicado en la tarjeta de inicio: ${alerta.titulo || 'Aviso de supervisión'}`, 'info');
 }
 
 let _liveAlertsTimer = null;
@@ -12265,13 +12274,14 @@ function inicializarEventosPushYAvisos() {
 
   const btnEabVer = $('#btnEabVer');
   if (btnEabVer) {
-    btnEabVer.onclick = () => {
-      const avisoActual = _carruselAvisosList[_carruselAvisosIdx];
-      if (avisoActual && (avisoActual.esAts || avisoActual.id === '__ats_pendiente__')) {
-        abrirModalATS();
-        return;
+    btnEabVer.onclick = (e) => {
+      e.stopPropagation();
+      const banner = $('#empresaAvisoBanner');
+      if (banner) {
+        banner.classList.toggle('expandido');
+        const expandido = banner.classList.contains('expandido');
+        btnEabVer.textContent = expandido ? '▲ Menos' : '▼ Leer más';
       }
-      abrirModalAvisosEmpresa(null, avisoActual ? avisoActual.id : null);
     };
   }
 
@@ -12292,17 +12302,19 @@ function inicializarEventosPushYAvisos() {
     };
   }
 
-  // Tocar el título del banner abre directamente el comunicado o el ATS
+  // Tocar el título del banner alterna la lectura completa directamente en la tarjeta
   const elTitleBanner = $('#eabTitle');
   if (elTitleBanner) {
     elTitleBanner.style.cursor = 'pointer';
     elTitleBanner.onclick = () => {
-      const avisoActual = _carruselAvisosList[_carruselAvisosIdx];
-      if (avisoActual && (avisoActual.esAts || avisoActual.id === '__ats_pendiente__')) {
-        abrirModalATS();
-        return;
+      const banner = $('#empresaAvisoBanner');
+      if (banner && !banner.classList.contains('sin-avisos')) {
+        banner.classList.toggle('expandido');
+        const btn = $('#btnEabVer');
+        if (btn && btn.style.display !== 'none') {
+          btn.textContent = banner.classList.contains('expandido') ? '▲ Menos' : '▼ Leer más';
+        }
       }
-      abrirModalAvisosEmpresa(null, avisoActual ? avisoActual.id : null);
     };
   }
 

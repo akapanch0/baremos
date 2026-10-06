@@ -659,7 +659,6 @@ app.post('/api/push/avisos', requireAdminAuth, async (req, res) => {
     const avisos = leerAvisosEmpresa();
     const ahoraMs = Date.now();
     const ahoraIso = new Date(ahoraMs).toISOString();
-    const expiraIso = new Date(ahoraMs + 5 * 60 * 60 * 1000).toISOString(); // 5 horas exactas de duración en banner
     const nuevoAviso = {
       id: 'aviso-' + ahoraMs,
       titulo: titulo.trim(),
@@ -669,7 +668,7 @@ app.post('/api/push/avisos', requireAdminAuth, async (req, res) => {
       autor: autor.trim() || 'Supervisión',
       fecha: ahoraIso.split('T')[0],
       creadoEn: ahoraIso,
-      expiraEn: expiraIso,
+      expiraEn: null,
       destinatario: 'todos'
     };
 
@@ -884,7 +883,6 @@ app.post('/api/admin/push/send', requireAdminAuth, async (req, res) => {
       const avisos = leerAvisosEmpresa();
       const ahoraMs = Date.now();
       const ahoraIso = new Date(ahoraMs).toISOString();
-      const expiraIso = new Date(ahoraMs + 5 * 60 * 60 * 1000).toISOString(); // 5 horas de duración activa en banner
       nuevoAviso = {
         id: 'aviso-' + ahoraMs,
         titulo: titulo.trim(),
@@ -894,7 +892,7 @@ app.post('/api/admin/push/send', requireAdminAuth, async (req, res) => {
         autor: autor.trim() || 'Administración',
         fecha: ahoraIso.split('T')[0],
         creadoEn: ahoraIso,
-        expiraEn: expiraIso,
+        expiraEn: null,
         destinatario: destinatario !== 'todos' ? destinatario : 'todos'
       };
       avisos.unshift(nuevoAviso);

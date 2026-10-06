@@ -4143,15 +4143,52 @@ input[type="checkbox"]:checked + .ats-box-indicator::after {
   flex-shrink: 0;
 }
 
-/* Banner de Avisos de la Empresa con Carrusel (Tarjeta Superior) */
+/* Ocultar estrictamente cualquier banner o modal emergente que pudiera mostrarse abajo */
+#jornadaPendienteBanner,
+#pushActivarBanner,
+#atsBanner,
+#modalAlertaSupervisor {
+  display: none !important;
+}
+
+/* Banner de Avisos de la Empresa con Carrusel (Tarjeta Superior Única y Exclusiva) */
 .empresa-aviso-banner {
   order: -10 !important;
   margin-top: 4px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   background: rgba(99, 102, 241, 0.10);
   border: 1.5px solid rgba(99, 102, 241, 0.38);
   box-shadow: 0 2px 10px rgba(99, 102, 241, 0.08);
   transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+}
+.empresa-aviso-banner.aviso-nuevo-destacado {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.45) !important;
+  animation: pulseCardAviso 1.2s ease-in-out 3;
+}
+@keyframes pulseCardAviso {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+.empresa-aviso-banner.expandido .eab-desc {
+  -webkit-line-clamp: unset !important;
+  display: block !important;
+  max-height: none !important;
+  white-space: pre-line !important;
+}
+.empresa-aviso-banner.modo-jornada {
+  background: rgba(245, 158, 11, 0.14) !important;
+  border-color: rgba(245, 158, 11, 0.55) !important;
+}
+.empresa-aviso-banner.modo-jornada .jpb-title {
+  color: #b45309 !important;
+}
+[data-theme="dark"] .empresa-aviso-banner.modo-jornada {
+  background: rgba(245, 158, 11, 0.22) !important;
+  border-color: rgba(245, 158, 11, 0.6) !important;
+}
+[data-theme="dark"] .empresa-aviso-banner.modo-jornada .jpb-title {
+  color: #f59e0b !important;
 }
 [data-theme="dark"] .empresa-aviso-banner {
   background: rgba(99, 102, 241, 0.16);

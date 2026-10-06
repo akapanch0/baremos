@@ -452,8 +452,8 @@ html.piel-grafito { background: #1f2937; }</style>
   </div>
 
   <section class="view" id="viewInicio">
-    <!-- Tarjeta Superior: Avisos y Comunicados Oficiales de la Empresa con Carrusel Automático -->
-    <div class="jornada-pendiente-banner empresa-aviso-banner" id="empresaAvisoBanner" style="display:none;" aria-live="polite" role="region" aria-label="Avisos importantes de la empresa">
+    <!-- Tarjeta Superior Única y Exclusiva: Avisos y Comunicados Oficiales de la Empresa -->
+    <div class="jornada-pendiente-banner empresa-aviso-banner" id="empresaAvisoBanner" aria-live="polite" role="region" aria-label="Avisos importantes de la empresa">
       <div class="jpb-left">
         <div class="jpb-ico" id="eabIco">📢</div>
         <div class="jpb-info eab-carousel-container">
@@ -475,47 +475,7 @@ html.piel-grafito { background: #1f2937; }</style>
         </div>
       </div>
       <div class="jpb-actions">
-        <button class="btn btn-sm btn-primary" id="btnEabVer" type="button">Ver comunicado</button>
-      </div>
-    </div>
-
-    <!-- Banner de alerta de Jornadas Pendientes de Cierre -->
-    <div class="jornada-pendiente-banner" id="jornadaPendienteBanner" style="display:none">
-      <div class="jpb-left">
-        <div class="jpb-ico">⏰</div>
-        <div class="jpb-info">
-          <div class="jpb-title" id="jpbTitle">⚠️ Jornada pendiente de cierre</div>
-          <div class="jpb-desc" id="jpbDesc">Tenés una jornada sin cerrar. Controlá tus tareas y cerrala para asegurar el cómputo de tus baremos.</div>
-        </div>
-      </div>
-      <div class="jpb-actions">
-        <button class="btn btn-sm btn-primary" id="btnJpbCerrar" type="button">📋 Cerrar jornada</button>
-        <button class="btn btn-sm btn-ghost" id="btnJpbDescartar" type="button" title="Descartar aviso">✕</button>
-      </div>
-    </div>
-
-    <!-- Banner minimalista para activación rápida de Push en el celular -->
-    <div class="push-activar-banner" id="pushActivarBanner" style="display:none;" role="alert">
-      <div class="pab-left">
-        <span class="pab-ico" aria-hidden="true">🔔</span>
-        <span class="pab-text"><strong>Notificaciones Push:</strong> Recibí avisos y comunicados en vivo</span>
-      </div>
-      <div class="pab-actions">
-        <button class="btn-pab-activar" id="btnActivarPushBanner" type="button">Activar</button>
-        <button class="btn-pab-close" id="btnCerrarPushBanner" type="button" title="Cerrar aviso" aria-label="Cerrar">✕</button>
-      </div>
-    </div>
-
-    <!-- Banner informativo de ATS (solo visible si existe ficha registrada) -->
-    <div class="ats-banner" id="atsBanner" style="display:none">
-      <div class="ats-b-left">
-        <div class="ats-b-ico" id="atsBannerIco">🛡️</div>
-        <div class="ats-b-info">
-          <div class="ats-b-title" id="atsBannerTitle">Ficha ATS</div>
-          <div class="ats-b-desc" id="atsBannerDesc">Registro de Análisis de Trabajo Seguro</div>
-        </div>
-      </div>
-      <div class="ats-b-actions" id="atsBannerActions">
+        <button class="btn btn-sm btn-primary" id="btnEabVer" type="button" style="display:none;">Ver comunicado</button>
       </div>
     </div>
 
@@ -1130,6 +1090,29 @@ html.piel-grafito { background: #1f2937; }</style>
     <div class="btn-row">
       <button class="btn btn-ghost" id="confirmCancel">Cancelar</button>
       <button class="btn btn-primary" id="confirmOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Restricción para Cuadrillas (Acceso Exclusivo de Supervisión) -->
+<div class="modal-backdrop" id="modalRestriccionCuadrilla" style="z-index: 9999; display:none;">
+  <div class="modal" style="max-width: 440px; border-radius: 16px; padding: 22px; text-align: center;">
+    <div style="font-size: 40px; margin-bottom: 8px;">⛔</div>
+    <div style="font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 8px;">Acceso Exclusivo de Supervisión</div>
+    <p style="font-size: 13px; color: var(--text-soft); line-height: 1.5; margin-bottom: 16px; text-align: left;">
+      La descarga de reportes y las funciones del panel de supervisión son de <strong>acceso exclusivo para supervisores</strong> autorizados.<br><br>
+      Las cuadrillas no pueden ingresar a esta sección. Cada cuadrilla debe consultar y descargar sus reportes (PDF y Excel) en la pestaña <strong>Historial</strong>.
+    </p>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <button type="button" class="btn btn-primary" id="btnModalIrAHistorial" style="padding: 12px; font-weight: 700;">
+        📚 Ir a mis reportes en Historial
+      </button>
+      <button type="button" class="btn btn-ghost" id="btnModalSoySupervisor" style="padding: 10px; font-size: 12px; border: 1px solid var(--border);">
+        🔑 Soy Supervisor (Ingresar Clave Maestra)
+      </button>
+      <button type="button" class="btn btn-ghost" id="btnModalCerrarRestriccion" style="font-size: 12px; color: var(--text-soft);">
+        Cancelar
+      </button>
     </div>
   </div>
 </div>

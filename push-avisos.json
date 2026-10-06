@@ -1,14 +1,13 @@
 [
   {
-    "id": "aviso-1789429844185",
-    "titulo": "📋 Análisis de Trabajo Seguro (ATS) Obligatorio",
-    "cuerpo": "Recordá completar y firmar el ATS con todo el equipo antes de iniciar cualquier tarea en la vía pública.",
+    "id": "aviso-sup-1",
+    "titulo": "📢 Comunicado Oficial de Supervisión",
+    "cuerpo": "Recordatorio operativo para todas las cuadrillas: completar el registro diario de tareas y asegurar el uso estricto de elementos de protección personal (EPP).",
     "prioridad": "alta",
-    "categoria": "Procedimiento",
-    "autor": "Administración",
-    "fecha": "2026-09-14",
-    "creadoEn": "2026-09-14T23:50:44.185Z",
-    "expiraEn": "2026-09-15T04:50:44.185Z",
+    "categoria": "Seguridad",
+    "autor": "Supervisión Central",
+    "fecha": "2026-10-06",
+    "creadoEn": "2026-10-06T12:00:00.000Z",
     "destinatario": "todos"
   }
 ]
