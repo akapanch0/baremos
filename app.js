@@ -2050,7 +2050,19 @@ function showView(n) {
   if (n === 'Combustible') renderCombustible();
   if (n === 'Quincenas') renderQuincenas();
   if (n === 'Ajustes') renderAjustes();
-  if (n === 'Admin') renderAdmin();
+  if (n === 'Admin') {
+    const loginBox = $('#adminLogin');
+    const adminPan = $('#adminPanel');
+    if (!State.adminLoggedIn) {
+      if (loginBox) loginBox.style.display = 'block';
+      if (adminPan) adminPan.style.display = 'none';
+      toast('🔒 Acceso exclusivo para supervisores. Las cuadrillas acceden a sus reportes en Historial.', 'warn');
+    } else {
+      if (loginBox) loginBox.style.display = 'none';
+      if (adminPan) adminPan.style.display = 'block';
+      renderAdmin();
+    }
+  }
   if (n === 'Inicio') {
     renderFraseMotivacional();
     try { if (typeof actualizarIndicadorAvisos === 'function') actualizarIndicadorAvisos(); } catch (e) {}
@@ -3741,7 +3753,7 @@ function renderAjustes() {
     <div class="ajuste-item" data-act="backup"><div class="aj-ico">💾</div><div class="aj-text"><div class="aj-title">Backup</div><div class="aj-desc">Guardá tus datos · te lo recordamos todos los lunes</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="restore"><div class="aj-ico">📤</div><div class="aj-text"><div class="aj-title">Restaurar</div><div class="aj-desc">Recuperar datos</div></div><div class="aj-arrow">›</div></div>
     <div class="ajuste-item" data-act="notif"><div class="aj-ico">🔔</div><div class="aj-text"><div class="aj-title">Notificaciones Locales</div><div class="aj-desc" id="ajNotifDesc">Avisos de jornada y de inicio de mes</div></div><div class="aj-arrow">›</div></div>
-    <div class="ajuste-item admin" data-act="admin"><div class="aj-ico">🛡️</div><div class="aj-text"><div class="aj-title">Panel de Supervisión</div><div class="aj-desc">Reportes consolidados, alertas y clave maestra</div></div><div class="aj-arrow">›</div></div>
+    <div class="ajuste-item admin" data-act="admin"><div class="aj-ico">🛡️</div><div class="aj-text"><div class="aj-title">Panel de Supervisión</div><div class="aj-desc">Exclusivo Supervisores · Reportes consolidados y alertas</div></div><div class="aj-arrow">›</div></div>
     <div class="credits credits-min">
       <div class="credits-top">
         <span class="credits-emoji">🚀</span>
@@ -3990,6 +4002,13 @@ function setupAdmin() {
       if (e.key === 'Enter') btnLogin.click();
     });
   }
+  const btnVolverHist = $('#btnAdminVolverHistorial');
+  if (btnVolverHist) {
+    btnVolverHist.onclick = () => {
+      showView('Historial');
+      toast('📚 Redirigido a Historial: aquí las cuadrillas consultan y descargan sus reportes', 'info');
+    };
+  }
   if (btnLogout) {
     btnLogout.onclick = () => {
       State.adminLoggedIn = false;
@@ -4175,56 +4194,17 @@ function setupAdmin() {
     await exportarReporteAdminPDF();
   };
   $('#btnAdminExcel').onclick = async () => {
-    if (!window.XLSX) { toast('XLSX no disponible', 'error'); return; }
-    const { datos, fechaDesde, fechaHasta, tipo } = await obtenerDatosReporteAdmin();
-    if (!datos.length) { toast('Sin datos para el período', 'warn'); return; }
-    const wb = XLSX.utils.book_new();
-    const resumen = datos.map((d, i) => ({
-      '#': i + 1,
-      Fecha: fechaCorta(d.fecha),
-      Usuario: d.nombreUsuario,
-      Legajo: d.legajo,
-      Zona: d.zona,
-      Estado: d.cerrada ? 'Cerrada' : 'En Curso',
-      Registros: d.cantidadRegistros || (Array.isArray(d.tareas) ? d.tareas.length : 0) || 0,
-      Ítems: d.cantidadItems || (Array.isArray(d.items) ? d.items.length : 0) || 0,
-      Total: Number(d.total) || Number(d.totalEnCurso) || 0,
-      ATS: d.ats ? (d.ats.ot ? `OT ${d.ats.ot}` : 'Firmado') : 'No'
-    }));
-    resumen.push({});
-    resumen.push({
-      Fecha: 'TOTAL',
-      Total: datos.reduce((a, d) => a + (Number(d.total) || Number(d.totalEnCurso) || 0), 0)
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), 'Resumen');
-    const usuariosAgrupados = {};
-    datos.forEach(d => {
-      if (!usuariosAgrupados[d.legajo]) usuariosAgrupados[d.legajo] = { nombre: d.nombreUsuario, jornadas: [] };
-      usuariosAgrupados[d.legajo].jornadas.push(d);
-    });
-    for (const [leg, info] of Object.entries(usuariosAgrupados)) {
-      const detalle = [];
-      for (const jornada of info.jornadas) {
-        detalle.push({ Fecha: fechaCorta(jornada.fecha), Tipo: 'ENCABEZADO', Total: jornada.total || 0 });
-        (jornada.items || []).forEach((it, idx) => {
-          detalle.push({
-            '#': idx + 1, Código: it.codigo, Descripción: it.descripcion,
-            Precio: it.precio, Cantidad: it.cantidad, Subtotal: it.subtotal
-          });
-        });
-        detalle.push({});
-      }
-      const sheetName = `${leg}_${info.nombre}`.substring(0, 31);
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalle), sheetName);
-    }
-    const fileName = `reporte_${tipo}_${fechaDesde}_${fechaHasta}.xlsx`.replace(/ /g, '_');
-    XLSX.writeFile(wb, fileName);
-    toast(`Reporte Excel generado: ${datos.length} jornadas`, 'success');
+    await exportarReporteAdminExcel();
   };
 
   const btnDescargarTodosATS = $('#btnAdminDescargarTodosATS');
   if (btnDescargarTodosATS) {
     btnDescargarTodosATS.onclick = async () => {
+      if (!State.adminLoggedIn) {
+        toast('⛔ La descarga de reportes desde el panel de supervisión es exclusiva de supervisores. Las cuadrillas acceden a sus reportes en Historial.', 'error');
+        showView('Historial');
+        return;
+      }
       if (!window.jspdf) { toast('Librería PDF no disponible', 'error'); return; }
       const { datos, periodoLabel } = await obtenerDatosReporteAdmin();
       const conAts = (datos || []).filter(d => d.ats && (d.ats.completado || d.ats.ot || d.ats.trabajoAsignado));
@@ -4315,19 +4295,54 @@ async function cargarUsuariosReporteAdmin() {
 
   const prevVal = sel.value || 'todos';
 
-  // 1. Obtener usuarios locales
-  const usuariosLocales = await dbGetAll('usuarios');
+  // 1. Obtener usuarios locales y de jornadas locales
   const mapaUsuarios = new Map();
-  usuariosLocales.forEach(u => {
-    if (u && u.legajo) {
-      mapaUsuarios.set(String(u.legajo), {
-        legajo: String(u.legajo),
-        nombre: u.nombre || 'Operario',
-        zona: u.zona || '',
+  try {
+    const usuariosLocales = await dbGetAll('usuarios');
+    if (Array.isArray(usuariosLocales)) {
+      usuariosLocales.forEach(u => {
+        if (u && u.legajo) {
+          mapaUsuarios.set(String(u.legajo), {
+            legajo: String(u.legajo),
+            nombre: u.nombre || 'Operario',
+            zona: u.zona || '',
+            origen: 'local'
+          });
+        }
+      });
+    }
+  } catch (e) {}
+
+  try {
+    const jornadasLocales = await dbGetAll('jornadas');
+    if (Array.isArray(jornadasLocales)) {
+      jornadasLocales.forEach(j => {
+        if (j && j.legajo) {
+          const key = String(j.legajo);
+          if (!mapaUsuarios.has(key)) {
+            mapaUsuarios.set(key, {
+              legajo: key,
+              nombre: j.nombreUsuario || j.usuario || `Operario ${key}`,
+              zona: j.zona || '',
+              origen: 'local'
+            });
+          }
+        }
+      });
+    }
+  } catch (e) {}
+
+  if (State.user && State.user.legajo) {
+    const key = String(State.user.legajo);
+    if (!mapaUsuarios.has(key)) {
+      mapaUsuarios.set(key, {
+        legajo: key,
+        nombre: State.user.nombre || 'Mi Usuario',
+        zona: State.user.zona || '',
         origen: 'local'
       });
     }
-  });
+  }
 
   // 2. Obtener cuadrillas registradas en el servidor remoto
   try {
@@ -4354,6 +4369,9 @@ async function cargarUsuariosReporteAdmin() {
     console.warn('[Admin Reportes] No se pudo consultar usuarios remotos:', err);
   }
 
+  // Guardar lista completa en State para uso de la tabla de Cuadrillas
+  State._adminUsuariosRegistrados = Array.from(mapaUsuarios.values());
+
   // 3. Reconstruir el selector
   sel.innerHTML = '<option value="todos">👥 Todas las cuadrillas (Reporte Consolidado)</option>';
   const listaOrdenada = Array.from(mapaUsuarios.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -4362,7 +4380,8 @@ async function cargarUsuariosReporteAdmin() {
     const opt = document.createElement('option');
     opt.value = u.legajo;
     const extra = u.zona ? ` · ${u.zona}` : '';
-    opt.textContent = `${u.nombre} (${u.legajo})${extra}`;
+    const jorTxt = u.totalJornadas !== undefined ? ` (${u.totalJornadas} jor)` : '';
+    opt.textContent = `${u.nombre} (Leg. ${u.legajo})${extra}${jorTxt}`;
     sel.appendChild(opt);
   }
 
@@ -5609,7 +5628,7 @@ async function renderAdminReportesView() {
       detalleHtml += `</div>`;
     }
   } else {
-    // Modo 2: Consolidado por Cuadrilla
+    // Modo 2: Consolidado por Cuadrilla (Permite descargar reportes de cualquier usuario registrado)
     const porUsuario = {};
     datos.forEach(d => {
       const leg = d.legajo || 'Sin Legajo';
@@ -5631,6 +5650,25 @@ async function renderAdminReportesView() {
       porUsuario[leg].total += (Number(d.total) || Number(d.totalEnCurso) || 0);
     });
 
+    // Unificar con todos los usuarios registrados en el sistema aunque no tengan jornadas en el período actual
+    if (Array.isArray(State._adminUsuariosRegistrados)) {
+      State._adminUsuariosRegistrados.forEach(u => {
+        const leg = String(u.legajo);
+        if (!porUsuario[leg]) {
+          porUsuario[leg] = {
+            nombre: u.nombre || `Operador ${leg}`,
+            zona: u.zona || '-',
+            jornadas: 0,
+            cerradas: 0,
+            abiertas: 0,
+            items: 0,
+            total: 0,
+            sinDatosEnPeriodo: true
+          };
+        }
+      });
+    }
+
     detalleHtml += `
       <div style="overflow-x:auto;">
         <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
@@ -5641,7 +5679,7 @@ async function renderAdminReportesView() {
               <th style="padding:6px 8px;text-align:center;">Ítems</th>
               <th style="padding:6px 8px;text-align:right;">Producción</th>
               <th style="padding:6px 8px;text-align:right;">Promedio/Jornada</th>
-              <th style="padding:6px 8px;text-align:center;">Reporte PDF</th>
+              <th style="padding:6px 8px;text-align:center;">Descargar Reportes</th>
             </tr>
           </thead>
           <tbody>
@@ -5654,16 +5692,26 @@ async function renderAdminReportesView() {
                     <div style="font-size:10px;color:var(--text-soft);">Legajo ${escapeHTML(leg)} · ${escapeHTML(uInfo.zona)}</div>
                   </td>
                   <td style="padding:6px 8px;text-align:center;">
-                    ${uInfo.jornadas}
-                    <div style="font-size:9.5px;color:var(--text-soft);">${uInfo.cerradas} cerradas · ${uInfo.abiertas} en curso</div>
+                    ${uInfo.sinDatosEnPeriodo 
+                      ? `<span style="font-size:10px;color:var(--text-soft);font-style:italic;">0 en este filtro</span>` 
+                      : `${uInfo.jornadas}<div style="font-size:9.5px;color:var(--text-soft);">${uInfo.cerradas} cerradas · ${uInfo.abiertas} en curso</div>`
+                    }
                   </td>
                   <td style="padding:6px 8px;text-align:center;">${uInfo.items}</td>
                   <td style="padding:6px 8px;text-align:right;font-weight:700;color:#16a34a;">${fmt(uInfo.total)}</td>
                   <td style="padding:6px 8px;text-align:right;color:var(--text-soft);">${fmt(prom)}</td>
-                  <td style="padding:6px 8px;text-align:center;">
-                    <button class="btn btn-primary btn-sm btn-descargar-cuadrilla-pdf" data-legajo="${escapeHTML(leg)}" style="padding:3px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="Descargar reporte oficial en PDF de ${escapeHTML(uInfo.nombre)} (idéntico al de cuadrilla)">
+                  <td style="padding:6px 8px;text-align:center;white-space:nowrap;">
+                    <button class="btn btn-primary btn-sm btn-descargar-cuadrilla-pdf" data-legajo="${escapeHTML(leg)}" style="padding:3px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px;" title="Descargar reporte en PDF de ${escapeHTML(uInfo.nombre)}">
                       📄 PDF
                     </button>
+                    <button class="btn btn-ghost btn-sm btn-descargar-cuadrilla-excel" data-legajo="${escapeHTML(leg)}" style="padding:3px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px;border:1px solid var(--border);margin-left:4px;" title="Descargar reporte en Excel de ${escapeHTML(uInfo.nombre)}">
+                      📊 Excel
+                    </button>
+                    ${uInfo.sinDatosEnPeriodo ? `
+                      <button class="btn btn-ghost btn-sm btn-ver-historico-cuadrilla" data-legajo="${escapeHTML(leg)}" style="padding:3px 6px;font-size:10px;color:var(--primary);margin-left:4px;" title="Ver todas las jornadas de ${escapeHTML(uInfo.nombre)}">
+                        🗂️ Histórico
+                      </button>
+                    ` : ''}
                   </td>
                 </tr>
               `;
@@ -5674,9 +5722,12 @@ async function renderAdminReportesView() {
               <td style="padding:8px;text-align:center;">${totalItems}</td>
               <td style="padding:8px;text-align:right;color:#16a34a;">${fmt(totalProduccionCerrada + totalProduccionEnCurso)}</td>
               <td style="padding:8px;text-align:right;">${fmt(datos.length > 0 ? Math.round((totalProduccionCerrada + totalProduccionEnCurso) / datos.length) : 0)}</td>
-              <td style="padding:8px;text-align:center;">
-                <button class="btn btn-primary btn-sm btn-descargar-todas-cuadrillas-pdf" style="padding:4px 9px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="Descargar reporte oficial consolidado de todas las cuadrillas">
-                  📄 Consolidado
+              <td style="padding:8px;text-align:center;white-space:nowrap;">
+                <button class="btn btn-primary btn-sm btn-descargar-todas-cuadrillas-pdf" style="padding:4px 9px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px;" title="Descargar reporte oficial consolidado de todas las cuadrillas en PDF">
+                  📄 PDF
+                </button>
+                <button class="btn btn-ghost btn-sm btn-descargar-todas-cuadrillas-excel" style="padding:4px 9px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px;border:1px solid var(--border);margin-left:4px;" title="Descargar reporte consolidado en Excel">
+                  📊 Excel
                 </button>
               </td>
             </tr>
@@ -5800,6 +5851,39 @@ async function renderAdminReportesView() {
     };
   });
 
+  $$('.btn-descargar-cuadrilla-excel').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const legajo = btn.dataset.legajo;
+      btn.disabled = true;
+      const oldText = btn.innerHTML;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        await exportarReporteAdminExcel(legajo);
+      } catch (err) {
+        toast(`Error generando Excel: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldText;
+      }
+    };
+  });
+
+  $$('.btn-ver-historico-cuadrilla').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const legajo = btn.dataset.legajo;
+      const selUser = $('#adminUsuario');
+      if (selUser) selUser.value = legajo;
+      State.adminReportType = 'todos';
+      $$('#adminReportType button').forEach(b => {
+        b.classList.toggle('active', b.dataset.type === 'todos');
+      });
+      await renderAdminReportesView();
+      toast(`🗂️ Mostrando histórico completo de la cuadrilla ${legajo}`, 'info');
+    };
+  });
+
   $$('.btn-descargar-todas-cuadrillas-pdf').forEach(btn => {
     btn.onclick = async (e) => {
       e.stopPropagation();
@@ -5810,6 +5894,23 @@ async function renderAdminReportesView() {
         await exportarReporteAdminPDF('todos');
       } catch (err) {
         toast(`Error generando PDF: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldText;
+      }
+    };
+  });
+
+  $$('.btn-descargar-todas-cuadrillas-excel').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      btn.disabled = true;
+      const oldText = btn.innerHTML;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        await exportarReporteAdminExcel('todos');
+      } catch (err) {
+        toast(`Error generando Excel: ${err.message}`, 'error');
       } finally {
         btn.disabled = false;
         btn.innerHTML = oldText;
@@ -5832,6 +5933,174 @@ async function renderAdminReportesView() {
 }
 
 /* ============================================================
+   REPORTE OFICIAL PARA USUARIO REGISTRADO SIN JORNADAS
+   Permite al supervisor descargar la ficha/constancia oficial
+   de cualquier usuario registrado aunque no tenga jornadas aún.
+   ============================================================ */
+async function generarReporteUsuarioSinJornadasPDF(user) {
+  if (!window.jspdf) {
+    toast('jsPDF no disponible', 'error');
+    return;
+  }
+  toast('⏳ Generando reporte de usuario registrado...', 'info');
+  await obtenerLogoPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const nombre = user.nombre || 'Operador Registrado';
+  const legajo = String(user.legajo || '-');
+  const zona = user.zona || '-';
+
+  drawElegantHeader(doc, 'BAREMO', 'Reporte Oficial de Cuadrilla', nombre, `Legajo: ${legajo} | Zona: ${zona}`);
+
+  let currentY = drawResumenPDF(doc, 46, [
+    { lbl: 'Estado', val: 'Registrado' },
+    { lbl: 'Jornadas', val: 0 },
+    { lbl: 'Tareas', val: 0 },
+    { lbl: 'Total Producción', val: '$0' }
+  ]);
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(14, currentY, 182, 32, 2, 2, 'FD');
+
+  doc.setFontSize(10.5);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ESTADO DE REGISTRO EN EL SISTEMA', 18, currentY + 9);
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Operario / Cuadrilla: ${nombre} · Legajo: ${legajo} · Zona operativa: ${zona}`, 18, currentY + 16);
+  doc.text('Este usuario se encuentra correctamente registrado en la base de datos de la empresa.', 18, currentY + 22);
+  doc.text('No registra jornadas cargadas o cerradas en el período seleccionado.', 18, currentY + 28);
+
+  drawPiePDF(doc);
+  const nomArchivo = `baremos_registrado_${legajo}_${hoy()}.pdf`;
+  doc.save(nomArchivo);
+  avisarPDFGenerado(`del usuario registrado ${nombre}`);
+}
+
+function generarReporteUsuarioSinJornadasExcel(user) {
+  if (!window.XLSX) {
+    toast('Librería Excel (XLSX) no disponible', 'error');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const nombre = user.nombre || 'Operador Registrado';
+  const legajo = String(user.legajo || '-');
+  const zona = user.zona || '-';
+  const resumen = [
+    { Detalle: 'Usuario / Cuadrilla', Valor: nombre },
+    { Detalle: 'Número de Legajo', Valor: legajo },
+    { Detalle: 'Zona Operativa', Valor: zona },
+    { Detalle: 'Estado en el Sistema', Valor: 'Registrado Activo' },
+    { Detalle: 'Jornadas Registradas', Valor: 0 },
+    { Detalle: 'Tareas Finalizadas', Valor: 0 },
+    { Detalle: 'Total Producción ($)', Valor: 0 },
+    { Detalle: 'Fecha de Emisión', Valor: new Date().toLocaleDateString('es-AR') },
+    { Detalle: 'Observación', Valor: 'Sin jornadas cargadas en el período consultado' }
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), 'Ficha_Usuario');
+  const fileName = `reporte_registrado_${legajo}_${hoy()}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  toast(`✅ Reporte Excel descargado: ficha de ${nombre}`, 'success');
+}
+
+/* ============================================================
+   REPORTE OFICIAL EN EXCEL PARA EL SUPERVISOR
+   Descarga de reportes en formato Excel (XLSX) con resumen
+   y desglose detallado para cualquier cuadrilla u operario registrado.
+   ============================================================ */
+async function exportarReporteAdminExcel(filtroLegajo = null, forzarTipo = null) {
+  if (!window.XLSX) {
+    toast('Librería Excel (XLSX) no disponible', 'error');
+    return;
+  }
+  if (!State.adminLoggedIn) {
+    toast('⛔ La descarga de reportes desde el panel de supervisión es exclusiva de supervisores. Las cuadrillas acceden a sus reportes en Historial.', 'error');
+    showView('Historial');
+    return;
+  }
+
+  let { datos, fechaDesde, fechaHasta, tipo } = await obtenerDatosReporteAdmin(filtroLegajo, forzarTipo);
+
+  // Si no hay datos en el filtro pero se seleccionó una cuadrilla, buscar su histórico completo
+  if ((!datos || !datos.length) && filtroLegajo && filtroLegajo !== 'todos' && !forzarTipo) {
+    const hist = await obtenerDatosReporteAdmin(filtroLegajo, 'todos');
+    if (hist.datos && hist.datos.length > 0) {
+      toast('ℹ️ Sin registros en el filtro actual. Descargando reporte histórico del usuario...', 'info');
+      datos = hist.datos;
+      fechaDesde = hist.fechaDesde;
+      fechaHasta = hist.fechaHasta;
+      tipo = hist.tipo;
+    }
+  }
+
+  if (!datos || !datos.length) {
+    if (filtroLegajo && filtroLegajo !== 'todos') {
+      const uReg = (State._adminUsuariosRegistrados || []).find(u => String(u.legajo) === String(filtroLegajo));
+      if (uReg) {
+        generarReporteUsuarioSinJornadasExcel(uReg);
+        return;
+      }
+    }
+    toast('Sin datos para el período o cuadrilla seleccionada', 'warn');
+    return;
+  }
+  toast('⏳ Generando reporte Excel...', 'info');
+  const wb = XLSX.utils.book_new();
+  const resumen = datos.map((d, i) => ({
+    '#': i + 1,
+    Fecha: fechaCorta(d.fecha),
+    Usuario: d.nombreUsuario,
+    Legajo: d.legajo,
+    Zona: d.zona,
+    Estado: d.cerrada ? 'Cerrada' : 'En Curso',
+    Registros: d.cantidadRegistros || (Array.isArray(d.tareas) ? d.tareas.length : 0) || 0,
+    Ítems: d.cantidadItems || (Array.isArray(d.items) ? d.items.length : 0) || 0,
+    Total: Number(d.total) || Number(d.totalEnCurso) || 0,
+    ATS: d.ats ? (d.ats.ot ? `OT ${d.ats.ot}` : 'Firmado') : 'No'
+  }));
+  resumen.push({});
+  resumen.push({
+    Fecha: 'TOTAL',
+    Total: datos.reduce((a, d) => a + (Number(d.total) || Number(d.totalEnCurso) || 0), 0)
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), 'Resumen');
+
+  const usuariosAgrupados = {};
+  datos.forEach(d => {
+    const k = String(d.legajo || 'S_L');
+    if (!usuariosAgrupados[k]) usuariosAgrupados[k] = { nombre: d.nombreUsuario, jornadas: [] };
+    usuariosAgrupados[k].jornadas.push(d);
+  });
+
+  for (const [leg, info] of Object.entries(usuariosAgrupados)) {
+    const detalle = [];
+    for (const jornada of info.jornadas) {
+      detalle.push({ Fecha: fechaCorta(jornada.fecha), Tipo: 'ENCABEZADO', Total: jornada.total || jornada.totalEnCurso || 0, Estado: jornada.cerrada ? 'Cerrada' : 'En Curso' });
+      (jornada.items || []).forEach((it, idx) => {
+        detalle.push({
+          '#': idx + 1, Código: it.codigo, Descripción: it.descripcion,
+          Precio: it.precio, Cantidad: it.cantidad, Subtotal: it.subtotal
+        });
+      });
+      detalle.push({});
+    }
+    const cleanNombre = (info.nombre || 'Operador').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const sheetName = `${leg}_${cleanNombre}`.substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalle), sheetName);
+  }
+
+  const suffix = (filtroLegajo && filtroLegajo !== 'todos') ? `_${filtroLegajo}` : '_consolidado';
+  const fileName = `reporte_${tipo}${suffix}_${fechaDesde}_${fechaHasta}.xlsx`.replace(/ /g, '_');
+  XLSX.writeFile(wb, fileName);
+  toast(`✅ Reporte Excel descargado: ${datos.length} jornadas`, 'success');
+}
+
+/* ============================================================
    REPORTE OFICIAL EN PDF PARA EL SUPERVISOR (v5.9.51)
    Genera el reporte con EXACTAMENTE el mismo membrete, logo,
    tipografía, resumen ejecutivo, ordenamiento cronológico por jornada,
@@ -5840,14 +6109,40 @@ async function renderAdminReportesView() {
    Soporta exportación diaria, semanal, quincenal, mensual o histórica
    por operario/cuadrilla o consolidado general.
    ============================================================ */
-async function exportarReporteAdminPDF(filtroLegajo = null) {
+async function exportarReporteAdminPDF(filtroLegajo = null, forzarTipo = null) {
   if (!window.jspdf) {
     toast('jsPDF no disponible', 'error');
     return;
   }
+  if (!State.adminLoggedIn) {
+    toast('⛔ La descarga de reportes desde el panel de supervisión es exclusiva de supervisores. Las cuadrillas acceden a sus reportes en Historial.', 'error');
+    showView('Historial');
+    return;
+  }
 
-  const { datos, periodoLabel, fechaDesde, fechaHasta, tipo } = await obtenerDatosReporteAdmin(filtroLegajo);
+  let { datos, periodoLabel, fechaDesde, fechaHasta, tipo } = await obtenerDatosReporteAdmin(filtroLegajo, forzarTipo);
+
+  // Si no hay datos en el filtro pero se seleccionó una cuadrilla, buscar su histórico completo
+  if ((!datos || !datos.length) && filtroLegajo && filtroLegajo !== 'todos' && !forzarTipo) {
+    const hist = await obtenerDatosReporteAdmin(filtroLegajo, 'todos');
+    if (hist.datos && hist.datos.length > 0) {
+      toast('ℹ️ Sin registros en el filtro actual. Descargando reporte histórico del usuario...', 'info');
+      datos = hist.datos;
+      periodoLabel = hist.periodoLabel;
+      fechaDesde = hist.fechaDesde;
+      fechaHasta = hist.fechaHasta;
+      tipo = hist.tipo;
+    }
+  }
+
   if (!datos || !datos.length) {
+    if (filtroLegajo && filtroLegajo !== 'todos') {
+      const uReg = (State._adminUsuariosRegistrados || []).find(u => String(u.legajo) === String(filtroLegajo));
+      if (uReg) {
+        await generarReporteUsuarioSinJornadasPDF(uReg);
+        return;
+      }
+    }
     toast('Sin datos para el período o cuadrilla seleccionada', 'warn');
     return;
   }
@@ -6070,8 +6365,8 @@ async function exportarReporteAdminPDF(filtroLegajo = null) {
   avisarPDFGenerado(`consolidado con ${cuadrillasMap.size} cuadrillas y ${datos.length} jornadas`);
 }
 
-async function obtenerDatosReporteAdmin(filtroLegajo = null) {
-  const tipo = State.adminReportType || 'todos';
+async function obtenerDatosReporteAdmin(filtroLegajo = null, forzarTipo = null) {
+  const tipo = forzarTipo || State.adminReportType || 'todos';
   const usuarioSel = (filtroLegajo && filtroLegajo !== 'todos') ? String(filtroLegajo).trim() : ($('#adminUsuario')?.value || 'todos');
   const estadoSel = $('#adminEstadoJornada')?.value || 'todos';
   const fechaInputVal = $('#adminFecha')?.value || hoy();
@@ -10898,21 +11193,36 @@ async function enviarPushTest(tipo) {
   }
 }
 
+function limpiarTextoSinUrl(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/https?:\/\/[^\s]+/gi, '')
+    .replace(/www\.[^\s]+/gi, '')
+    .replace(/[a-zA-Z0-9-]+\.(run\.app|vercel\.app|app|com|net|org|io|dev|edu|gov|ar)[^\s]*/gi, '')
+    .replace(/localhost(:\d+)?/gi, '')
+    .replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 async function emitirAlertaServiceWorkerLocal(payload) {
   try {
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.ready;
       if (reg && reg.showNotification) {
-        await reg.showNotification(payload.titulo, {
-          body: payload.cuerpo,
-          icon: 'icons/icon-192.png',
-          badge: 'icons/icon-192.png',
+        const rawTit = payload.titulo || 'Aviso';
+        const titLimpio = limpiarTextoSinUrl(rawTit);
+        const tituloNotif = titLimpio.startsWith('BAREMO') ? titLimpio : `BAREMO · ${titLimpio}`;
+        const cuerpoNotif = limpiarTextoSinUrl(payload.cuerpo || '');
+        await reg.showNotification(tituloNotif, {
+          body: cuerpoNotif,
+          icon: './icons/icon-192.png',
+          badge: './icons/icon-192.png',
           tag: 'push-test-' + Date.now(),
           vibrate: [200, 100, 200],
           data: {
             tipo: payload.tipo,
-            accion: payload.accion,
-            url: window.location.origin
+            accion: payload.accion
           },
           actions: [
             { action: payload.accion || 'ver', title: 'Abrir en BAREMO' }

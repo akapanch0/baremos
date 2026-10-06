@@ -1,5 +1,5 @@
 {
-  "id": "/baremos/",
+  "id": "./",
   "name": "BAREMO",
   "short_name": "BAREMO",
   "description": "Registro de produccion diaria por baremo: tareas, combustible, quincenas y reportes.",

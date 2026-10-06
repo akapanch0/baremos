@@ -443,6 +443,19 @@ app.get('/api/push/status', (req, res) => {
   });
 });
 
+// Helper para remover URLs o dominios de textos de notificación
+function sanitizarSinUrl(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/https?:\/\/[^\s]+/gi, '')
+    .replace(/www\.[^\s]+/gi, '')
+    .replace(/[a-zA-Z0-9-]+\.(run\.app|vercel\.app|app|com|net|org|io|dev|edu|gov|ar)[^\s]*/gi, '')
+    .replace(/localhost(:\d+)?/gi, '')
+    .replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 // 3. Registrar / Actualizar suscripción Push del cliente
 app.post('/api/push/subscribe', (req, res) => {
   try {
@@ -455,12 +468,17 @@ app.post('/api/push/subscribe', (req, res) => {
     const index = subs.findIndex(s => s.endpoint === subscription.endpoint);
     const ahora = new Date().toISOString();
 
+    const legajoUser = (user && user.legajo) ? String(user.legajo).trim() : '';
+    const nombreUser = (user && user.nombre) ? String(user.nombre).trim() : 'Usuario';
+    const zonaUser = (user && user.zona) ? String(user.zona).trim() : '';
+
     const nuevoRegistro = {
       endpoint: subscription.endpoint,
       keys: subscription.keys || {},
       user: {
-        legajo: (user && user.legajo) ? String(user.legajo) : '',
-        nombre: (user && user.nombre) ? String(user.nombre) : 'Usuario'
+        legajo: legajoUser,
+        nombre: nombreUser,
+        zona: zonaUser
       },
       updatedAt: ahora
     };
@@ -472,6 +490,32 @@ app.post('/api/push/subscribe', (req, res) => {
     }
 
     guardarSuscripciones(subs);
+
+    // Si el suscriptor tiene legajo, asegurar su registro en usuarios-remotos.json
+    if (legajoUser) {
+      try {
+        const uList = leerUsuariosRemotos();
+        const uIdx = uList.findIndex(u => String(u.legajo) === legajoUser);
+        if (uIdx >= 0) {
+          if (nombreUser && nombreUser !== 'Usuario') uList[uIdx].nombre = nombreUser;
+          if (zonaUser) uList[uIdx].zona = zonaUser;
+          uList[uIdx].ultimaConexion = ahora;
+        } else {
+          uList.push({
+            legajo: legajoUser,
+            nombre: nombreUser || `Operario ${legajoUser}`,
+            zona: zonaUser || '',
+            ultimaConexion: ahora,
+            totalJornadas: 0,
+            totalProduccion: 0
+          });
+        }
+        guardarUsuariosRemotos(uList);
+      } catch (errUser) {
+        console.warn('[Push] Error registrando usuario remoto en subscribe:', errUser.message);
+      }
+    }
+
     console.log(`[Push] Suscripción registrada/actualizada. Total suscriptores: ${subs.length}`);
     res.json({ ok: true, totalSuscriptores: subs.length });
   } catch (err) {
@@ -540,8 +584,8 @@ app.post('/api/push/send', async (req, res) => {
 
     const payloadObj = {
       tipo,
-      titulo,
-      cuerpo,
+      titulo: sanitizarSinUrl(titulo),
+      cuerpo: sanitizarSinUrl(cuerpo),
       tag: tag || (`baremo-${tipo}-${Date.now()}`),
       icon: './icons/icon-192.png',
       badge: './icons/icon-192.png',
@@ -652,8 +696,8 @@ app.post('/api/push/avisos', requireAdminAuth, async (req, res) => {
       const payloadString = JSON.stringify({
         tipo: 'aviso_empresa',
         id: nuevoAviso.id,
-        titulo: `📢 ${nuevoAviso.titulo}`,
-        cuerpo: nuevoAviso.cuerpo,
+        titulo: `📢 ${sanitizarSinUrl(nuevoAviso.titulo)}`,
+        cuerpo: sanitizarSinUrl(nuevoAviso.cuerpo),
         tag: `baremo-aviso-${nuevoAviso.id}`,
         prioridad: nuevoAviso.prioridad,
         vibrate: nuevoAviso.prioridad === 'alta' ? [300, 150, 300, 150, 300] : [200, 100, 200],
@@ -882,8 +926,8 @@ app.post('/api/admin/push/send', requireAdminAuth, async (req, res) => {
       const payloadObj = {
         tipo,
         id: nuevoAviso ? nuevoAviso.id : ('push-' + Date.now()),
-        titulo: `📢 ${titulo.trim()}`,
-        cuerpo: cuerpo.trim(),
+        titulo: `📢 ${sanitizarSinUrl(titulo)}`,
+        cuerpo: sanitizarSinUrl(cuerpo),
         tag: `baremo-${tipo}-${Date.now()}`,
         prioridad,
         icon: './icons/icon-192.png',
@@ -1347,8 +1391,49 @@ app.get('/api/admin/reportes/usuarios', requireAdminAuth, (req, res) => {
   try {
     const usuarios = leerUsuariosRemotos();
     const jornadas = leerJornadasRemotas();
+    const subs = leerSuscripciones();
+    const mapa = new Map();
 
-    const lista = usuarios.map(u => {
+    usuarios.forEach(u => {
+      if (u && u.legajo) {
+        mapa.set(String(u.legajo), {
+          legajo: String(u.legajo),
+          nombre: u.nombre || 'Operador',
+          zona: u.zona || '',
+          ultimaConexion: u.ultimaConexion || ''
+        });
+      }
+    });
+
+    jornadas.forEach(j => {
+      if (j && j.legajo) {
+        const leg = String(j.legajo);
+        if (!mapa.has(leg)) {
+          mapa.set(leg, {
+            legajo: leg,
+            nombre: j.nombreUsuario || j.usuario || `Operador ${leg}`,
+            zona: j.zona || '',
+            ultimaConexion: j.fecha || ''
+          });
+        }
+      }
+    });
+
+    subs.forEach(s => {
+      if (s && s.user && s.user.legajo) {
+        const leg = String(s.user.legajo);
+        if (!mapa.has(leg)) {
+          mapa.set(leg, {
+            legajo: leg,
+            nombre: s.user.nombre || `Operador ${leg}`,
+            zona: s.user.zona || '',
+            ultimaConexion: s.updatedAt || ''
+          });
+        }
+      }
+    });
+
+    const lista = Array.from(mapa.values()).map(u => {
       const userJornadas = jornadas.filter(j => String(j.legajo) === String(u.legajo));
       return {
         legajo: u.legajo,

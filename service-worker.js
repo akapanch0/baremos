@@ -304,8 +304,12 @@ self.addEventListener('message', event => {
     event.waitUntil((async () => {
       try {
         if (!self.registration || !self.registration.showNotification) return;
-        await self.registration.showNotification(data.titulo || '⚠️ ATS Pendiente - Seguridad en el Trabajo', {
-          body: data.cuerpo || 'Recordá completar el Análisis de Trabajo Seguro (ATS) antes de iniciar las tareas del día.',
+        const rawTit = data.titulo || '⚠️ ATS Pendiente - Seguridad en el Trabajo';
+        const rawBody = data.cuerpo || 'Recordá completar el Análisis de Trabajo Seguro (ATS) antes de iniciar las tareas del día.';
+        const titLimpio = limpiarTextoSinUrl(rawTit);
+        const tituloNotif = titLimpio.startsWith('BAREMO') ? titLimpio : `BAREMO · ${titLimpio}`;
+        await self.registration.showNotification(tituloNotif, {
+          body: limpiarTextoSinUrl(rawBody),
           tag: 'baremo-ats-recordatorio',
           renotify: true,
           requireInteraction: true,
@@ -392,8 +396,10 @@ async function revisarAvisosVencidos() {
       try {
         const t = a.tag || ('baremo-' + a.id);
         if (ultimoPorTag[t] === a) {
-          await self.registration.showNotification(a.titulo, {
-            body: a.cuerpo,
+          const titLimpio = limpiarTextoSinUrl(a.titulo || 'Aviso');
+          const titNotif = titLimpio.startsWith('BAREMO') ? titLimpio : `BAREMO · ${titLimpio}`;
+          await self.registration.showNotification(titNotif, {
+            body: limpiarTextoSinUrl(a.cuerpo),
             tag: t,
             renotify: true,
             requireInteraction: !!a.requiereInteraccion,
@@ -434,6 +440,19 @@ self.addEventListener('sync', event => {
 // (El mensaje REVISAR_AVISOS y la revision al activar se manejan mas arriba,
 //  en el listener unico de 'message' y en el de 'activate'.)
 
+// Helper para remover URLs o dominios de títulos y cuerpos de notificaciones Push
+function limpiarTextoSinUrl(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/https?:\/\/[^\s]+/gi, '')
+    .replace(/www\.[^\s]+/gi, '')
+    .replace(/[a-zA-Z0-9-]+\.(run\.app|vercel\.app|app|com|net|org|io|dev|edu|gov|ar)[^\s]*/gi, '')
+    .replace(/localhost(:\d+)?/gi, '')
+    .replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 // ============================================================
 // NOTIFICACIONES PUSH VÍA SERVICE WORKER (Jornadas y Avisos de Empresa)
 // ============================================================
@@ -452,18 +471,24 @@ self.addEventListener('push', event => {
   }
 
   const tipo = data.tipo || 'aviso_empresa';
-  let defaultTitulo = '📢 BAREMO · Aviso de la Empresa';
+  let defaultTitulo = '📢 Aviso de la Empresa';
   if (tipo === 'jornada_pendiente') {
-    defaultTitulo = '⏰ BAREMO · Jornada Pendiente de Cierre';
+    defaultTitulo = '⏰ Jornada Pendiente de Cierre';
   } else if (tipo === 'ats_pendiente') {
-    defaultTitulo = '⚠️ BAREMO · ATS Pendiente Obligatorio';
+    defaultTitulo = '⚠️ ATS Pendiente Obligatorio';
   }
 
-  const titulo = data.titulo || defaultTitulo;
-  const cuerpo = data.cuerpo || data.mensaje || 'Aviso importante para el equipo de trabajo.';
+  const rawTitulo = data.titulo || defaultTitulo;
+  const rawCuerpo = data.cuerpo || data.mensaje || 'Aviso importante para el equipo de trabajo.';
+
+  // Sanitizar título y cuerpo para garantizar que nunca se exponga una URL
+  const tituloLimpio = limpiarTextoSinUrl(rawTitulo);
+  const titulo = tituloLimpio.startsWith('BAREMO') ? tituloLimpio : `BAREMO · ${tituloLimpio}`;
+  const cuerpo = limpiarTextoSinUrl(rawCuerpo);
+
   const tag = data.tag || (`baremo-${tipo}-${data.id || Date.now()}`);
-  const icon = data.icon || './icons/icon-192.png?v=5.9.53';
-  const badge = data.badge || './icons/icon-192.png?v=5.9.53';
+  const icon = './icons/icon-192.png';
+  const badge = './icons/icon-192.png';
   const esPrioridadAlta = data.prioridad === 'alta' || tipo === 'jornada_pendiente' || tipo === 'ats_pendiente';
   const vibrar = data.vibrate || (esPrioridadAlta ? [300, 150, 300, 150, 300] : [200, 100, 200]);
 
@@ -483,6 +508,10 @@ self.addEventListener('push', event => {
   const vista = data.vista || (tipo === 'jornada_pendiente' ? 'Registro' : (tipo === 'aviso_empresa' ? 'AvisosEmpresa' : 'Registro'));
   const accion = data.accion || (tipo === 'jornada_pendiente' ? 'cerrar_jornada' : (tipo === 'ats_pendiente' ? 'abrir_ats' : 'ver_aviso'));
 
+  // data interna: no incluir claves con URL explícita para evitar que la UI del SO la muestre debajo
+  const datosInternos = Object.assign({}, data.datos || {});
+  delete datosInternos.url;
+
   const options = {
     body: cuerpo,
     icon: icon,
@@ -494,12 +523,11 @@ self.addEventListener('push', event => {
     silent: false,
     timestamp: data.timestamp || Date.now(),
     data: {
-      url: data.url || './index.html',
       vista: vista,
       accion: accion,
       avisoId: data.id || (data.datos && data.datos.avisoId) || null,
       tipo: tipo,
-      ...data.datos
+      ...datosInternos
     },
     actions: actions
   };

@@ -4143,8 +4143,11 @@ input[type="checkbox"]:checked + .ats-box-indicator::after {
   flex-shrink: 0;
 }
 
-/* Banner de Avisos de la Empresa con Carrusel */
+/* Banner de Avisos de la Empresa con Carrusel (Tarjeta Superior) */
 .empresa-aviso-banner {
+  order: -10 !important;
+  margin-top: 4px;
+  margin-bottom: 10px;
   background: rgba(99, 102, 241, 0.10);
   border: 1.5px solid rgba(99, 102, 241, 0.38);
   box-shadow: 0 2px 10px rgba(99, 102, 241, 0.08);
